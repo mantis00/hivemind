@@ -3,7 +3,7 @@
 	"scripts": {
 		"dev": "concurrently -p none \"serwist build --watch\" \"next dev --turbopack\"",
 		"dev:once": "NODE_ENV=development serwist build && next dev --turbopack",
-		"build": "next build && serwist build",
+		"build": "serwist build && next build",
 		"start": "next start",
 		"lint": "eslint .",
 		"format": "prettier --write .",
