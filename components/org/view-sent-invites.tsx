@@ -68,9 +68,6 @@ export function ViewSentInvites() {
 		)
 	}
 
-	const lastInvite = invites[0]
-	const lastInviteSentAt = lastInvite ? new Date(lastInvite.created_at).toLocaleDateString() : ''
-
 	return (
 		<Card className='border-0 bg-transparent py-0 shadow-none'>
 			<Collapsible className='rounded-xl border bg-card'>
@@ -85,13 +82,6 @@ export function ViewSentInvites() {
 								<CardDescription>
 									<div className='flex flex-row gap-2 items-center'>
 										<span>{invites.length} invite(s) sent</span>
-										<span> • </span>
-										{lastInvite && (
-											<span className='text-xs text-muted-foreground'>
-												Last invite: <span className='text-foreground'>{lastInvite.invitee_email}</span> on{' '}
-												{lastInviteSentAt}
-											</span>
-										)}
 									</div>
 								</CardDescription>
 							</div>
