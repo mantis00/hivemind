@@ -12,7 +12,17 @@ const compat = new FlatCompat({
 const config = [
 	...compat.extends('next/core-web-vitals', 'next/typescript'),
 	{
-		ignores: ['node_modules/**', '.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'tests/**']
+		ignores: [
+			'node_modules/**',
+			'.next/**',
+			'out/**',
+			'build/**',
+			'next-env.d.ts',
+			'tests/**',
+			'public/sw.js',
+			'public/sw*.js',
+			'serwist.config.js'
+		]
 	}
 ]
 

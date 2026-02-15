@@ -1,8 +1,9 @@
 {
 	"private": true,
 	"scripts": {
-		"dev": "next dev --turbopack",
-		"build": "next build --webpack",
+		"dev": "concurrently -p none \"serwist build --watch\" \"next dev --turbopack\"",
+		"dev:once": "NODE_ENV=development serwist build && next dev --turbopack",
+		"build": "next build && serwist build",
 		"start": "next start",
 		"lint": "eslint .",
 		"format": "prettier --write .",
@@ -36,11 +37,14 @@
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.56.1",
+		"@serwist/cli": "^9.5.4",
 		"@tailwindcss/postcss": "^4.1.18",
 		"@types/node": "^20",
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
 		"baseline-browser-mapping": "^2.9.19",
+		"concurrently": "^9.1.2",
+		"esbuild": "^0.25.10",
 		"eslint": "^9.39.2",
 		"eslint-config-next": "^15.3.1",
 		"husky": "^9.1.7",
