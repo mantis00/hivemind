@@ -65,6 +65,16 @@ const Credenza = ({ children, ...props }: RootCredenzaProps) => {
 
 const CredenzaTrigger = ({ className, children, ...props }: CredenzaProps) => {
 	const { isDesktop } = useCredenzaContext()
+	const [mounted, setMounted] = React.useState(false)
+
+	React.useEffect(() => {
+		setMounted(true)
+	}, [])
+
+	if (!mounted) {
+		return null
+	}
+
 	const Component = isDesktop ? DialogTrigger : DrawerTrigger
 
 	return (
