@@ -58,9 +58,7 @@ const Credenza = ({ children, ...props }: RootCredenzaProps) => {
 
 	return (
 		<CredenzaContext.Provider value={{ isDesktop }}>
-			<Component {...props} {...(!isDesktop && { shouldScaleBackground: true })}>
-				{children}
-			</Component>
+			<Component {...props}>{children}</Component>
 		</CredenzaContext.Provider>
 	)
 }
