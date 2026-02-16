@@ -14,7 +14,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 			<ProtectedSidebar />
 			<main className='flex w-full flex-col items-center'>
 				<div className='flex-1 w-full flex flex-col gap-2'>
-					<nav className='w-full flex justify-center border-b border-b-foreground/10 h-16'>
+					<nav className='sticky top-0 z-40 w-full flex justify-center border-b border-b-foreground/10 h-16 bg-background'>
 						<div className='w-full max-w-7xl flex justify-between px-3 items-center text-sm gap-3'>
 							<ProtectedNavHomeLink />
 							{!hasEnvVars && <EnvVarWarning />}
