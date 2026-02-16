@@ -9,11 +9,14 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-	DialogClose
-} from '@/components/ui/dialog'
+	DialogClose,
+	DialogTrigger,
+	DialogBody,
+	DialogFooter
+} from '@/components/ui/dialog-to-drawer'
 import { Button } from '@/components/ui/button'
 
-export function InstallAppButton() {
+export default function InstallAppButton() {
 	const { isInstallable, handleInstall, isInstalled, isIOS } = useInstallPrompt()
 	const [showInstructions, setShowInstructions] = useState(false)
 
@@ -29,12 +32,13 @@ export function InstallAppButton() {
 
 	return (
 		<>
-			<button onClick={handleClick} className='flex items-center gap-1.5 text-sm hover:underline cursor-pointer'>
-				<Download className='size-4' />
-				Install app
-			</button>
-
 			<Dialog open={showInstructions} onOpenChange={setShowInstructions}>
+				<DialogTrigger asChild>
+					<Button variant='ghost' onClick={handleClick}>
+						<Download className='size-4' />
+						Install App
+					</Button>
+				</DialogTrigger>
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Install App</DialogTitle>
@@ -44,11 +48,14 @@ export function InstallAppButton() {
 								: 'To install this app, use your browser menu to add it to your home screen.'}
 						</DialogDescription>
 					</DialogHeader>
-					<div className='flex justify-end gap-2'>
+					<DialogBody>
+						<div className='py-2' />
+					</DialogBody>
+					<DialogFooter>
 						<DialogClose asChild>
-							<Button variant='outline'>Dismiss</Button>
+							<Button variant='outline'>Close</Button>
 						</DialogClose>
-					</div>
+					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 		</>

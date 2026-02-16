@@ -7,13 +7,15 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-	DialogClose
-} from '@/components/ui/dialog'
+	DialogClose,
+	DialogBody,
+	DialogFooter
+} from '@/components/ui/dialog-to-drawer'
 import { Button } from '@/components/ui/button'
 import { useInstallPrompt } from '@/hooks/use-install-prompt'
 import { Download } from 'lucide-react'
 
-export function LoginInstallPrompt() {
+export default function LoginInstallPrompt() {
 	const { isInstallable, handleInstall, isIOS, isInstalled } = useInstallPrompt()
 	const [showPrompt, setShowPrompt] = useState(false)
 
@@ -44,22 +46,27 @@ export function LoginInstallPrompt() {
 		<Dialog open={showPrompt} onOpenChange={handleDismiss}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle className='flex items-center gap-2'>
-						<Download className='size-5' />
-						Install Hivemind
-					</DialogTitle>
+					<DialogTitle>Install Hivemind</DialogTitle>
 					<DialogDescription>
 						{isIOS
 							? 'Add to your home screen for quick access. Tap Share, then "Add to Home Screen".'
 							: 'Install our app for quick access and an app-like experience.'}
 					</DialogDescription>
 				</DialogHeader>
-				<div className='flex justify-end gap-2'>
+				<DialogBody>
+					<div className='py-2' />
+				</DialogBody>
+				<DialogFooter>
 					<DialogClose asChild>
 						<Button variant='outline'>Dismiss</Button>
 					</DialogClose>
-					{!isIOS && <Button onClick={handleInstallClick}>Install</Button>}
-				</div>
+					{!isIOS && (
+						<Button onClick={handleInstallClick}>
+							Install
+							<Download className='size-5' />
+						</Button>
+					)}
+				</DialogFooter>
 			</DialogContent>
 		</Dialog>
 	)
