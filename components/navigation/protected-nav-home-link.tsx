@@ -19,8 +19,13 @@ export function ProtectedNavHomeLink() {
 		return null
 	}
 
+	const hasOrgSidebar = !!orgId
+
 	return (
-		<Link href={href} className='pl-7 md:pl-7 ml-0 md:ml-2 font-dancing-script text-2xl md:text-4xl font-bold'>
+		<Link
+			href={href}
+			className={`md:pl-7 md:ml-2 font-dancing-script text-2xl md:text-4xl font-bold ${hasOrgSidebar ? 'pl-10' : ''}`}
+		>
 			Hivemind
 		</Link>
 	)

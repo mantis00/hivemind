@@ -13,7 +13,11 @@ const APP_TITLE_TEMPLATE = '%s - PWA App'
 const APP_DESCRIPTION = 'Hivemind is a platform for managing your invertebrates'
 const APP_SURFACE_DARK = '#18181B'
 
-const defaultUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+const defaultUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+	? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+	: process.env.VERCEL_URL
+		? `https://${process.env.VERCEL_URL}`
+		: 'http://localhost:3000'
 
 //used for PWA descriptions and titles on different devices
 export const metadata: Metadata = {
