@@ -1,17 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import {
-	Dialog,
-	DialogBody,
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger
-} from '@/components/ui/dialog-to-drawer'
+import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { LoaderCircle, UserRoundX } from 'lucide-react'
 import { useState } from 'react'
 import { useKickMember } from '@/lib/react-query/mutations'
@@ -32,33 +22,22 @@ export function KickMemberButton({ orgId, memberUserId }: { orgId: number; membe
 	}
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>
+		<ResponsiveDialogDrawer
+			title='Kick Member'
+			description='Are you sure you want to kick this member?'
+			trigger={
 				<Button variant='destructive'>
 					Kick Member <UserRoundX />
 				</Button>
-			</DialogTrigger>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Kick Member</DialogTitle>
-					<DialogDescription>
-						Are you sure you want to kick this member from the organization? This action cannot be undone.
-					</DialogDescription>
-				</DialogHeader>
-				<DialogBody>
-					<div className='py-2' />
-				</DialogBody>
-				<DialogFooter>
-					<DialogClose asChild>
-						<Button type='button' variant='outline' disabled={kickMemberMutation.isPending}>
-							Cancel
-						</Button>
-					</DialogClose>
-					<Button type='button' variant='destructive' onClick={handleSubmit} disabled={kickMemberMutation.isPending}>
-						{kickMemberMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Kick Member'}
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+			}
+			open={open}
+			onOpenChange={(isOpen) => setOpen(isOpen)}
+		>
+			<form onSubmit={handleSubmit}>
+				<Button type='submit' variant='destructive' className='w-full'>
+					{kickMemberMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
+				</Button>
+			</form>
+		</ResponsiveDialogDrawer>
 	)
 }
