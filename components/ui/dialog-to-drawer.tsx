@@ -113,15 +113,23 @@ const CredenzaContent = ({ className, children, ...props }: CredenzaProps) => {
 
 	React.useEffect(() => {
 		if (!isDesktop) {
+			const isMobile = /Mobi|Android/i.test(navigator.userAgent)
+
 			const updateHeight = () => {
+				const viewportHeight = isMobile ? window.visualViewport?.height || window.innerHeight : window.innerHeight
+
 				if (contentRef.current) {
-					contentRef.current.style.height = `${window.innerHeight}px`
+					contentRef.current.style.height = `${viewportHeight}px`
 				}
 			}
 
 			updateHeight()
+			window.visualViewport?.addEventListener('resize', updateHeight)
 			window.addEventListener('resize', updateHeight)
-			return () => window.removeEventListener('resize', updateHeight)
+			return () => {
+				window.visualViewport?.removeEventListener('resize', updateHeight)
+				window.removeEventListener('resize', updateHeight)
+			}
 		}
 	}, [isDesktop])
 
