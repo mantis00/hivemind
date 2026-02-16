@@ -56,6 +56,18 @@ const Credenza = ({ children, ...props }: RootCredenzaProps) => {
 	const isDesktop = useMediaQuery('(min-width: 768px)')
 	const Component = isDesktop ? Dialog : Drawer
 
+	React.useEffect(() => {
+		const handleResize = () => {
+			const dialogElement = document.querySelector('[data-slot="dialog-content"]') as HTMLElement
+			if (dialogElement) {
+				dialogElement.style.transform = 'translateY(0)'
+			}
+		}
+
+		window.addEventListener('resize', handleResize)
+		return () => window.removeEventListener('resize', handleResize)
+	}, [])
+
 	return (
 		<CredenzaContext.Provider value={{ isDesktop }}>
 			<Component {...props}>{children}</Component>
@@ -97,6 +109,21 @@ const CredenzaClose = ({ className, children, ...props }: CredenzaProps) => {
 
 const CredenzaContent = ({ className, children, ...props }: CredenzaProps) => {
 	const { isDesktop } = useCredenzaContext()
+	const contentRef = React.useRef<HTMLDivElement>(null)
+
+	React.useEffect(() => {
+		if (!isDesktop) {
+			const updateHeight = () => {
+				if (contentRef.current) {
+					contentRef.current.style.height = `${window.innerHeight}px`
+				}
+			}
+
+			updateHeight()
+			window.addEventListener('resize', updateHeight)
+			return () => window.removeEventListener('resize', updateHeight)
+		}
+	}, [isDesktop])
 
 	if (isDesktop) {
 		return (
@@ -108,7 +135,9 @@ const CredenzaContent = ({ className, children, ...props }: CredenzaProps) => {
 
 	return (
 		<DrawerContent className={className} onOpenAutoFocus={(e) => e.preventDefault()} {...props}>
-			<div className='overflow-y-auto'>{children}</div>
+			<div ref={contentRef} className='overflow-y-auto'>
+				{children}
+			</div>
 		</DrawerContent>
 	)
 }

@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PlusIcon, LoaderCircle } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useCreateOrg } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 
@@ -24,18 +24,6 @@ export function CreateOrgButton() {
 	const [name, setName] = useState('')
 	const { data: user } = useCurrentClientUser()
 	const createOrgMutation = useCreateOrg()
-
-	useEffect(() => {
-		const handleResize = () => {
-			const dialogElement = document.querySelector('[data-slot="dialog-content"]') as HTMLElement
-			if (dialogElement) {
-				dialogElement.style.transform = 'translateY(0)'
-			}
-		}
-
-		window.addEventListener('resize', handleResize)
-		return () => window.removeEventListener('resize', handleResize)
-	}, [])
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()

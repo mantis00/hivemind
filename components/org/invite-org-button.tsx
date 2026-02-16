@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { UserPlusIcon, LoaderCircle } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useInviteMember } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -29,18 +29,6 @@ export function InviteMemberButton() {
 	const [accessLvl, setAccessLvl] = useState('1')
 	const { data: user } = useCurrentClientUser()
 	const inviteMutation = useInviteMember()
-
-	useEffect(() => {
-		const handleResize = () => {
-			const dialogElement = document.querySelector('[data-slot="dialog-content"]') as HTMLElement
-			if (dialogElement) {
-				dialogElement.style.transform = 'translateY(0)'
-			}
-		}
-
-		window.addEventListener('resize', handleResize)
-		return () => window.removeEventListener('resize', handleResize)
-	}, [])
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
