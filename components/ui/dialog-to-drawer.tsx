@@ -37,6 +37,7 @@ interface RootCredenzaProps extends BaseProps {
 interface CredenzaProps extends BaseProps {
 	className?: string
 	asChild?: true
+	[key: string]: unknown
 }
 
 const CredenzaContext = React.createContext<{ isDesktop: boolean }>({
@@ -53,80 +54,85 @@ const useCredenzaContext = () => {
 
 const Credenza = ({ children, ...props }: RootCredenzaProps) => {
 	const isDesktop = useMediaQuery('(min-width: 768px)')
-	const Credenza = isDesktop ? Dialog : Drawer
+	const Component = isDesktop ? Dialog : Drawer
 
 	return (
 		<CredenzaContext.Provider value={{ isDesktop }}>
-			<Credenza {...props} {...(!isDesktop && { autoFocus: true })}>
-				{children}
-			</Credenza>
+			<Component {...props}>{children}</Component>
 		</CredenzaContext.Provider>
 	)
 }
 
 const CredenzaTrigger = ({ className, children, ...props }: CredenzaProps) => {
 	const { isDesktop } = useCredenzaContext()
-	const CredenzaTrigger = isDesktop ? DialogTrigger : DrawerTrigger
+	const Component = isDesktop ? DialogTrigger : DrawerTrigger
 
 	return (
-		<CredenzaTrigger className={className} {...props}>
+		<Component className={className} {...props}>
 			{children}
-		</CredenzaTrigger>
+		</Component>
 	)
 }
 
 const CredenzaClose = ({ className, children, ...props }: CredenzaProps) => {
 	const { isDesktop } = useCredenzaContext()
-	const CredenzaClose = isDesktop ? DialogClose : DrawerClose
+	const Component = isDesktop ? DialogClose : DrawerClose
 
 	return (
-		<CredenzaClose className={className} {...props}>
+		<Component className={className} {...props}>
 			{children}
-		</CredenzaClose>
+		</Component>
 	)
 }
 
 const CredenzaContent = ({ className, children, ...props }: CredenzaProps) => {
 	const { isDesktop } = useCredenzaContext()
-	const CredenzaContent = isDesktop ? DialogContent : DrawerContent
+
+	if (isDesktop) {
+		return (
+			<DialogContent className={className} {...props}>
+				{children}
+			</DialogContent>
+		)
+	}
 
 	return (
-		<CredenzaContent className={className} {...props}>
-			{children}
-		</CredenzaContent>
+		<DrawerContent className={className} onOpenAutoFocus={(e) => e.preventDefault()} {...props}>
+			<div className='overflow-y-auto'>{children}</div>
+		</DrawerContent>
 	)
 }
 
 const CredenzaDescription = ({ className, children, ...props }: CredenzaProps) => {
 	const { isDesktop } = useCredenzaContext()
-	const CredenzaDescription = isDesktop ? DialogDescription : DrawerDescription
+	const Component = isDesktop ? DialogDescription : DrawerDescription
 
 	return (
-		<CredenzaDescription className={className} {...props}>
+		<Component className={className} {...props}>
 			{children}
-		</CredenzaDescription>
+		</Component>
 	)
 }
 
 const CredenzaHeader = ({ className, children, ...props }: CredenzaProps) => {
 	const { isDesktop } = useCredenzaContext()
-	const CredenzaHeader = isDesktop ? DialogHeader : DrawerHeader
+	const Component = isDesktop ? DialogHeader : DrawerHeader
 
 	return (
-		<CredenzaHeader className={className} {...props}>
+		<Component className={className} {...props}>
 			{children}
-		</CredenzaHeader>
+		</Component>
 	)
 }
 
 const CredenzaTitle = ({ className, children, ...props }: CredenzaProps) => {
 	const { isDesktop } = useCredenzaContext()
-	const CredenzaTitle = isDesktop ? DialogTitle : DrawerTitle
+	const Component = isDesktop ? DialogTitle : DrawerTitle
 
 	return (
-		<CredenzaTitle className={className} {...props}>
+		<Component className={className} {...props}>
 			{children}
-		</CredenzaTitle>
+		</Component>
 	)
 }
 
@@ -140,12 +146,12 @@ const CredenzaBody = ({ className, children, ...props }: CredenzaProps) => {
 
 const CredenzaFooter = ({ className, children, ...props }: CredenzaProps) => {
 	const { isDesktop } = useCredenzaContext()
-	const CredenzaFooter = isDesktop ? DialogFooter : DrawerFooter
+	const Component = isDesktop ? DialogFooter : DrawerFooter
 
 	return (
-		<CredenzaFooter className={className} {...props}>
+		<Component className={className} {...props}>
 			{children}
-		</CredenzaFooter>
+		</Component>
 	)
 }
 

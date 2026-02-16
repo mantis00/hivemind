@@ -49,4 +49,8 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 
+# Serwist (PWA builder)
+public/sw*
+public/swe-worker*
+
 .vscode.vercel/

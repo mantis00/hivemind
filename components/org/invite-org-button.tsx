@@ -86,7 +86,7 @@ export function InviteMemberButton() {
 									<SelectTrigger id='access-level'>
 										<SelectValue placeholder='Select access level' />
 									</SelectTrigger>
-									<SelectContent>
+									<SelectContent position='popper' side='bottom' align='start'>
 										<SelectItem value='1'>Caretaker</SelectItem>
 										<SelectItem value='2'>Admin</SelectItem>
 										<SelectItem value='3'>Owner</SelectItem>
