@@ -35,9 +35,9 @@ export default function DeleteEnclosureButton({ enclosure_id }: { enclosure_id: 
 	return (
 		<>
 			<Dialog open={open} onOpenChange={setOpen}>
-				<DialogTrigger asChild className='mr-auto'>
-					<Button variant='ghost'>
-						<TrashIcon />
+				<DialogTrigger asChild className='sm:mr-auto'>
+					<Button variant='destructive'>
+						<TrashIcon /> Delete Enclosure
 					</Button>
 				</DialogTrigger>
 				<DialogContent>
