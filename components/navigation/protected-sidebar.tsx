@@ -30,7 +30,7 @@ export function ProtectedSidebar() {
 		<>
 			<AppSidebar />
 			<div className='w-0 overflow-visible relative z-50'>
-				<SidebarTrigger className='ml-1 mt-4 pointer-events-auto size-9 [&>svg]:size-5' />
+				<SidebarTrigger className='sticky top-4 ml-1 mt-4 pointer-events-auto size-9 [&>svg]:size-5' />
 			</div>
 		</>
 	)
