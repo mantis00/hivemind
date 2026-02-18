@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { UUID } from 'crypto'
+import { Special_Gothic } from 'next/font/google'
 
 export type Org = {
 	org_id: number
@@ -65,11 +66,10 @@ export type Enclosure = {
 
 export type Species = {
 	id: number
-	org_id: number
-	species_id: string
-	name: string
 	created_at: string
-	location: string
+	scientific_name: string
+	common_name: string
+	care_instructions: string
 }
 
 export type Location = {
@@ -78,6 +78,15 @@ export type Location = {
 	name: string
 	description: string
 	created_at: string
+}
+
+export type EnclosureNote = {
+	id: number
+	created_at: string
+	enclosure_id: number
+	user_id: number
+	note_text: string
+
 }
 
 export function useUserOrgs(userId: string) {
@@ -212,11 +221,11 @@ export function useOrgDetails(orgId: number) {
 
 export function useOrgEnclosures(orgId: number) {
 	return useQuery({
-		queryKey: ['orgTanks', orgId],
+		queryKey: ['orgEnclosures', orgId],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
-				.from('tanks')
+				.from('enclosures')
 				.select(
 					'id, species_id, name, location, current_count, locations(id, name, description), species(id, scientific_name, common_name, care_instructions)'
 				)
@@ -230,16 +239,16 @@ export function useOrgEnclosures(orgId: number) {
 	})
 }
 
-export function useOrgEnclosure(orgId: number, tankId: number) {
+export function useOrgEnclosure(orgId: number, enclosureId: number) {
 	return useQuery({
-		queryKey: ['id', tankId],
+		queryKey: ['id', enclosureId],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
-				.from('tanks')
+				.from('enclosures')
 				.select('species_id, name, location, current_count')
 				.eq('org_id', orgId)
-				.eq('id', tankId)
+				.eq('id', enclosureId)
 				.order('current_count', { ascending: true })) as { data: Enclosure | null; error: PostgrestError | null }
 
 			if (error) throw error
@@ -255,18 +264,19 @@ export function useOrgSpecies(orgId: number) {
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
-				.from('tanks')
+				.from('enclosures')
 				.select('species(id, scientific_name, common_name, care_instructions)')
 				.eq('org_id', orgId)) as { data: Enclosure[] | null; error: PostgrestError | null }
 			if (error) throw error
 
-			const uniqueSpecies = Array.from(
-				new Map(
-					(data ?? [])
-						.filter((tank) => tank.species && tank.species?.id !== undefined)
-						.map((tank) => [tank.species?.id, tank.species])
-				).values()
-			)
+			let uniqueSpecies: Species[] | undefined = []
+			for (const encl of data ?? [])
+			{
+				if (!uniqueSpecies.find((spec)=>encl.species?.id === spec.id))
+				{
+					uniqueSpecies.push(encl.species as Species)
+				}
+			}
 			return uniqueSpecies
 		},
 		enabled: !!orgId
@@ -287,5 +297,41 @@ export function useOrgLocations(orgId: number) {
 			return data
 		},
 		enabled: !!orgId
+	})
+}
+
+export function useEnclosureNotes(enclosureId: number) {
+	return useQuery({
+		queryKey: ['enclosureNotes', enclosureId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('tank_notes')
+				.select('id, user_id, note_text, created_at')
+				.eq('enclosure_id', enclosureId)) as { data: EnclosureNote[] | null; error: PostgrestError | null }
+			if (error) throw error
+
+			return data
+		},
+		enabled: !!enclosureId
+	})
+}
+
+export function useOrgEnclosuresForSpecies(orgId: number, speciesId: number)
+{
+	return useQuery({
+		queryKey: ['speciesEnclosures', speciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('enclosures')
+				.select('id, org_id, name, location, current_count, locations(name, description), created_at')
+				.eq('species_id', speciesId)
+				) as { data: Enclosure[] | null; error: PostgrestError | null }
+			if (error) throw error
+
+			return data
+		},
+		enabled: !!speciesId
 	})
 }

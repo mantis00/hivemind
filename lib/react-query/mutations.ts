@@ -317,7 +317,69 @@ export function useCreateEnclosure() {
 		},
 		onSuccess: (data, variables) => {
 			// Invalidate and refetch enclosures orgs
-			queryClient.invalidateQueries({ queryKey: ['orgTanks', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+		}
+	})
+}
+
+export function useDeleteEnclosure() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		mutationFn: async ({ id, orgId }: { id: number, orgId: number }) => {
+			const supabase = createClient()
+
+			// Delete user_org_role relationships
+			const { error: enclosureRelationError } = await supabase.from('tasks').delete().eq('tank_id', id)
+			if (enclosureRelationError) throw enclosureRelationError
+
+			const {error: enclosureNoteRelationError } = await supabase.from('tank_notes').delete().eq('tank_id', id) 
+			if (enclosureNoteRelationError) throw enclosureNoteRelationError
+
+			// Delete the organization
+			const { error: enclosureError } = await supabase.from('tanks').delete().eq('id', id)
+			if (enclosureError) throw enclosureError
+		},
+		onSuccess: (data, variables) => {
+			// Invalidate and refetch user orgs
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+		}
+	})
+}
+
+export function useCreateEnclosureNote() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: async ({
+			enclosureId, 
+			userId,
+			noteText 
+		}: {
+			enclosureId: number
+			userId: string // from auth
+			noteText: string
+		}) => {
+			const supabase = createClient()
+			if (noteText.trim() === '') {
+				throw new Error('Recieved an empty field')
+			}
+			// Insert the organization
+			const { error: enclosureNoteError } = await supabase
+				.from('tank_notes')
+				.insert({
+					enclosure_id: enclosureId,
+					user_id: userId,
+					note_text: noteText.trim(),
+				})
+				.select()
+				.single()
+
+			if (enclosureNoteError) throw enclosureNoteError
+		},
+		onSuccess: (data, variables) => {
+			// Invalidate and refetch enclosures orgs
+			queryClient.invalidateQueries({ queryKey: ['enclosureNotes', variables.enclosureId] })
 		}
 	})
 }

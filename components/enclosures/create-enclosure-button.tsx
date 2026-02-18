@@ -20,8 +20,9 @@ import { useCreateEnclosure } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useOrgLocations, useOrgSpecies } from '@/lib/react-query/queries'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { useParams } from 'next/navigation'
 
-export function CreateEnclosureButton({ orgId }: { orgId: number }) {
+export function CreateEnclosureButton() {
 	const [open, setOpen] = useState(false)
 	const [name, setName] = useState('')
 	const [species, setSpecies] = useState('')
@@ -29,10 +30,12 @@ export function CreateEnclosureButton({ orgId }: { orgId: number }) {
 	const [count, setCount] = useState(0)
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
+	const params = useParams()
+	const orgId = params?.orgId as number | undefined
 
-	const { data: orgSpecies } = useOrgSpecies(orgId)
+	const { data: orgSpecies } = useOrgSpecies(orgId as number)
 	const speciesNames = orgSpecies?.map((species) => species?.common_name) ?? []
-	const { data: orgLocations } = useOrgLocations(orgId)
+	const { data: orgLocations } = useOrgLocations(orgId as number)
 	const locationNames = orgLocations?.map((location) => location.name) ?? []
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -47,9 +50,8 @@ export function CreateEnclosureButton({ orgId }: { orgId: number }) {
 			console.log('ERROR LOOKING UP SPECIES OR LOCATION')
 			return
 		}
-		console.log('MUTATING')
 		createEnclosureMutation.mutate(
-			{ orgId: orgId, species_id: species_id?.id, name: name, location: location_id?.id, current_count: count },
+			{ orgId: orgId as number, species_id: species_id?.id, name: name, location: location_id?.id, current_count: count },
 			{
 				onSuccess: () => {
 					setOpen(false)
