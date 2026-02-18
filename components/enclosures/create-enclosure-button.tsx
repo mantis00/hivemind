@@ -51,7 +51,13 @@ export function CreateEnclosureButton() {
 			return
 		}
 		createEnclosureMutation.mutate(
-			{ orgId: orgId as number, species_id: species_id?.id, name: name, location: location_id?.id, current_count: count },
+			{
+				orgId: orgId as number,
+				species_id: species_id?.id,
+				name: name,
+				location: location_id?.id,
+				current_count: count
+			},
 			{
 				onSuccess: () => {
 					setOpen(false)

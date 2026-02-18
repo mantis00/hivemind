@@ -1,8 +1,6 @@
-import { CreateEnclosureButton } from '@/components/enclosures/create-enclosure-button'
-import  EnclosureGrid  from '@/components/enclosures/enclosure-grid'
+import EnclosureGrid from '@/components/enclosures/enclosure-grid'
 
-export default async function Page({ params }: { params: Promise<{ orgId: number }> }) {
-
+export default async function Page() {
 	return (
 		<div className='space-y-6 w-full justify-center items-center'>
 			<div className='flex-col mx-auto w-full'>

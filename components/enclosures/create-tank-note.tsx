@@ -5,26 +5,26 @@ import { useCreateEnclosureNote } from '@/lib/react-query/mutations'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 
-export default function CreateTankNote({enclosureId} : {enclosureId: number})
-{
+export default function CreateTankNote({ enclosureId }: { enclosureId: number }) {
 	const [noteText, setNoteText] = useState('')
 	const createEnclosureNoteMutation = useCreateEnclosureNote()
 	const [user, setUser] = useState<User | null>(null)
-	const supabase = createClient();
+	const supabase = createClient()
 	const [loading, setLoading] = useState(false)
 
 	useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user} } = await supabase.auth.getUser();
-      setUser(user);
-      setLoading(false);
-    };
+		const fetchUser = async () => {
+			const {
+				data: { user }
+			} = await supabase.auth.getUser()
+			setUser(user)
+			setLoading(false)
+		}
 
-    fetchUser();
-  }, []);
+		fetchUser()
+	}, [])
 
-	const handleSubmit = async (e: React.FormEvent) =>
-	{
+	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		setLoading(true)
 
@@ -48,7 +48,9 @@ export default function CreateTankNote({enclosureId} : {enclosureId: number})
 						className='flex field-sizing-content min-h-16 w-full resize-none rounded-md bg-transparent px-3 py-2.5 text-base transition-[color,box-shadow] outline-none md:text-sm'
 						placeholder='New note...'
 						value={noteText}
-						onChange={(e)=>{setNoteText(e.target.value)}}
+						onChange={(e) => {
+							setNoteText(e.target.value)
+						}}
 					/>
 					<InputGroupAddon align='block-end'>
 						<InputGroupButton className='ml-auto' size='sm' variant='default' type='submit' disabled={loading}>

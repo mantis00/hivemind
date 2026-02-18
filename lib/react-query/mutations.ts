@@ -327,14 +327,14 @@ export function useDeleteEnclosure() {
 
 	return useMutation({
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		mutationFn: async ({ id, orgId }: { id: number, orgId: number }) => {
+		mutationFn: async ({ id, orgId }: { id: number; orgId: number }) => {
 			const supabase = createClient()
 
 			// Delete user_org_role relationships
 			const { error: enclosureRelationError } = await supabase.from('tasks').delete().eq('tank_id', id)
 			if (enclosureRelationError) throw enclosureRelationError
 
-			const {error: enclosureNoteRelationError } = await supabase.from('tank_notes').delete().eq('tank_id', id) 
+			const { error: enclosureNoteRelationError } = await supabase.from('tank_notes').delete().eq('tank_id', id)
 			if (enclosureNoteRelationError) throw enclosureNoteRelationError
 
 			// Delete the organization
@@ -352,9 +352,9 @@ export function useCreateEnclosureNote() {
 	const queryClient = useQueryClient()
 	return useMutation({
 		mutationFn: async ({
-			enclosureId, 
+			enclosureId,
 			userId,
-			noteText 
+			noteText
 		}: {
 			enclosureId: number
 			userId: string // from auth
@@ -370,7 +370,7 @@ export function useCreateEnclosureNote() {
 				.insert({
 					enclosure_id: enclosureId,
 					user_id: userId,
-					note_text: noteText.trim(),
+					note_text: noteText.trim()
 				})
 				.select()
 				.single()

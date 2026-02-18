@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { UUID } from 'crypto'
-import { Special_Gothic } from 'next/font/google'
 
 export type Org = {
 	org_id: number
@@ -86,7 +85,6 @@ export type EnclosureNote = {
 	enclosure_id: number
 	user_id: number
 	note_text: string
-
 }
 
 export function useUserOrgs(userId: string) {
@@ -269,11 +267,9 @@ export function useOrgSpecies(orgId: number) {
 				.eq('org_id', orgId)) as { data: Enclosure[] | null; error: PostgrestError | null }
 			if (error) throw error
 
-			let uniqueSpecies: Species[] | undefined = []
-			for (const encl of data ?? [])
-			{
-				if (!uniqueSpecies.find((spec)=>encl.species?.id === spec.id))
-				{
+			const uniqueSpecies: Species[] | undefined = []
+			for (const encl of data ?? []) {
+				if (!uniqueSpecies.find((spec) => encl.species?.id === spec.id)) {
 					uniqueSpecies.push(encl.species as Species)
 				}
 			}
@@ -317,8 +313,7 @@ export function useEnclosureNotes(enclosureId: number) {
 	})
 }
 
-export function useOrgEnclosuresForSpecies(orgId: number, speciesId: number)
-{
+export function useOrgEnclosuresForSpecies(orgId: number, speciesId: number) {
 	return useQuery({
 		queryKey: ['speciesEnclosures', speciesId],
 		queryFn: async () => {
@@ -326,8 +321,7 @@ export function useOrgEnclosuresForSpecies(orgId: number, speciesId: number)
 			const { data, error } = (await supabase
 				.from('enclosures')
 				.select('id, org_id, name, location, current_count, locations(name, description), created_at')
-				.eq('species_id', speciesId)
-				) as { data: Enclosure[] | null; error: PostgrestError | null }
+				.eq('species_id', speciesId)) as { data: Enclosure[] | null; error: PostgrestError | null }
 			if (error) throw error
 
 			return data
