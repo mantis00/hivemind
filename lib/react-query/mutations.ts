@@ -71,7 +71,8 @@ export function useLeaveOrg() {
 			if (error) throw error
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate and refetch user orgs
+			// Invalidate org members and user orgs
+			queryClient.invalidateQueries({ queryKey: ['orgMembers', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
 		}
 	})
@@ -276,6 +277,26 @@ export function useRetractInvite() {
 		onSuccess: () => {
 			// Invalidate org invites
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
+		}
+	})
+}
+
+// this is the same as useLeaveOrg, but incase we want to add additional stuff afterwards in the future, they are seperate ones.
+export function useKickMember() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ orgId, userId }: { orgId: number; userId: string }) => {
+			const supabase = createClient()
+
+			// Delete the user_org_role relationship
+			const { error } = await supabase.from('user_org_role').delete().eq('org_id', orgId).eq('user_id', userId)
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			// Invalidate org members and user orgs
+			queryClient.invalidateQueries({ queryKey: ['orgMembers', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
 		}
 	})
 }

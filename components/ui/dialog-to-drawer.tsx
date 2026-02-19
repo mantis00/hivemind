@@ -1,12 +1,8 @@
 'use client'
 
 import * as React from 'react'
-
-import { cn } from '@/lib/utils'
-import { useMediaQuery } from '@/hooks/use-media-query'
 import {
 	Dialog,
-	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -16,7 +12,6 @@ import {
 } from '@/components/ui/dialog'
 import {
 	Drawer,
-	DrawerClose,
 	DrawerContent,
 	DrawerDescription,
 	DrawerFooter,
@@ -24,139 +19,72 @@ import {
 	DrawerTitle,
 	DrawerTrigger
 } from '@/components/ui/drawer'
+import { cn } from '@/lib/utils'
+import { useMediaQuery } from '@/hooks/use-media-query'
 
-interface BaseProps {
+interface ResponsiveDialogDrawerProps {
+	title: string
+	description: string
+	trigger: React.ReactNode | null
 	children: React.ReactNode
-}
-
-interface RootCredenzaProps extends BaseProps {
-	open?: boolean
-	onOpenChange?: (open: boolean) => void
-}
-
-interface CredenzaProps extends BaseProps {
 	className?: string
-	asChild?: true
+	footer?: React.ReactNode
+	open?: boolean
+	onOpenChange?: (isOpen: boolean) => void
 }
 
-const CredenzaContext = React.createContext<{ isDesktop: boolean }>({
-	isDesktop: false
-})
-
-const useCredenzaContext = () => {
-	const context = React.useContext(CredenzaContext)
-	if (!context) {
-		throw new Error('Credenza components cannot be rendered outside the Credenza Context')
-	}
-	return context
-}
-
-const Credenza = ({ children, ...props }: RootCredenzaProps) => {
+export function ResponsiveDialogDrawer({
+	title,
+	description,
+	trigger,
+	children,
+	className,
+	footer,
+	open: controlledOpen,
+	onOpenChange
+}: ResponsiveDialogDrawerProps) {
+	const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+	const [mounted, setMounted] = React.useState(false)
 	const isDesktop = useMediaQuery('(min-width: 768px)')
-	const Credenza = isDesktop ? Dialog : Drawer
+
+	React.useEffect(() => {
+		setMounted(true)
+	}, [])
+
+	const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen
+	const setOpen = controlledOpen !== undefined ? onOpenChange : setUncontrolledOpen // Updated to use onOpenChange if provided
+
+	if (!mounted) {
+		return null
+	}
+
+	if (isDesktop) {
+		return (
+			<Dialog open={open} onOpenChange={setOpen}>
+				{trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+				<DialogContent className={cn('sm:max-w-[425px] p-6 rounded-2xl', className)}>
+					<DialogHeader>
+						<DialogTitle>{title}</DialogTitle>
+						<DialogDescription>{description}</DialogDescription>
+					</DialogHeader>
+					{children}
+					{footer && <DialogFooter>{footer}</DialogFooter>}
+				</DialogContent>
+			</Dialog>
+		)
+	}
 
 	return (
-		<CredenzaContext.Provider value={{ isDesktop }}>
-			<Credenza {...props} {...(!isDesktop && { autoFocus: true })}>
+		<Drawer open={open} onOpenChange={setOpen}>
+			{trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
+			<DrawerContent className={cn('w-full px-4 pb-6', className)}>
+				<DrawerHeader className='text-left pt-5 pb-2'>
+					<DrawerTitle>{title}</DrawerTitle>
+					<DrawerDescription>{description}</DrawerDescription>
+				</DrawerHeader>
 				{children}
-			</Credenza>
-		</CredenzaContext.Provider>
+				{footer && <DrawerFooter>{footer}</DrawerFooter>}
+			</DrawerContent>
+		</Drawer>
 	)
-}
-
-const CredenzaTrigger = ({ className, children, ...props }: CredenzaProps) => {
-	const { isDesktop } = useCredenzaContext()
-	const CredenzaTrigger = isDesktop ? DialogTrigger : DrawerTrigger
-
-	return (
-		<CredenzaTrigger className={className} {...props}>
-			{children}
-		</CredenzaTrigger>
-	)
-}
-
-const CredenzaClose = ({ className, children, ...props }: CredenzaProps) => {
-	const { isDesktop } = useCredenzaContext()
-	const CredenzaClose = isDesktop ? DialogClose : DrawerClose
-
-	return (
-		<CredenzaClose className={className} {...props}>
-			{children}
-		</CredenzaClose>
-	)
-}
-
-const CredenzaContent = ({ className, children, ...props }: CredenzaProps) => {
-	const { isDesktop } = useCredenzaContext()
-	const CredenzaContent = isDesktop ? DialogContent : DrawerContent
-
-	return (
-		<CredenzaContent className={className} {...props}>
-			{children}
-		</CredenzaContent>
-	)
-}
-
-const CredenzaDescription = ({ className, children, ...props }: CredenzaProps) => {
-	const { isDesktop } = useCredenzaContext()
-	const CredenzaDescription = isDesktop ? DialogDescription : DrawerDescription
-
-	return (
-		<CredenzaDescription className={className} {...props}>
-			{children}
-		</CredenzaDescription>
-	)
-}
-
-const CredenzaHeader = ({ className, children, ...props }: CredenzaProps) => {
-	const { isDesktop } = useCredenzaContext()
-	const CredenzaHeader = isDesktop ? DialogHeader : DrawerHeader
-
-	return (
-		<CredenzaHeader className={className} {...props}>
-			{children}
-		</CredenzaHeader>
-	)
-}
-
-const CredenzaTitle = ({ className, children, ...props }: CredenzaProps) => {
-	const { isDesktop } = useCredenzaContext()
-	const CredenzaTitle = isDesktop ? DialogTitle : DrawerTitle
-
-	return (
-		<CredenzaTitle className={className} {...props}>
-			{children}
-		</CredenzaTitle>
-	)
-}
-
-const CredenzaBody = ({ className, children, ...props }: CredenzaProps) => {
-	return (
-		<div className={cn('px-4 md:px-0', className)} {...props}>
-			{children}
-		</div>
-	)
-}
-
-const CredenzaFooter = ({ className, children, ...props }: CredenzaProps) => {
-	const { isDesktop } = useCredenzaContext()
-	const CredenzaFooter = isDesktop ? DialogFooter : DrawerFooter
-
-	return (
-		<CredenzaFooter className={className} {...props}>
-			{children}
-		</CredenzaFooter>
-	)
-}
-
-export {
-	Credenza as Dialog,
-	CredenzaTrigger as DialogTrigger,
-	CredenzaClose as DialogClose,
-	CredenzaContent as DialogContent,
-	CredenzaDescription as DialogDescription,
-	CredenzaHeader as DialogHeader,
-	CredenzaTitle as DialogTitle,
-	CredenzaBody as DialogBody,
-	CredenzaFooter as DialogFooter
 }

@@ -1,7 +1,6 @@
 // @ts-check
-const { serwist } = require('@serwist/next/config')
-
-module.exports = serwist({
+module.exports = {
 	swSrc: 'app/sw.ts',
-	swDest: 'public/sw.js'
-})
+	swDest: 'public/sw.js',
+	globDirectory: 'public'
+}
