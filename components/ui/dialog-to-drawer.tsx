@@ -77,8 +77,8 @@ export function ResponsiveDialogDrawer({
 	return (
 		<Drawer open={open} onOpenChange={setOpen}>
 			{trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
-			<DrawerContent className={cn('w-full px-4 pb-6 rounded-3xl', className)}>
-				<DrawerHeader className='text-left pt-2 pb-2'>
+			<DrawerContent className={cn('w-full px-4 pb-6', className)}>
+				<DrawerHeader className='text-left pt-5 pb-2'>
 					<DrawerTitle>{title}</DrawerTitle>
 					<DrawerDescription>{description}</DrawerDescription>
 				</DrawerHeader>
