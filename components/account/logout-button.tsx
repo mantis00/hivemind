@@ -13,7 +13,7 @@ export function LogoutButton() {
 	const logout = async () => {
 		const supabase = createClient()
 		await supabase.auth.signOut()
-		router.replace('/auth/login')
+		router.replace('/auth/login') // replace, makes it so the cant click browser back button to go back to the previous page
 	}
 
 	return (
