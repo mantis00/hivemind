@@ -3,7 +3,6 @@ import { Geist, Dancing_Script } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from '@/components/ui/sonner'
 import { QueryProvider } from '@/lib/react-query/provider'
-import { SerwistProvider } from './serwist'
 import './globals.css'
 
 //consts for metadata and PWA top bar color, used in the metadata and viewport exports below
@@ -87,32 +86,30 @@ export default function RootLayout({
 	return (
 		<html lang='en' suppressHydrationWarning>
 			<body className={`${geistSans.className} ${dancingScript.variable} antialiased`}>
-				<SerwistProvider swUrl='/sw.js'>
-					<ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange>
-						<QueryProvider>
-							<div vaul-drawer-wrapper='' className='bg-background'>
-								{children}
-							</div>
-						</QueryProvider>
-						<Toaster
-							closeButton
-							// toast for SIX-SEVEN seconds
-							duration={6500}
-							position='bottom-right'
-							theme='light'
-							richColors
-							expand
-							visibleToasts={4}
-							gap={14}
-							offset={18}
-							toastOptions={{
-								classNames: {
-									toast: 'ring-2 ring-red-500/35 shadow-xl'
-								}
-							}}
-						/>
-					</ThemeProvider>
-				</SerwistProvider>
+				<ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange>
+					<QueryProvider>
+						<div vaul-drawer-wrapper='' className='bg-background'>
+							{children}
+						</div>
+					</QueryProvider>
+					<Toaster
+						closeButton
+						// toast for SIX-SEVEN seconds
+						duration={6500}
+						position='bottom-right'
+						theme='light'
+						richColors
+						expand
+						visibleToasts={4}
+						gap={14}
+						offset={18}
+						toastOptions={{
+							classNames: {
+								toast: 'ring-2 ring-red-500/35 shadow-xl'
+							}
+						}}
+					/>
+				</ThemeProvider>
 			</body>
 		</html>
 	)

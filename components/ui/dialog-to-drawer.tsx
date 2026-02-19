@@ -62,7 +62,7 @@ export function ResponsiveDialogDrawer({
 		return (
 			<Dialog open={open} onOpenChange={setOpen}>
 				{trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-				<DialogContent className={cn('sm:max-w-[425px] p-6', className)}>
+				<DialogContent className={cn('sm:max-w-[425px] p-6 rounded-2xl', className)}>
 					<DialogHeader>
 						<DialogTitle>{title}</DialogTitle>
 						<DialogDescription>{description}</DialogDescription>
@@ -77,8 +77,8 @@ export function ResponsiveDialogDrawer({
 	return (
 		<Drawer open={open} onOpenChange={setOpen}>
 			{trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
-			<DrawerContent className={cn('p-3', className)}>
-				<DrawerHeader className='text-left pt-6'>
+			<DrawerContent className={cn('w-full px-4 pb-6 rounded-3xl', className)}>
+				<DrawerHeader className='text-left pt-2 pb-2'>
 					<DrawerTitle>{title}</DrawerTitle>
 					<DrawerDescription>{description}</DrawerDescription>
 				</DrawerHeader>
