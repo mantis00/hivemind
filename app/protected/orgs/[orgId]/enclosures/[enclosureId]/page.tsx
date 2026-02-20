@@ -1,3 +1,6 @@
+import TasksCollapsible from '@/components/tasks/tasks-collapsible'
+import TasksLists from '@/components/tasks/tasks-lists'
+
 export default async function Page({ params }: { params: Promise<{ orgId: string; enclosureId: string }> }) {
 	const { orgId, enclosureId } = await params
 
@@ -11,6 +14,7 @@ export default async function Page({ params }: { params: Promise<{ orgId: string
 						</h1>
 					</div>
 				</div>
+				<TasksLists />
 			</div>
 		</div>
 	)

@@ -13,7 +13,7 @@ export default async function Page({ params }: { params: Promise<{ orgId: string
 				</div>
 				<div className='flex flex-col gap-4'>
 					<p className='text-sm text-muted-foreground'>Manage your organizationn&apos;s members and roles</p>
-					<InviteMemberButton  />
+					<InviteMemberButton />
 					<ViewSentInvites />
 					<ViewOrgMembers />
 				</div>
