@@ -44,6 +44,31 @@ export type Invite = {
 	}
 }
 
+export type Enclosure = {
+	id: number
+	ord_id: number
+	species_id: string
+	name: string
+	created_at: string
+	location: string
+	current_count: number
+	locations?: { name: string }
+	species?: { id: number; scientific_name: string; common_name: string; care_instructions: string }
+}
+
+export type Tasks = {
+	id: number
+	created_at: string
+	tank_id: number
+	description: string
+	status: string
+	due_date: string
+	priority: string
+	completed_by: string
+	completed_time: string
+	name: string
+}
+
 export function useUserOrgs(userId: string) {
 	return useQuery({
 		queryKey: ['orgs', userId],
@@ -171,5 +196,22 @@ export function useOrgDetails(orgId: number) {
 			return data
 		},
 		enabled: !!orgId
+	})
+}
+
+export function useEnclosureIdPriority(enclosureId: number) {
+	return useQuery({
+		queryKey: ['priority-level', enclosureId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('tasks')
+				.select('id, enclosures(*)')
+				.eq('enclosure_id', enclosureId)) as { data: Tasks[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data
+		},
+		enabled: !!enclosureId
 	})
 }
