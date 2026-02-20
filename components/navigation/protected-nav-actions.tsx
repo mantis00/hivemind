@@ -1,10 +1,11 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { AccountButton } from '@/components/account/accout-button'
 import { LogoutButton } from '@/components/account/logout-button'
 import { useEffect, useState } from 'react'
-import { InstallAppButton } from '@/components/pwa/install-app-button'
+import InstallAppButton from '@/components/pwa/install-app-button'
+import { Button } from '@/components/ui/button'
+import { useRouter } from 'next/navigation'
 
 function isOrgRoute(pathname: string | null) {
 	if (!pathname) return false
@@ -14,6 +15,7 @@ function isOrgRoute(pathname: string | null) {
 export function ProtectedNavActions() {
 	const pathname = usePathname()
 	const [isMounted, setIsMounted] = useState(false)
+	const router = useRouter()
 
 	useEffect(() => {
 		setIsMounted(true)
@@ -29,7 +31,9 @@ export function ProtectedNavActions() {
 
 	return (
 		<div className='flex items-center flex-row justify-end gap-2 max-w-full'>
-			<AccountButton />
+			<Button variant='default' size='sm' className='w-auto px-4' onClick={() => router.push('/protected/account')}>
+				Account
+			</Button>
 			<LogoutButton />
 			<InstallAppButton />
 		</div>

@@ -2,34 +2,14 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-	Dialog,
-	DialogBody,
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger
-} from '@/components/ui/dialog-to-drawer'
+import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LoaderCircle } from 'lucide-react'
 import { useResestPassword } from '@/lib/react-query/auth'
 
-type UpdatePasswordButtonProps = {
-	defaultOpen?: boolean
-	showTrigger?: boolean
-	onSuccess?: () => void
-}
-
-export function UpdatePasswordButton({
-	defaultOpen = false,
-	showTrigger = true,
-	onSuccess
-}: UpdatePasswordButtonProps) {
-	const [open, setOpen] = useState(defaultOpen)
+export function UpdatePasswordButton() {
+	const [open, setOpen] = useState(false)
 	const [password, setPassword] = useState('')
 	const [confirmPassword, setConfirmPassword] = useState('')
 	const resetPassword = useResestPassword()
@@ -44,7 +24,6 @@ export function UpdatePasswordButton({
 					setOpen(false)
 					setPassword('')
 					setConfirmPassword('')
-					onSuccess?.()
 				}
 			}
 		)
@@ -53,61 +32,49 @@ export function UpdatePasswordButton({
 	const passwordsMatch = password === confirmPassword
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			{showTrigger && (
-				<DialogTrigger asChild>
-					<Button className='w-fit'>Update password</Button>
-				</DialogTrigger>
-			)}
-			<DialogContent>
-				<form onSubmit={handleSubmit}>
-					<DialogHeader>
-						<DialogTitle>Reset your password</DialogTitle>
-						<DialogDescription>Enter a new password for your account.</DialogDescription>
-					</DialogHeader>
-					<DialogBody>
-						<div className='grid gap-4 py-4'>
-							<div className='grid gap-2'>
-								<Label htmlFor='password'>New password</Label>
-								<Input
-									id='password'
-									type='password'
-									placeholder='New password'
-									required
-									disabled={resetPassword.isPending}
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-								/>
-							</div>
-							<div className='grid gap-2'>
-								<Label htmlFor='confirm-password'>Confirm new password</Label>
-								<Input
-									id='confirm-password'
-									type='password'
-									placeholder='Confirm new password'
-									required
-									disabled={resetPassword.isPending}
-									value={confirmPassword}
-									onChange={(e) => setConfirmPassword(e.target.value)}
-								/>
-								{confirmPassword.length > 0 && !passwordsMatch && (
-									<p className='text-sm text-destructive'>Passwords do not match.</p>
-								)}
-							</div>
-						</div>
-					</DialogBody>
-					<DialogFooter>
-						<DialogClose asChild>
-							<Button type='button' variant='outline' disabled={resetPassword.isPending}>
-								Cancel
-							</Button>
-						</DialogClose>
-						<Button type='submit' disabled={resetPassword.isPending || !passwordsMatch}>
-							{resetPassword.isPending ? <LoaderCircle className='animate-spin' /> : 'Save new password'}
-						</Button>
-					</DialogFooter>
-				</form>
-			</DialogContent>
-		</Dialog>
+		<ResponsiveDialogDrawer
+			title='Reset your password'
+			description='Enter a new password for your account.'
+			trigger={<Button className='w-fit'>Update password</Button>}
+			open={open}
+			onOpenChange={(isOpen) => setOpen(isOpen)}
+		>
+			<form onSubmit={handleSubmit}>
+				<div className='grid gap-4 py-4'>
+					<div className='grid gap-2'>
+						<Label htmlFor='password'>New password</Label>
+						<Input
+							id='password'
+							type='password'
+							placeholder='New password'
+							required
+							disabled={resetPassword.isPending}
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+						/>
+					</div>
+					<div className='grid gap-2'>
+						<Label htmlFor='confirm-password'>Confirm new password</Label>
+						<Input
+							id='confirm-password'
+							type='password'
+							placeholder='Confirm new password'
+							required
+							disabled={resetPassword.isPending}
+							value={confirmPassword}
+							onChange={(e) => setConfirmPassword(e.target.value)}
+						/>
+						{confirmPassword.length > 0 && !passwordsMatch && (
+							<p className='text-sm text-destructive'>Passwords do not match.</p>
+						)}
+					</div>
+				</div>
+				<div className='flex justify-end space-x-2'>
+					<Button type='submit' disabled={resetPassword.isPending || !passwordsMatch} className='w-full'>
+						{resetPassword.isPending ? <LoaderCircle className='animate-spin' /> : 'Save new password'}
+					</Button>
+				</div>
+			</form>
+		</ResponsiveDialogDrawer>
 	)
 }
