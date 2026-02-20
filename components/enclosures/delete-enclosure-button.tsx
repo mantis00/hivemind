@@ -1,21 +1,18 @@
 'use client'
 import { Button } from '@/components/ui/button'
-import {
-	Dialog,
-	DialogBody,
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger
-} from '@/components/ui/dialog-to-drawer'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import { useDeleteEnclosure } from '@/lib/react-query/mutations'
 import { LoaderCircle, TrashIcon } from 'lucide-react'
+import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 
-export default function DeleteEnclosureButton({ enclosure_id }: { enclosure_id: number }) {
+export default function DeleteEnclosureButton({
+	enclosure_id,
+	onDeleted
+}: {
+	enclosure_id: number
+	onDeleted?: () => void
+}) {
 	const [open, setOpen] = useState(false)
 	const params = useParams()
 	const orgId = params?.orgId as number | undefined
@@ -27,44 +24,27 @@ export default function DeleteEnclosureButton({ enclosure_id }: { enclosure_id: 
 			{
 				onSuccess: () => {
 					setOpen(false)
+					onDeleted?.()
 				}
 			}
 		)
 	}
 
 	return (
-		<>
-			<Dialog open={open} onOpenChange={setOpen}>
-				<DialogTrigger asChild className='sm:mr-auto'>
-					<Button variant='destructive'>
-						<TrashIcon /> Delete Enclosure
-					</Button>
-				</DialogTrigger>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Delete Enclosure</DialogTitle>
-						<DialogDescription>
-							Are you sure you want to delete this enclosure? This action cannot be undone.
-						</DialogDescription>
-					</DialogHeader>
-					<DialogBody>
-						<div className='py-2' />
-					</DialogBody>
-					<DialogClose asChild>
-						<Button type='button' variant='outline' disabled={deleteEnclosureMutation.isPending}>
-							Cancel
-						</Button>
-					</DialogClose>
-					<Button
-						type='button'
-						variant='destructive'
-						onClick={handleDelete}
-						disabled={deleteEnclosureMutation.isPending}
-					>
-						{deleteEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Delete Enclosure'}
-					</Button>
-				</DialogContent>
-			</Dialog>
-		</>
+		<ResponsiveDialogDrawer
+			title='Delete Enclosure'
+			description='Are you sure you want to delete this enclosure? This action cannot be undone.'
+			open={open}
+			onOpenChange={(isOpen) => setOpen(isOpen)}
+			trigger={
+				<Button variant='destructive'>
+					<TrashIcon /> Delete Enclosure
+				</Button>
+			}
+		>
+			<Button onClick={handleDelete} variant='destructive' disabled={deleteEnclosureMutation.isPending}>
+				{deleteEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
+			</Button>
+		</ResponsiveDialogDrawer>
 	)
 }

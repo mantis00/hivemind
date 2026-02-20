@@ -68,12 +68,12 @@ export default function SpeciesRow({ species }: { species: Species }) {
 										style={{
 											height:
 												useEnclosures?.length && useEnclosures?.length <= 4
-													? `${useEnclosures?.length * 88}px`
+													? `${useEnclosures?.length * 114}px`
 													: '352px'
 										}}
 										data={useEnclosures}
 										itemContent={(index, enclosure) => (
-											<div className='p-2 pb-0 last:pb-2'>
+											<div className='p-1 pb-0 last:pb-2'>
 												<EnclosureCard enclosure={enclosure} onClick={() => handleEnclosureClick(enclosure)} />
 											</div>
 										)}

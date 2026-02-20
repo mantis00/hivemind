@@ -9,15 +9,24 @@ import { useState } from 'react'
 import { useCreateEnclosure } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useOrgLocations, useSpecies } from '@/lib/react-query/queries'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { useParams } from 'next/navigation'
-import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from '../ui/combobox'
+import {
+	Combobox,
+	ComboboxCollection,
+	ComboboxContent,
+	ComboboxEmpty,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxList
+} from '../ui/combobox'
 
 export function CreateEnclosureButton() {
 	const [open, setOpen] = useState(false)
 	const [name, setName] = useState('')
-	const [species, setSpecies] = useState<string | null>(null)
-	const [location, setLocation] = useState<string | null>('null')
+	const [species, setSpecies] = useState('')
+	const [speciesQuery, setSpeciesQuery] = useState('')
+	const [location, setLocation] = useState('')
+	const [locationQuery, setLocationQuery] = useState('')
 	const [count, setCount] = useState(0)
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
@@ -25,10 +34,13 @@ export function CreateEnclosureButton() {
 	const orgId = params?.orgId as number | undefined
 
 	const { data: orgSpecies } = useSpecies(orgId as number)
-	// const speciesNames = orgSpecies?.map((species) => species?.common_name) ?? []
-	const speciesNames = ['Guppy', 'Zebrafish', 'Owl', 'Cockroach', 'Bat', 'Horse', 'Shrimp']
+	const speciesNames = (orgSpecies ?? [])
+		.map((species) => species?.common_name)
+		.filter((name): name is string => !!name && name.trim().length > 0)
 	const { data: orgLocations } = useOrgLocations(orgId as number)
-	const locationNames = orgLocations?.map((location) => location.name) ?? []
+	const locationNames = (orgLocations ?? [])
+		.map((location) => location.name)
+		.filter((name): name is string => !!name && name.trim().length > 0)
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -55,7 +67,9 @@ export function CreateEnclosureButton() {
 					setOpen(false)
 					setName('')
 					setSpecies('')
+					setSpeciesQuery('')
 					setLocation('')
+					setLocationQuery('')
 					setCount(0)
 				}
 			}
@@ -63,84 +77,6 @@ export function CreateEnclosureButton() {
 	}
 
 	return (
-		// <Dialog open={open} onOpenChange={setOpen}>
-		// 	<DialogTrigger asChild>
-		// 		<Button variant='secondary'>
-		// 			Create Enclosure <PlusIcon />
-		// 		</Button>
-		// 	</DialogTrigger>
-		// 	<DialogContent>
-		// 		<form onSubmit={handleSubmit}>
-		// 			<DialogHeader>
-		// 				<DialogTitle>Create Enclosure</DialogTitle>
-		// 				<DialogDescription>All fields are required.</DialogDescription>
-		// 			</DialogHeader>
-		// 			<DialogBody>
-		// 				<div className='grid py-4 px-10'>
-		// 					<div className='grid grid-cols-2 gap-3'>
-		// 						<Label>Enclosure Name</Label>
-		// 						<Input
-		// 							id='name'
-		// 							placeholder='Enclosure'
-		// 							value={name}
-		// 							onChange={(e) => setName(e.target.value)}
-		// 							required
-		// 							disabled={createEnclosureMutation.isPending}
-		// 						/>
-		// 						<Label>Species</Label>
-		// 						<Select value={species} onValueChange={(e) => setSpecies(e)}>
-		// 							<SelectTrigger className='min-w-47'>
-		// 								<SelectValue placeholder='Species' />
-		// 							</SelectTrigger>
-		// 							<SelectContent className='min-w-47'>
-		// 								{speciesNames.map((species) => (
-		// 									<SelectItem key={species} value={species ?? ''}>
-		// 										{species}
-		// 									</SelectItem>
-		// 								))}
-		// 							</SelectContent>
-		// 						</Select>
-		// 						<Label>Enclosure Location</Label>
-		// 						<Select value={location} onValueChange={(e) => setLocation(e)}>
-		// 							<SelectTrigger className='min-w-47'>
-		// 								<SelectValue placeholder='Location' />
-		// 							</SelectTrigger>
-		// 							<SelectContent className='min-w-47'>
-		// 								{locationNames.map((location) => (
-		// 									<SelectItem key={location} value={location}>
-		// 										{location}
-		// 									</SelectItem>
-		// 								))}
-		// 							</SelectContent>
-		// 						</Select>
-		// 						<Label>Count</Label>
-		// 						<Input
-		// 							className='min-w-47 h-8'
-		// 							id='count'
-		// 							placeholder='Count'
-		// 							value={count}
-		// 							type='number'
-		// 							min='0'
-		// 							onChange={(e) => setCount(Number(e.target.value))}
-		// 							required
-		// 							disabled={createEnclosureMutation.isPending}
-		// 						/>
-		// 					</div>
-		// 				</div>
-		// 			</DialogBody>
-		// 			<DialogFooter className='mt-3'>
-		// 				<DialogClose asChild>
-		// 					<Button type='button' variant='outline' disabled={createEnclosureMutation.isPending}>
-		// 						Cancel
-		// 					</Button>
-		// 				</DialogClose>
-		// 				<Button type='submit' disabled={createEnclosureMutation.isPending || !user}>
-		// 					{createEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Create Enclosure'}
-		// 				</Button>
-		// 			</DialogFooter>
-		// 		</form>
-		// 	</DialogContent>
-		// </Dialog>
 		<ResponsiveDialogDrawer
 			title='Create Enclosure'
 			description='All fields are required'
@@ -165,31 +101,71 @@ export function CreateEnclosureButton() {
 							disabled={createEnclosureMutation.isPending}
 						/>
 						<Label>Species</Label>
-						<Select value={species as string} onValueChange={(e) => setSpecies(e)}>
-							<SelectTrigger className='min-w-47'>
-								<SelectValue placeholder='Species' />
-							</SelectTrigger>
-							<SelectContent className='min-w-47'>
-								{speciesNames.map((species) => (
-									<SelectItem key={species} value={species ?? ''}>
-										{species}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+						<Combobox
+							items={speciesNames}
+							value={species}
+							onValueChange={(value) => {
+								const nextValue = value ?? ''
+								setSpecies(nextValue)
+								setSpeciesQuery(nextValue)
+							}}
+						>
+							<ComboboxInput
+								className='min-w-47'
+								placeholder='Search species...'
+								value={speciesQuery}
+								onChange={(event) => setSpeciesQuery(event.target.value)}
+								disabled={createEnclosureMutation.isPending}
+								showClear
+							/>
+							{speciesQuery.trim().length > 0 && (
+								<ComboboxContent>
+									<ComboboxEmpty>No matching species.</ComboboxEmpty>
+									<ComboboxList>
+										<ComboboxCollection>
+											{(specName) => (
+												<ComboboxItem key={specName} value={specName}>
+													{specName}
+												</ComboboxItem>
+											)}
+										</ComboboxCollection>
+									</ComboboxList>
+								</ComboboxContent>
+							)}
+						</Combobox>
 						<Label>Enclosure Location</Label>
-						<Select value={location as string} onValueChange={(e) => setLocation(e)}>
-							<SelectTrigger className='min-w-47'>
-								<SelectValue placeholder='Location' />
-							</SelectTrigger>
-							<SelectContent className='min-w-47'>
-								{locationNames.map((location) => (
-									<SelectItem key={location} value={location}>
-										{location}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+						<Combobox
+							items={locationNames}
+							value={location}
+							onValueChange={(value) => {
+								const nextValue = value ?? ''
+								setLocation(nextValue)
+								setLocationQuery(nextValue)
+							}}
+						>
+							<ComboboxInput
+								className='min-w-47'
+								placeholder='Search locations...'
+								value={locationQuery}
+								onChange={(event) => setLocationQuery(event.target.value)}
+								disabled={createEnclosureMutation.isPending}
+								showClear
+							/>
+							{locationQuery.trim().length > 0 && (
+								<ComboboxContent>
+									<ComboboxEmpty>No matching locations.</ComboboxEmpty>
+									<ComboboxList>
+										<ComboboxCollection>
+											{(locName) => (
+												<ComboboxItem key={locName} value={locName}>
+													{locName}
+												</ComboboxItem>
+											)}
+										</ComboboxCollection>
+									</ComboboxList>
+								</ComboboxContent>
+							)}
+						</Combobox>
 						<Label>Count</Label>
 						<Input
 							className='min-w-47 h-8'

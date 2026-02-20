@@ -323,7 +323,7 @@ export function useCreateEnclosure() {
 			}
 			// Insert the organization
 			const { error: enclosureError } = await supabase
-				.from('tanks')
+				.from('enclosures')
 				.insert({
 					org_id: orgId,
 					species_id: species_id,
@@ -339,6 +339,7 @@ export function useCreateEnclosure() {
 		onSuccess: (data, variables) => {
 			// Invalidate and refetch enclosures orgs
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 		}
 	})
 }
@@ -352,19 +353,20 @@ export function useDeleteEnclosure() {
 			const supabase = createClient()
 
 			// Delete user_org_role relationships
-			const { error: enclosureRelationError } = await supabase.from('tasks').delete().eq('tank_id', id)
+			const { error: enclosureRelationError } = await supabase.from('tasks').delete().eq('enclosure_id', id)
 			if (enclosureRelationError) throw enclosureRelationError
 
-			const { error: enclosureNoteRelationError } = await supabase.from('tank_notes').delete().eq('tank_id', id)
+			const { error: enclosureNoteRelationError } = await supabase.from('tank_notes').delete().eq('enclosure_id', id)
 			if (enclosureNoteRelationError) throw enclosureNoteRelationError
 
 			// Delete the organization
-			const { error: enclosureError } = await supabase.from('tanks').delete().eq('id', id)
+			const { error: enclosureError } = await supabase.from('enclosures').delete().eq('id', id)
 			if (enclosureError) throw enclosureError
 		},
 		onSuccess: (data, variables) => {
 			// Invalidate and refetch user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 		}
 	})
 }

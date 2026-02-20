@@ -20,12 +20,12 @@ export function EnclosureCard({ enclosure, onClick }: { enclosure: Enclosure; on
 	return (
 		<>
 			<Card
-				className='cursor-pointer transition-colors hover:bg-accent/50 border-l-4 border-l-primary/20'
+				className='cursor-pointer transition-colors hover:bg-accent/50 border-l-4 border-l-primary/20 py-2'
 				onClick={onClick}
 			>
-				<CardContent className='p-4'>
-					<div className='flex items-start justify-between gap-3'>
-						<div className='space-y-1.5 min-w-0 flex-1'>
+				<CardContent>
+					<div className='flex items-start justify-between gap-1'>
+						<div className='space-y-1.5'>
 							<p className='font-medium text-sm truncate'>{enclosure.name}</p>
 							<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
 								<MapPin className='h-3 w-3 shrink-0' />
@@ -38,7 +38,7 @@ export function EnclosureCard({ enclosure, onClick }: { enclosure: Enclosure; on
 								)}
 							</div>
 						</div>
-						<Badge variant='secondary' className='shrink-0 gap-1'>
+						<Badge variant='secondary' className='shrink-0 gap-1 my-auto'>
 							<Users className='h-3 w-3' />
 							{enclosure.current_count}
 						</Badge>

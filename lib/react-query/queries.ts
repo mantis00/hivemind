@@ -239,7 +239,7 @@ export function useOrgEnclosures(orgId: number) {
 
 export function useOrgEnclosure(orgId: number, enclosureId: number) {
 	return useQuery({
-		queryKey: ['id', enclosureId],
+		queryKey: ['enclosureId', enclosureId],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
@@ -315,7 +315,7 @@ export function useEnclosureNotes(enclosureId: number) {
 
 export function useOrgEnclosuresForSpecies(orgId: number, speciesId: number) {
 	return useQuery({
-		queryKey: ['speciesEnclosures', speciesId],
+		queryKey: ['speciesEnclosures', orgId, speciesId],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
@@ -327,6 +327,6 @@ export function useOrgEnclosuresForSpecies(orgId: number, speciesId: number) {
 
 			return data
 		},
-		enabled: !!speciesId
+		enabled: !!orgId && !!speciesId
 	})
 }
