@@ -1,6 +1,6 @@
 'use client'
 
-import { Species, useOrgSpecies } from '@/lib/react-query/queries'
+import { Species, useSpecies } from '@/lib/react-query/queries'
 import { ArrowDownIcon, ArrowUpIcon, Search, Warehouse } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { useEffect, useState } from 'react'
@@ -15,7 +15,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '
 export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as number | undefined
-	const { data: orgSpecies } = useOrgSpecies(orgId as number)
+	const { data: orgSpecies } = useSpecies(orgId as number)
 	console.log(orgSpecies)
 
 	const [isLoading, setIsLoading] = useState(false)

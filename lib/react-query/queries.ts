@@ -256,21 +256,21 @@ export function useOrgEnclosure(orgId: number, enclosureId: number) {
 	})
 }
 
-export function useOrgSpecies(orgId: number) {
+export function useSpecies(orgId: number) {
 	return useQuery({
-		queryKey: ['orgSpecies', orgId],
+		queryKey: ['species'],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
-				.from('enclosures')
-				.select('species(id, scientific_name, common_name, care_instructions)')
-				.eq('org_id', orgId)) as { data: Enclosure[] | null; error: PostgrestError | null }
+			const { data, error } = (await supabase.from('species').select('*')) as {
+				data: Species[] | null
+				error: PostgrestError | null
+			}
 			if (error) throw error
 
 			const uniqueSpecies: Species[] | undefined = []
-			for (const encl of data ?? []) {
-				if (!uniqueSpecies.find((spec) => encl.species?.id === spec.id)) {
-					uniqueSpecies.push(encl.species as Species)
+			for (const spec of data ?? []) {
+				if (!uniqueSpecies.find((sp) => spec?.id === sp.id)) {
+					uniqueSpecies.push(spec as Species)
 				}
 			}
 			return uniqueSpecies
@@ -321,7 +321,8 @@ export function useOrgEnclosuresForSpecies(orgId: number, speciesId: number) {
 			const { data, error } = (await supabase
 				.from('enclosures')
 				.select('id, org_id, name, location, current_count, locations(name, description), created_at')
-				.eq('species_id', speciesId)) as { data: Enclosure[] | null; error: PostgrestError | null }
+				.eq('species_id', speciesId)
+				.eq('org_id', orgId)) as { data: Enclosure[] | null; error: PostgrestError | null }
 			if (error) throw error
 
 			return data

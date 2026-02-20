@@ -41,7 +41,7 @@ export default function CreateTankNote({ enclosureId }: { enclosureId: number })
 
 	return (
 		<>
-			<form onSubmit={handleSubmit} className='grid w-full gap-6 pt-1 mx-auto'>
+			<form onSubmit={handleSubmit} className='grid w-full gap-6 pt-1 mx-auto focus'>
 				<InputGroup>
 					<TextareaAutosize
 						data-slot='input-group-control'

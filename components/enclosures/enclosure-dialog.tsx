@@ -1,6 +1,6 @@
 'use client'
 import { format } from 'date-fns'
-import { MapPin, Calendar, Users, ClipboardList, StickyNote } from 'lucide-react'
+import { MapPin, Calendar, Users, ClipboardList, StickyNote, PlusIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +19,8 @@ import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import CreateTankNote from './create-tank-note'
 import DeleteEnclosureButton from './delete-enclosure-button'
+import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
+import { useState } from 'react'
 
 export function EnclosureDialog({
 	enclosure,
@@ -40,92 +42,168 @@ export function EnclosureDialog({
 
 	const router = useRouter()
 
+	const [isOpen, setIsOpen] = useState(false)
+
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='sm:max-w-[540px] max-h-[85vh] overflow-y-auto'>
-				<DialogHeader>
-					<DialogTitle className='text-xl'>
-						{enclosure.name} - {common_name}
-					</DialogTitle>
-					<small>
-						<i>{scientific_name}</i>
-					</small>
-					<DialogDescription>Enclosure details and notes</DialogDescription>
-				</DialogHeader>
-				<div className='grid gap-4 py-2'>
-					{/* Tank Details */}
-					<div className='grid grid-cols-2 gap-3'>
-						<div className='flex items-center gap-2 rounded-md border p-3'>
-							<MapPin className='h-4 w-4 text-muted-foreground shrink-0' />
-							<div className='min-w-0'>
-								<p className='text-xs text-muted-foreground'>Location</p>
-								<p className='text-sm font-medium truncate'>{enclosure.locations?.name}</p>
-							</div>
-						</div>
-						<div className='flex items-center gap-2 rounded-md border p-3'>
-							<Users className='h-4 w-4 text-muted-foreground shrink-0' />
-							<div>
-								<p className='text-xs text-muted-foreground'>Current Count</p>
-								<p className='text-sm font-medium'>{enclosure.current_count}</p>
-							</div>
-						</div>
-						<div className='col-span-2 flex items-center gap-2 rounded-md border p-3'>
-							<Calendar className='h-4 w-4 text-muted-foreground shrink-0' />
-							<div>
-								<p className='text-xs text-muted-foreground'>Created</p>
-								<p className='text-sm font-medium'>
-									{enclosure.created_at ? format(new Date(enclosure.created_at.substring(0, 10)), 'MMM d, yyyy') : ''}
-								</p>
-							</div>
+		// <Dialog open={open} onOpenChange={onOpenChange}>
+		// 	<DialogContent className='sm:max-w-[540px] max-h-[85vh] overflow-y-auto'>
+		// 		<DialogHeader>
+		// 			<DialogTitle className='text-xl'>
+		// 				{enclosure.name} - {common_name}
+		// 			</DialogTitle>
+		// 			<small>
+		// 				<i>{scientific_name}</i>
+		// 			</small>
+		// 			<DialogDescription>Enclosure details and notes</DialogDescription>
+		// 		</DialogHeader>
+		// 		<div className='grid gap-4 py-2'>
+		// 			{/* Tank Details */}
+		// 			<div className='grid grid-cols-2 gap-3'>
+		// 				<div className='flex items-center gap-2 rounded-md border p-3'>
+		// 					<MapPin className='h-4 w-4 text-muted-foreground shrink-0' />
+		// 					<div className='min-w-0'>
+		// 						<p className='text-xs text-muted-foreground'>Location</p>
+		// 						<p className='text-sm font-medium truncate'>{enclosure.locations?.name}</p>
+		// 					</div>
+		// 				</div>
+		// 				<div className='flex items-center gap-2 rounded-md border p-3'>
+		// 					<Users className='h-4 w-4 text-muted-foreground shrink-0' />
+		// 					<div>
+		// 						<p className='text-xs text-muted-foreground'>Current Count</p>
+		// 						<p className='text-sm font-medium'>{enclosure.current_count}</p>
+		// 					</div>
+		// 				</div>
+		// 				<div className='col-span-2 flex items-center gap-2 rounded-md border p-3'>
+		// 					<Calendar className='h-4 w-4 text-muted-foreground shrink-0' />
+		// 					<div>
+		// 						<p className='text-xs text-muted-foreground'>Created</p>
+		// 						<p className='text-sm font-medium'>
+		// 							{enclosure.created_at ? format(new Date(enclosure.created_at.substring(0, 10)), 'MMM d, yyyy') : ''}
+		// 						</p>
+		// 					</div>
+		// 				</div>
+		// 			</div>
+
+		// 			<Separator />
+
+		// 			{/* Enclosure Notes */}
+		// 			<div className='space-y-3'>
+		// 				<div className='flex items-center gap-2'>
+		// 					<StickyNote className='h-4 w-4 text-muted-foreground' />
+		// 					<h4 className='text-sm font-semibold'>Enclosure Notes</h4>
+		// 					<Badge variant='secondary' className='ml-auto'>
+		// 						{enclosureNotes?.length}
+		// 					</Badge>
+		// 				</div>
+
+		// 				{enclosureNotes?.length && enclosureNotes.length > 0 ? (
+		// 					<div className='space-y-2 max-h-[200px] overflow-y-auto rounded-md border p-3'>
+		// 						{enclosureNotes.map((note) => (
+		// 							<div key={note.id} className='rounded-md bg-muted p-3 space-y-1'>
+		// 								<p className='text-sm'>{note.note_text}</p>
+		// 								<p className='text-xs text-muted-foreground'>
+		// 									{note.created_at && format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
+		// 								</p>
+		// 							</div>
+		// 						))}
+		// 					</div>
+		// 				) : (
+		// 					<div className='rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground'>
+		// 						No notes for this enclosure yet.
+		// 					</div>
+		// 				)}
+
+		// 				{/* Add note textarea placeholder */}
+
+		// 				<CreateTankNote enclosureId={enclosure.id} />
+		// 			</div>
+		// 		</div>
+
+		// 		<DialogFooter>
+		// 			<DeleteEnclosureButton enclosure_id={enclosure.id} />
+		// 			<Button variant='outline' onClick={() => onOpenChange(false)}>
+		// 				Close
+		// 			</Button>
+		// 			<Button className='gap-2' onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}>
+		// 				<ClipboardList className='h-4 w-4' />
+		// 				View Tasks
+		// 			</Button>
+		// 		</DialogFooter>
+		// 	</DialogContent>
+		// </Dialog>
+		<ResponsiveDialogDrawer
+			title='Create Organization'
+			description='Enter the name of the new organization.'
+			open={open}
+			onOpenChange={(isOpen) => setIsOpen(isOpen)}
+			trigger={
+				<Button variant='secondary' onClick={() => setIsOpen(true)}>
+					Create Organization <PlusIcon className='w-4 h-4' />
+				</Button>
+			}
+		>
+			<div className='grid gap-4 py-2'>
+				{/* Tank Details */}
+				<div className='grid grid-cols-2 gap-3'>
+					<div className='flex items-center gap-2 rounded-md border p-3'>
+						<MapPin className='h-4 w-4 text-muted-foreground shrink-0' />
+						<div className='min-w-0'>
+							<p className='text-xs text-muted-foreground'>Location</p>
+							<p className='text-sm font-medium truncate'>{enclosure.locations?.name}</p>
 						</div>
 					</div>
-
-					<Separator />
-
-					{/* Enclosure Notes */}
-					<div className='space-y-3'>
-						<div className='flex items-center gap-2'>
-							<StickyNote className='h-4 w-4 text-muted-foreground' />
-							<h4 className='text-sm font-semibold'>Enclosure Notes</h4>
-							<Badge variant='secondary' className='ml-auto'>
-								{enclosureNotes?.length}
-							</Badge>
+					<div className='flex items-center gap-2 rounded-md border p-3'>
+						<Users className='h-4 w-4 text-muted-foreground shrink-0' />
+						<div>
+							<p className='text-xs text-muted-foreground'>Current Count</p>
+							<p className='text-sm font-medium'>{enclosure.current_count}</p>
 						</div>
-
-						{enclosureNotes?.length && enclosureNotes.length > 0 ? (
-							<div className='space-y-2 max-h-[200px] overflow-y-auto rounded-md border p-3'>
-								{enclosureNotes.map((note) => (
-									<div key={note.id} className='rounded-md bg-muted p-3 space-y-1'>
-										<p className='text-sm'>{note.note_text}</p>
-										<p className='text-xs text-muted-foreground'>
-											{note.created_at && format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
-										</p>
-									</div>
-								))}
-							</div>
-						) : (
-							<div className='rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground'>
-								No notes for this enclosure yet.
-							</div>
-						)}
-
-						{/* Add note textarea placeholder */}
-
-						<CreateTankNote enclosureId={enclosure.id} />
+					</div>
+					<div className='col-span-2 flex items-center gap-2 rounded-md border p-3'>
+						<Calendar className='h-4 w-4 text-muted-foreground shrink-0' />
+						<div>
+							<p className='text-xs text-muted-foreground'>Created</p>
+							<p className='text-sm font-medium'>
+								{enclosure.created_at ? format(new Date(enclosure.created_at.substring(0, 10)), 'MMM d, yyyy') : ''}
+							</p>
+						</div>
 					</div>
 				</div>
 
-				<DialogFooter>
-					<DeleteEnclosureButton enclosure_id={enclosure.id} />
-					<Button variant='outline' onClick={() => onOpenChange(false)}>
-						Close
-					</Button>
-					<Button className='gap-2' onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}>
-						<ClipboardList className='h-4 w-4' />
-						View Tasks
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+				<Separator />
+
+				{/* Enclosure Notes */}
+				<div className='space-y-3'>
+					<div className='flex items-center gap-2'>
+						<StickyNote className='h-4 w-4 text-muted-foreground' />
+						<h4 className='text-sm font-semibold'>Enclosure Notes</h4>
+						<Badge variant='secondary' className='ml-auto'>
+							{enclosureNotes?.length}
+						</Badge>
+					</div>
+
+					{enclosureNotes?.length && enclosureNotes.length > 0 ? (
+						<div className='space-y-2 max-h-[200px] overflow-y-auto rounded-md border p-3'>
+							{enclosureNotes.map((note) => (
+								<div key={note.id} className='rounded-md bg-muted p-3 space-y-1'>
+									<p className='text-sm'>{note.note_text}</p>
+									<p className='text-xs text-muted-foreground'>
+										{note.created_at && format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
+									</p>
+								</div>
+							))}
+						</div>
+					) : (
+						<div className='rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground'>
+							No notes for this enclosure yet.
+						</div>
+					)}
+
+					{/* Add note textarea placeholder */}
+
+					<CreateTankNote enclosureId={enclosure.id} />
+				</div>
+			</div>
+		</ResponsiveDialogDrawer>
 	)
 }
