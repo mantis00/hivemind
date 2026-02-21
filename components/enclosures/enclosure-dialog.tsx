@@ -49,10 +49,12 @@ export function EnclosureDialog({
 				{/* Tank Details */}
 				<div className='grid grid-cols-2 gap-3'>
 					<div className='flex items-center gap-2 rounded-md border p-3'>
-						<MapPin className='h-4 w-4 text-muted-foreground shrink-0' />
+						<Calendar className='h-4 w-4 text-muted-foreground shrink-0' />
 						<div className='min-w-0'>
-							<p className='text-xs text-muted-foreground'>Location</p>
-							<p className='text-sm font-medium truncate'>{enclosure.locations?.name}</p>
+							<p className='text-xs text-muted-foreground'>Created</p>
+							<p className='text-sm font-medium truncate'>
+								{enclosure.created_at ? format(new Date(enclosure.created_at.substring(0, 10)), 'MMM d, yyyy') : ''}
+							</p>
 						</div>
 					</div>
 					<div className='flex items-center gap-2 rounded-md border p-3'>
@@ -63,12 +65,10 @@ export function EnclosureDialog({
 						</div>
 					</div>
 					<div className='col-span-2 flex items-center gap-2 rounded-md border p-3'>
-						<Calendar className='h-4 w-4 text-muted-foreground shrink-0' />
+						<MapPin className='h-4 w-4 text-muted-foreground shrink-0' />
 						<div>
-							<p className='text-xs text-muted-foreground'>Created</p>
-							<p className='text-sm font-medium'>
-								{enclosure.created_at ? format(new Date(enclosure.created_at.substring(0, 10)), 'MMM d, yyyy') : ''}
-							</p>
+							<p className='text-xs text-muted-foreground'>Location</p>
+							<p className='text-sm font-medium'>{enclosure.locations?.name}</p>
 						</div>
 					</div>
 				</div>
