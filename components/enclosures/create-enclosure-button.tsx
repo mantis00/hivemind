@@ -90,7 +90,7 @@ export function CreateEnclosureButton() {
 		>
 			<form onSubmit={handleSubmit}>
 				<div className='grid py-4'>
-					<div className='grid grid-cols-2 gap-4'>
+					<div className='grid grid-cols-1 gap-4'>
 						<Label>Enclosure Name</Label>
 						<Input
 							id='name'
