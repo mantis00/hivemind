@@ -44,6 +44,49 @@ export type Invite = {
 	}
 }
 
+export type Enclosure = {
+	id: number
+	org_id: number
+	species_id: string
+	name: string
+	created_at: string
+	location: string
+	current_count: number
+	locations?: {
+		name: string
+	}
+	species?: {
+		id: number
+		scientific_name: string
+		common_name: string
+		care_instructions: string
+	}
+}
+
+export type Species = {
+	id: number
+	created_at: string
+	scientific_name: string
+	common_name: string
+	care_instructions: string
+}
+
+export type Location = {
+	id: number
+	org_id: number
+	name: string
+	description: string
+	created_at: string
+}
+
+export type EnclosureNote = {
+	id: number
+	created_at: string
+	enclosure_id: number
+	user_id: number
+	note_text: string
+}
+
 export function useUserOrgs(userId: string) {
 	return useQuery({
 		queryKey: ['orgs', userId],
@@ -171,5 +214,114 @@ export function useOrgDetails(orgId: number) {
 			return data
 		},
 		enabled: !!orgId
+	})
+}
+
+export function useOrgEnclosures(orgId: number) {
+	return useQuery({
+		queryKey: ['orgEnclosures', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('enclosures')
+				.select(
+					'id, species_id, name, location, current_count, locations(id, name, description), species(id, scientific_name, common_name, care_instructions)'
+				)
+				.eq('org_id', orgId)
+				.order('current_count', { ascending: true })) as { data: Enclosure[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useOrgEnclosure(orgId: number, enclosureId: number) {
+	return useQuery({
+		queryKey: ['enclosureId', enclosureId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('enclosures')
+				.select('species_id, name, location, current_count')
+				.eq('org_id', orgId)
+				.eq('id', enclosureId)
+				.order('current_count', { ascending: true })) as { data: Enclosure | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useSpecies(orgId: number) {
+	return useQuery({
+		queryKey: ['species'],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase.from('species').select('*')) as {
+				data: Species[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+
+			return data
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useOrgLocations(orgId: number) {
+	return useQuery({
+		queryKey: ['orgLocations', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('locations')
+				.select('id, name, description, created_at')
+				.eq('org_id', orgId)) as { data: Location[] | null; error: PostgrestError | null }
+			if (error) throw error
+
+			if (data?.length && data?.length > 0) return data as Location[]
+			return data
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useEnclosureNotes(enclosureId: number) {
+	return useQuery({
+		queryKey: ['enclosureNotes', enclosureId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('tank_notes')
+				.select('id, user_id, note_text, created_at')
+				.eq('enclosure_id', enclosureId)) as { data: EnclosureNote[] | null; error: PostgrestError | null }
+			if (error) throw error
+
+			return data
+		},
+		enabled: !!enclosureId
+	})
+}
+
+export function useOrgEnclosuresForSpecies(orgId: number, speciesId: number) {
+	return useQuery({
+		queryKey: ['speciesEnclosures', orgId, speciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('enclosures')
+				.select('id, org_id, name, location, current_count, locations(name, description), created_at')
+				.eq('species_id', speciesId)
+				.eq('org_id', orgId)) as { data: Enclosure[] | null; error: PostgrestError | null }
+			if (error) throw error
+
+			return data
+		},
+		enabled: !!orgId && !!speciesId
 	})
 }

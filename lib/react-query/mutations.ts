@@ -300,3 +300,148 @@ export function useKickMember() {
 		}
 	})
 }
+
+export function useCreateEnclosure() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: async ({
+			orgId,
+			species_id,
+			name,
+			location,
+			current_count
+		}: {
+			orgId: number
+			species_id: number
+			name: string
+			location: number
+			current_count: number
+		}) => {
+			const supabase = createClient()
+			if (name.trim() === '') {
+				throw new Error('Recieved an empty field')
+			}
+			// Insert the organization
+			const { error: enclosureError } = await supabase
+				.from('enclosures')
+				.insert({
+					org_id: orgId,
+					species_id: species_id,
+					name: name.trim(),
+					location: location,
+					current_count: current_count
+				})
+				.select()
+				.single()
+
+			if (enclosureError) throw enclosureError
+		},
+		onSuccess: (data, variables) => {
+			// Invalidate and refetch enclosures orgs
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+		}
+	})
+}
+
+export function useDeleteEnclosure() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		mutationFn: async ({ id, orgId }: { id: number; orgId: number }) => {
+			const supabase = createClient()
+
+			// Delete user_org_role relationships
+			const { error: enclosureRelationError } = await supabase.from('tasks').delete().eq('enclosure_id', id)
+			if (enclosureRelationError) throw enclosureRelationError
+
+			const { error: enclosureNoteRelationError } = await supabase.from('tank_notes').delete().eq('enclosure_id', id)
+			if (enclosureNoteRelationError) throw enclosureNoteRelationError
+
+			// Delete the organization
+			const { error: enclosureError } = await supabase.from('enclosures').delete().eq('id', id)
+			if (enclosureError) throw enclosureError
+		},
+		onSuccess: (data, variables) => {
+			// Invalidate and refetch user orgs
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+		}
+	})
+}
+
+export function useCreateEnclosureNote() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: async ({
+			enclosureId,
+			userId,
+			noteText
+		}: {
+			enclosureId: number
+			userId: string // from auth
+			noteText: string
+		}) => {
+			const supabase = createClient()
+			if (noteText.trim() === '') {
+				throw new Error('Recieved an empty field')
+			}
+			// Insert the organization
+			const { error: enclosureNoteError } = await supabase
+				.from('tank_notes')
+				.insert({
+					enclosure_id: enclosureId,
+					user_id: userId,
+					note_text: noteText.trim()
+				})
+				.select()
+				.single()
+
+			if (enclosureNoteError) throw enclosureNoteError
+		},
+		onSuccess: (data, variables) => {
+			// Invalidate and refetch enclosures orgs
+			queryClient.invalidateQueries({ queryKey: ['enclosureNotes', variables.enclosureId] })
+		}
+	})
+}
+
+export function useUpdateEnclosure() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			orgId,
+			enclosure_id,
+			name,
+			species_id,
+			location_id,
+			count
+		}: {
+			orgId: number
+			enclosure_id: number
+			name: string
+			species_id: number
+			location_id: number
+			count: number
+		}) => {
+			const supabase = createClient()
+
+			if (name.trim() === '') {
+				throw new Error('First name or last name cannot be empty')
+			}
+
+			const { error } = await supabase
+				.from('enclosures')
+				.update({ name: name.trim(), species_id: species_id, location: location_id, current_count: count })
+				.eq('id', enclosure_id)
+
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+		}
+	})
+}
