@@ -168,9 +168,9 @@ export default function EnclosureGrid() {
 							<SelectItem value='scientific_name' className='text-l'>
 								Scientific Name
 							</SelectItem>
-							<SelectItem value='population' className='text-l'>
+							{/* <SelectItem value='population' className='text-l'>
 								# of Enclosures
-							</SelectItem>
+							</SelectItem> */}
 						</SelectContent>
 					</Select>
 					<Button variant='outline' size='icon' onClick={() => setSortUp(!sortUp)} disabled={isLoading || !isSorted}>
