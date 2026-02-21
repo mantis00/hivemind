@@ -1,33 +1,32 @@
 'use client'
 import { format } from 'date-fns'
-import { MapPin, Calendar, Users, ClipboardList, StickyNote, PlusIcon } from 'lucide-react'
+import { MapPin, Calendar, Users, ClipboardList, StickyNote, LoaderCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import type { Enclosure } from '@/lib/react-query/queries'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { Enclosure, Species } from '@/lib/react-query/queries'
 import { useEnclosureNotes } from '@/lib/react-query/queries'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
-import CreateTankNote from './create-tank-note'
+import CreateEnclosureNote from './create-enclosure-note'
 import DeleteEnclosureButton from './delete-enclosure-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
-import { useState } from 'react'
+import { EditEnclosureButton } from './edit-enclosure-button'
 
 export function EnclosureDialog({
 	enclosure,
-	common_name,
-	scientific_name,
+	species,
 	open,
 	onOpenChange
 }: {
 	enclosure: Enclosure
-	common_name: string
-	scientific_name: string
+	species: Species
 	open: boolean
 	onOpenChange: (open: boolean) => void
 }) {
-	const { data: enclosureNotes } = useEnclosureNotes(enclosure.id)
+	const { data: enclosureNotes, isLoading } = useEnclosureNotes(enclosure.id)
 
 	const params = useParams()
 	const orgId = params?.orgId as number | undefined
@@ -36,12 +35,16 @@ export function EnclosureDialog({
 
 	return (
 		<ResponsiveDialogDrawer
-			title={enclosure.name + ' - ' + common_name}
-			description={scientific_name}
+			title={enclosure.name + ' - ' + species?.common_name}
+			description={species?.scientific_name}
 			open={open}
 			onOpenChange={onOpenChange}
 			trigger={<div></div>}
 		>
+			<Button className='gap-2' onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}>
+				<ClipboardList className='h-4 w-4' />
+				View Tasks
+			</Button>
 			<div className='grid gap-4 py-2'>
 				{/* Tank Details */}
 				<div className='grid grid-cols-2 gap-3'>
@@ -82,7 +85,9 @@ export function EnclosureDialog({
 						</Badge>
 					</div>
 
-					{enclosureNotes?.length && enclosureNotes.length > 0 ? (
+					{isLoading ? (
+						<LoaderCircle className='animate-spin mx-auto' />
+					) : enclosureNotes?.length && enclosureNotes.length > 0 ? (
 						<div className='space-y-2 max-h-[200px] overflow-y-auto rounded-md border p-3'>
 							{enclosureNotes.map((note) => (
 								<div key={note.id} className='rounded-md bg-muted p-3 space-y-1'>
@@ -99,21 +104,11 @@ export function EnclosureDialog({
 						</div>
 					)}
 
-					{/* Add note textarea placeholder */}
-
-					<CreateTankNote enclosureId={enclosure.id} />
-					<div className='flex flex-row justify-between'>
+					<CreateEnclosureNote enclosureId={enclosure.id} />
+					<div className='flex flex-row justify-center gap-2'>
 						<DeleteEnclosureButton enclosure_id={enclosure.id} onDeleted={() => onOpenChange(false)} />
-						<Button variant='outline' onClick={() => onOpenChange(false)}>
-							Close
-						</Button>
-						<Button
-							className='gap-2'
-							onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}
-						>
-							<ClipboardList className='h-4 w-4' />
-							View Tasks
-						</Button>
+
+						<EditEnclosureButton enclosure={enclosure} spec={species} />
 					</div>
 				</div>
 			</div>

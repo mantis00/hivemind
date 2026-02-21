@@ -406,3 +406,42 @@ export function useCreateEnclosureNote() {
 		}
 	})
 }
+
+export function useUpdateEnclosure() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			orgId,
+			enclosure_id,
+			name,
+			species_id,
+			location_id,
+			count
+		}: {
+			orgId: number
+			enclosure_id: number
+			name: string
+			species_id: number
+			location_id: number
+			count: number
+		}) => {
+			const supabase = createClient()
+
+			if (name.trim() === '') {
+				throw new Error('First name or last name cannot be empty')
+			}
+
+			const { error } = await supabase
+				.from('enclosures')
+				.update({ name: name.trim(), species_id: species_id, location: location_id, current_count: count })
+				.eq('id', enclosure_id)
+
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+		}
+	})
+}

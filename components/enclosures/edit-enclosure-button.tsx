@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PlusIcon, LoaderCircle } from 'lucide-react'
+import { LoaderCircle, Edit2Icon } from 'lucide-react'
 import { useState } from 'react'
-import { useCreateEnclosure } from '@/lib/react-query/mutations'
+import { useUpdateEnclosure } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { useOrgLocations, useSpecies } from '@/lib/react-query/queries'
+import { Enclosure, Species, useOrgLocations, useSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import {
 	Combobox,
@@ -20,27 +20,34 @@ import {
 	ComboboxList
 } from '../ui/combobox'
 
-export function CreateEnclosureButton() {
+export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure; spec: Species }) {
 	const [open, setOpen] = useState(false)
-	const [name, setName] = useState('')
-	const [species, setSpecies] = useState('')
-	const [speciesQuery, setSpeciesQuery] = useState('')
-	const [location, setLocation] = useState('')
-	const [locationQuery, setLocationQuery] = useState('')
-	const [count, setCount] = useState(0)
+	const [name, setName] = useState(enclosure?.name)
+	const [species, setSpecies] = useState(spec?.common_name)
+	const [speciesQuery, setSpeciesQuery] = useState(species ?? '')
+	const [location, setLocation] = useState(enclosure.locations?.name)
+	const [locationQuery, setLocationQuery] = useState(location ?? '')
+	const [count, setCount] = useState(enclosure?.current_count)
 	const { data: user } = useCurrentClientUser()
-	const createEnclosureMutation = useCreateEnclosure()
+	const editEnclosureMutation = useUpdateEnclosure()
 	const params = useParams()
 	const orgId = params?.orgId as number | undefined
 
 	const { data: orgSpecies } = useSpecies(orgId as number)
-	const speciesNames = (orgSpecies ?? [])
-		.map((species) => species?.common_name)
-		.filter((name): name is string => !!name && name.trim().length > 0)
 	const { data: orgLocations } = useOrgLocations(orgId as number)
-	const locationNames = (orgLocations ?? [])
-		.map((location) => location.name)
-		.filter((name): name is string => !!name && name.trim().length > 0)
+
+	const handleOpenChange = (isOpen: boolean) => {
+		if (isOpen) {
+			// Reset form state from latest props when dialog opens
+			setName(enclosure?.name)
+			setSpecies(spec?.common_name)
+			setSpeciesQuery(spec?.common_name ?? '')
+			setLocation(enclosure.locations?.name)
+			setLocationQuery(enclosure.locations?.name ?? '')
+			setCount(enclosure?.current_count)
+		}
+		setOpen(isOpen)
+	}
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -54,13 +61,14 @@ export function CreateEnclosureButton() {
 			console.log('ERROR LOOKING UP SPECIES OR LOCATION')
 			return
 		}
-		createEnclosureMutation.mutate(
+		editEnclosureMutation.mutate(
 			{
 				orgId: orgId as number,
-				species_id: species_id?.id,
-				name: name,
-				location: location_id?.id,
-				current_count: count
+				enclosure_id: enclosure.id,
+				name: name === '' ? enclosure.name : name,
+				species_id: species_id.id,
+				location_id: location_id.id,
+				count: count
 			},
 			{
 				onSuccess: () => {
@@ -78,13 +86,13 @@ export function CreateEnclosureButton() {
 
 	return (
 		<ResponsiveDialogDrawer
-			title='Create Enclosure'
+			title='Edit Enclosure'
 			description='All fields are required'
 			open={open}
-			onOpenChange={(isOpen) => setOpen(isOpen)}
+			onOpenChange={handleOpenChange}
 			trigger={
 				<Button variant='secondary' onClick={() => setOpen(true)}>
-					Create Enclosure <PlusIcon className='w-4 h-4' />
+					<Edit2Icon className='w-4 h-4' /> Edit Enclosure
 				</Button>
 			}
 		>
@@ -99,24 +107,24 @@ export function CreateEnclosureButton() {
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							required
-							disabled={createEnclosureMutation.isPending}
+							disabled={editEnclosureMutation.isPending}
 						/>
 						<Label>Species</Label>
 						<Combobox
 							items={orgSpecies ?? []}
 							value={species}
 							onValueChange={(value) => {
-								const nextValue = value ?? ''
-								setSpecies(nextValue)
-								setSpeciesQuery(nextValue)
+								setSpecies(value ?? '')
+								if (value) setSpeciesQuery(value)
+								console.log(species)
 							}}
 						>
 							<ComboboxInput
 								className='h-9'
-								placeholder='Search species...'
+								placeholder={species}
 								value={speciesQuery}
 								onChange={(event) => setSpeciesQuery(event.target.value)}
-								disabled={createEnclosureMutation.isPending}
+								disabled={editEnclosureMutation.isPending}
 								showClear
 							/>
 							{speciesQuery.trim().length > 0 && (
@@ -139,17 +147,17 @@ export function CreateEnclosureButton() {
 							items={orgLocations ?? []}
 							value={location}
 							onValueChange={(value) => {
-								const nextValue = value ?? ''
-								setLocation(nextValue)
-								setLocationQuery(nextValue)
+								setLocation(value ?? '')
+								if (value) setLocationQuery(value)
+								console.log(location)
 							}}
 						>
 							<ComboboxInput
 								className='h-9'
-								placeholder='Search locations...'
+								placeholder={location}
 								value={locationQuery}
 								onChange={(event) => setLocationQuery(event.target.value)}
-								disabled={createEnclosureMutation.isPending}
+								disabled={editEnclosureMutation.isPending}
 								showClear
 							/>
 							{locationQuery.trim().length > 0 && (
@@ -177,16 +185,16 @@ export function CreateEnclosureButton() {
 							min='0'
 							onChange={(e) => setCount(Number(e.target.value))}
 							required
-							disabled={createEnclosureMutation.isPending}
+							disabled={editEnclosureMutation.isPending}
 						/>
 					</div>
 				</div>
 				<div className='flex flex-row gap-3 justify-center'>
-					<Button type='button' variant='outline' disabled={createEnclosureMutation.isPending}>
+					<Button type='button' variant='outline' disabled={editEnclosureMutation.isPending}>
 						Cancel
 					</Button>
-					<Button type='submit' disabled={createEnclosureMutation.isPending || !user}>
-						{createEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Create Enclosure'}
+					<Button type='submit' disabled={editEnclosureMutation.isPending || !user}>
+						{editEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
 					</Button>
 				</div>
 			</form>

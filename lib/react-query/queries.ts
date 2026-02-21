@@ -267,13 +267,7 @@ export function useSpecies(orgId: number) {
 			}
 			if (error) throw error
 
-			const uniqueSpecies: Species[] | undefined = []
-			for (const spec of data ?? []) {
-				if (!uniqueSpecies.find((sp) => spec?.id === sp.id)) {
-					uniqueSpecies.push(spec as Species)
-				}
-			}
-			return uniqueSpecies
+			return data
 		},
 		enabled: !!orgId
 	})
@@ -286,10 +280,11 @@ export function useOrgLocations(orgId: number) {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('locations')
-				.select('id, name, description')
+				.select('id, name, description, created_at')
 				.eq('org_id', orgId)) as { data: Location[] | null; error: PostgrestError | null }
 			if (error) throw error
 
+			if (data?.length && data?.length > 0) return data as Location[]
 			return data
 		},
 		enabled: !!orgId

@@ -4,8 +4,9 @@ import TextareaAutosize from 'react-textarea-autosize'
 import { useCreateEnclosureNote } from '@/lib/react-query/mutations'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
+import { LoaderCircle } from 'lucide-react'
 
-export default function CreateTankNote({ enclosureId }: { enclosureId: number }) {
+export default function CreateEnclosureNote({ enclosureId }: { enclosureId: number }) {
 	const [noteText, setNoteText] = useState('')
 	const createEnclosureNoteMutation = useCreateEnclosureNote()
 	const [user, setUser] = useState<User | null>(null)
@@ -54,7 +55,7 @@ export default function CreateTankNote({ enclosureId }: { enclosureId: number })
 					/>
 					<InputGroupAddon align='block-end'>
 						<InputGroupButton className='ml-auto' size='sm' variant='default' type='submit' disabled={loading}>
-							Submit
+							{createEnclosureNoteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Submit'}
 						</InputGroupButton>
 					</InputGroupAddon>
 				</InputGroup>

@@ -21,6 +21,11 @@ export default function SpeciesRow({ species }: { species: Species }) {
 
 	const { data: useEnclosures } = useOrgEnclosuresForSpecies(orgId as number, species.id)
 
+	// Derive the latest enclosure data from the query cache so the dialog always shows fresh data
+	const currentEnclosure = selectedEnclosure
+		? (useEnclosures?.find((e) => e.id === selectedEnclosure.id) ?? selectedEnclosure)
+		: null
+
 	const handleEnclosureClick = (enclosure: Enclosure) => {
 		setSelectedEnclosure(enclosure)
 		setDialogOpen(true)
@@ -29,10 +34,10 @@ export default function SpeciesRow({ species }: { species: Species }) {
 	return (
 		<>
 			<Collapsible open={isOpen} onOpenChange={setIsOpen}>
-				<Card className='overflow-hidden'>
+				<Card className='overflow-hidden py-2'>
 					<CollapsibleTrigger asChild>
 						<button className='w-full text-left' type='button'>
-							<CardContent className='p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors'>
+							<CardContent className='p-2 flex items-center gap-3 hover:bg-accent/50 transition-colors'>
 								<ChevronRight
 									className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
 										isOpen ? 'rotate-90' : ''
@@ -54,7 +59,7 @@ export default function SpeciesRow({ species }: { species: Species }) {
 					</CollapsibleTrigger>
 
 					<CollapsibleContent>
-						<div className='border-t bg-muted/30 p-4'>
+						<div className='border-t bg-muted/30 p-2'>
 							{/* Care instructions */}
 							<div className='mb-3 rounded-md bg-muted p-3'>
 								<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
@@ -89,11 +94,10 @@ export default function SpeciesRow({ species }: { species: Species }) {
 				</Card>
 			</Collapsible>
 
-			{selectedEnclosure && (
+			{currentEnclosure && (
 				<EnclosureDialog
-					enclosure={selectedEnclosure as Enclosure}
-					common_name={species.common_name}
-					scientific_name={species.scientific_name}
+					enclosure={currentEnclosure as Enclosure}
+					species={species}
 					open={dialogOpen}
 					onOpenChange={setDialogOpen}
 				/>

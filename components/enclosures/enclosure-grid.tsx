@@ -3,7 +3,7 @@
 import { Species, useSpecies } from '@/lib/react-query/queries'
 import { ArrowDownIcon, ArrowUpIcon, Search, Warehouse } from 'lucide-react'
 import { Badge } from '../ui/badge'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
 import SpeciesRow from './species-row'
@@ -11,14 +11,13 @@ import { CreateEnclosureButton } from './create-enclosure-button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Button } from '../ui/button'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group'
+import { Skeleton } from '../ui/skeleton'
 
 export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as number | undefined
-	const { data: orgSpecies } = useSpecies(orgId as number)
+	const { data: orgSpecies, isLoading } = useSpecies(orgId as number)
 	console.log(orgSpecies)
-
-	const [isLoading, setIsLoading] = useState(false)
 
 	const [searchValue, setSearchValue] = useState('')
 	const [searchCount, setSearchCount] = useState(0)
@@ -26,16 +25,34 @@ export default function EnclosureGrid() {
 	const [isSorted, setIsSorted] = useState(false)
 
 	const [displayedSpecies, setDisplayedSpecies] = useState<Species[]>([])
+	const [itemHeight, setItemHeight] = useState<number>(114)
+	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
+	const measureRef = useRef<HTMLDivElement>(null)
+	const virtuosoRef = useRef<HTMLDivElement>(null)
 
 	useEffect(() => {
 		if (orgSpecies) setDisplayedSpecies(orgSpecies)
 	}, [orgSpecies])
 
 	useEffect(() => {
+		if (measureRef.current) {
+			const height = measureRef.current.getBoundingClientRect().height
+			if (height > 0) {
+				setItemHeight(height)
+			}
+		}
+	}, [displayedSpecies])
+
+	// Handle total list height changes from Virtuoso
+	const handleTotalListHeightChanged = (height: number) => {
+		const maxHeight = 680
+		setDynamicTableHeight(Math.min(height, maxHeight))
+	}
+
+	useEffect(() => {
 		if (searchValue.trim() === '') {
 			setDisplayedSpecies(orgSpecies ?? [])
 			setSearchCount(0)
-			setIsLoading(false)
 		}
 	}, [searchValue, orgSpecies])
 
@@ -48,13 +65,11 @@ export default function EnclosureGrid() {
 
 	const handleSortChange = (sortOn: string) => {
 		if (!displayedSpecies?.length) return
-		setIsLoading(true)
 
 		if (sortOn === 'sort') {
 			setDisplayedSpecies(orgSpecies ?? [])
 			setIsSorted(false)
 			setSortUp(true)
-			setIsLoading(false)
 			return
 		}
 		let sorted: Species[] = []
@@ -84,12 +99,10 @@ export default function EnclosureGrid() {
 			setDisplayedSpecies(sorted)
 		}
 		setIsSorted(true)
-		setIsLoading(false)
 	}
 
 	const handleSearch = () => {
 		if (!searchValue.length || searchValue.trim() === '') return
-		setIsLoading(true)
 		let results: Species[] = []
 		const val = searchValue.trim().toLowerCase()
 
@@ -100,7 +113,6 @@ export default function EnclosureGrid() {
 		})
 		setDisplayedSpecies(results)
 		setSearchCount(results.length)
-		setIsLoading(false)
 	}
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -110,8 +122,17 @@ export default function EnclosureGrid() {
 		}
 	}
 
+	// Calculate initial table height based on item count
+	const initialTableHeight = useMemo(() => {
+		const maxHeight = 680
+		const calculatedHeight = itemHeight * displayedSpecies.length
+		return Math.min(calculatedHeight, maxHeight)
+	}, [itemHeight, displayedSpecies.length])
+
+	const tableHeight = dynamicTableHeight || initialTableHeight
+
 	return (
-		<div className='bg-background full'>
+		<div className='bg-background full min-h-screen'>
 			<div className='mx-auto max-w-3xl px-4 py-8'>
 				{/* Header */}
 				<div className='mb-2'>
@@ -175,18 +196,55 @@ export default function EnclosureGrid() {
 				</div>
 
 				{/* Species Virtuoso Table */}
-				{displayedSpecies?.length && displayedSpecies?.length > 0 ? (
-					<div className='rounded-lg border bg-card'>
-						<Virtuoso
-							style={{ height: '680px' }}
-							data={displayedSpecies}
-							itemContent={(index, sp) => (
-								<div className='p-2 pb-0 last:pb-2'>
-									<SpeciesRow species={sp} />
+				{isLoading ? (
+					<div className='rounded-lg border bg-card p-2 space-y-2'>
+						{[...Array(8)].map((_, i) => (
+							<div key={i} className='rounded-lg border bg-card p-4'>
+								<div className='flex items-center gap-3'>
+									<Skeleton className='h-4 w-4 shrink-0' />
+									<Skeleton className='h-5 w-5 shrink-0' />
+									<div className='flex-1 space-y-2'>
+										<div className='flex items-center gap-2'>
+											<Skeleton className='h-4 w-32' />
+											<Skeleton className='h-5 w-16' />
+										</div>
+										<Skeleton className='h-3 w-48' />
+									</div>
+									<Skeleton className='h-4 w-4 shrink-0' />
 								</div>
-							)}
-						/>
+							</div>
+						))}
 					</div>
+				) : displayedSpecies?.length && displayedSpecies?.length > 0 ? (
+					<>
+						{/* Hidden measurement element */}
+						<div
+							ref={measureRef}
+							aria-hidden='true'
+							style={{
+								position: 'absolute',
+								visibility: 'hidden',
+								pointerEvents: 'none'
+							}}
+						>
+							<div className='p-2 pb-0 last:pb-2'>
+								<SpeciesRow species={displayedSpecies[0]} />
+							</div>
+						</div>
+						<div ref={virtuosoRef} className='rounded-lg border bg-card'>
+							<Virtuoso
+								style={{ height: `${tableHeight}px`, transition: 'height 0.2s ease-in-out' }}
+								data={displayedSpecies}
+								increaseViewportBy={200}
+								totalListHeightChanged={handleTotalListHeightChanged}
+								itemContent={(index, sp) => (
+									<div className='p-2 pb-0 last:pb-2'>
+										<SpeciesRow species={sp} />
+									</div>
+								)}
+							/>
+						</div>
+					</>
 				) : (
 					<div className='rounded-lg border border-dashed p-8 text-center'>
 						<p className='text-muted-foreground text-sm'>No species found matching &ldquo;{searchValue}&rdquo;</p>
