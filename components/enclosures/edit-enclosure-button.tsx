@@ -97,8 +97,8 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			}
 		>
 			<form onSubmit={handleSubmit}>
-				<div className='grid py-4 px-8'>
-					<div className='grid grid-cols-2 gap-3'>
+				<div className='grid py-4'>
+					<div className='grid grid-cols-2 gap-4'>
 						<Label>Enclosure Name</Label>
 						<Input
 							id='name'
@@ -190,7 +190,12 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 					</div>
 				</div>
 				<div className='flex flex-row gap-3 justify-center'>
-					<Button type='button' variant='outline' disabled={editEnclosureMutation.isPending}>
+					<Button
+						type='button'
+						variant='outline'
+						disabled={editEnclosureMutation.isPending}
+						onClick={() => setOpen(false)}
+					>
 						Cancel
 					</Button>
 					<Button type='submit' disabled={editEnclosureMutation.isPending || !user}>
