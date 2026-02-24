@@ -4,13 +4,13 @@ import type { PostgrestError } from '@supabase/supabase-js'
 import { UUID } from 'crypto'
 
 export type Org = {
-	org_id: number
+	org_id: UUID
 	name: string
 	created_at: string
 }
 
 export type UserOrg = {
-	org_id: number
+	org_id: UUID
 	access_lvl: number
 	orgs: Org
 }
@@ -31,7 +31,7 @@ export type MemberProfile = {
 
 export type Invite = {
 	invite_id: string
-	org_id: number
+	org_id: UUID
 	inviter_id: string
 	invitee_email: string
 	access_lvl: number
@@ -40,7 +40,7 @@ export type Invite = {
 	expires_at: string
 	orgs?: {
 		name: string
-		org_id: number
+		org_id: UUID
 	}
 }
 
@@ -104,7 +104,7 @@ export function useUserOrgs(userId: string) {
 	})
 }
 
-export function useOrgMembers(orgId: number) {
+export function useOrgMembers(orgId: UUID) {
 	return useQuery({
 		queryKey: ['orgMembers', orgId],
 		queryFn: async () => {
@@ -163,7 +163,7 @@ export function usePendingInvites(userEmail: string) {
 	})
 }
 
-export function useSentInvites(orgId: number) {
+export function useSentInvites(orgId: UUID) {
 	return useQuery({
 		queryKey: ['invites'],
 		queryFn: async () => {
@@ -181,7 +181,7 @@ export function useSentInvites(orgId: number) {
 	})
 }
 
-export function useVerifyOrgMembership(userId: string, orgId: number) {
+export function useVerifyOrgMembership(userId: string, orgId: UUID) {
 	return useQuery({
 		queryKey: ['verifyOrgMembership', userId, orgId],
 		queryFn: async () => {
@@ -200,7 +200,7 @@ export function useVerifyOrgMembership(userId: string, orgId: number) {
 	})
 }
 
-export function useOrgDetails(orgId: number) {
+export function useOrgDetails(orgId: UUID) {
 	return useQuery({
 		queryKey: ['orgDetails', orgId],
 		queryFn: async () => {

@@ -10,10 +10,11 @@ import { useInviteMember } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useParams } from 'next/navigation'
+import { UUID } from 'crypto'
 
 export function InviteMemberButton() {
 	const params = useParams()
-	const orgId = Number(params.orgId)
+	const orgId = params?.orgId as UUID | undefined
 	const [open, setOpen] = useState(false)
 	const [email, setEmail] = useState('')
 	const [accessLvl, setAccessLvl] = useState('1')
@@ -26,7 +27,7 @@ export function InviteMemberButton() {
 
 		inviteMutation.mutate(
 			{
-				orgId,
+				orgId: orgId as UUID,
 				inviterId: user.id,
 				inviteeEmail: email,
 				accessLvl: Number(accessLvl)

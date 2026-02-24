@@ -7,11 +7,12 @@ import { LoaderCircle } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import { KickMemberButton } from './kick-member-button'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { UUID } from 'crypto'
 
 export function MemberRow() {
 	const params = useParams()
-	const orgId = Number(params.orgId)
-	const { data: orgMembers, isLoading: orgMembersLoading } = useOrgMembers(orgId)
+	const orgId = params?.orgId as UUID | undefined
+	const { data: orgMembers, isLoading: orgMembersLoading } = useOrgMembers(orgId as UUID)
 	const userIds = orgMembers?.map((user) => user.user_id) ?? []
 	const { data: memberProfiles, isLoading: profilesLoading } = useMemberProfiles(userIds)
 	const { data: currentUser } = useCurrentClientUser()
@@ -60,7 +61,7 @@ export function MemberRow() {
 					</TableCell>
 					<TableCell>
 						{currentUserAccessLevel === 3 && currentUser?.id !== user.id ? (
-							<KickMemberButton orgId={orgId} memberUserId={user.id} />
+							<KickMemberButton memberUserId={user.id} />
 						) : (
 							<span className='text-muted-foreground text-sm'>—</span>
 						)}
