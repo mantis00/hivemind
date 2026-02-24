@@ -132,45 +132,28 @@ export default function EnclosureGrid() {
 	const tableHeight = dynamicTableHeight || initialTableHeight
 
 	return (
-		<div className='bg-background full min-h-screen'>
-			<div className='mx-auto max-w-3xl px-4 py-8'>
-				{/* Header */}
-				<div className='mb-2'>
-					<div className='flex items-center gap-3 mb-2'>
-						<Warehouse className='h-7 w-7 text-foreground' />
-						<h1 className='text-2xl font-bold tracking-tight text-balance'>Enclosures</h1>
-						<div className='ml-auto'>
-							<CreateEnclosureButton />
-						</div>
-					</div>
-					<p className='text-sm text-muted-foreground'>
-						Browse species and manage their enclosures, tanks, and vivariums.
-					</p>
-					<div className='flex items-center gap-3 mt-3'>
-						<Badge variant='secondary'>{orgSpecies?.length} species</Badge>
-						{/* <Badge variant="outline">{totalEnclosures} enclosures</Badge> */}
+		<div className='bg-background full'>
+			<div className='mx-auto max-w-3xl px-4'>
+				<div className='mb-2 flex items-center gap-3 mt-3'>
+					<Badge variant='secondary'>{orgSpecies?.length} species</Badge>
+					<div className='ml-auto'>
+						<CreateEnclosureButton />
 					</div>
 				</div>
 
 				{/* Sort and Search */}
 				<div className='w-full py-2 flex flex-row gap-3'>
-					<Select onValueChange={handleSortChange} defaultValue='sort' disabled={isLoading}>
+					<Select onValueChange={handleSortChange} defaultValue='' disabled={isLoading}>
 						<SelectTrigger className='w-40'>
 							<SelectValue placeholder='Sort' />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value='sort' className='text-l'>
-								Sort
-							</SelectItem>
 							<SelectItem value='common_name' className='text-l'>
 								Common Name
 							</SelectItem>
 							<SelectItem value='scientific_name' className='text-l'>
 								Scientific Name
 							</SelectItem>
-							{/* <SelectItem value='population' className='text-l'>
-								# of Enclosures
-							</SelectItem> */}
 						</SelectContent>
 					</Select>
 					<Button variant='outline' size='icon' onClick={() => setSortUp(!sortUp)} disabled={isLoading || !isSorted}>
