@@ -5,22 +5,23 @@ import { useState } from 'react'
 import { useDeleteEnclosure } from '@/lib/react-query/mutations'
 import { LoaderCircle, TrashIcon } from 'lucide-react'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
+import { UUID } from 'crypto'
 
 export default function DeleteEnclosureButton({
 	enclosure_id,
 	onDeleted
 }: {
-	enclosure_id: number
+	enclosure_id: UUID
 	onDeleted?: () => void
 }) {
 	const [open, setOpen] = useState(false)
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
+	const orgId = params?.orgId as UUID | undefined
 	const deleteEnclosureMutation = useDeleteEnclosure()
 
 	const handleDelete = async () => {
 		deleteEnclosureMutation.mutate(
-			{ id: enclosure_id as number, orgId: orgId as number },
+			{ id: enclosure_id as UUID, orgId: orgId as UUID },
 			{
 				onSuccess: () => {
 					setOpen(false)

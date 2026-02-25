@@ -19,6 +19,7 @@ import {
 	ComboboxItem,
 	ComboboxList
 } from '../ui/combobox'
+import { UUID } from 'crypto'
 
 export function CreateEnclosureButton() {
 	const [open, setOpen] = useState(false)
@@ -31,13 +32,12 @@ export function CreateEnclosureButton() {
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
-
-	const { data: orgSpecies } = useSpecies(orgId as number)
+	const orgId = params?.orgId as UUID | undefined
+	const { data: orgSpecies } = useSpecies(orgId as UUID)
 	const speciesNames = (orgSpecies ?? [])
 		.map((species) => species?.common_name)
 		.filter((name): name is string => !!name && name.trim().length > 0)
-	const { data: orgLocations } = useOrgLocations(orgId as number)
+	const { data: orgLocations } = useOrgLocations(orgId as UUID)
 	const locationNames = (orgLocations ?? [])
 		.map((location) => location.name)
 		.filter((name): name is string => !!name && name.trim().length > 0)
@@ -56,7 +56,7 @@ export function CreateEnclosureButton() {
 		}
 		createEnclosureMutation.mutate(
 			{
-				orgId: orgId as number,
+				orgId: orgId as UUID,
 				species_id: species_id?.id,
 				name: name,
 				location: location_id?.id,

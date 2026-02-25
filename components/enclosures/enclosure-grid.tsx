@@ -12,12 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Button } from '../ui/button'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group'
 import { Skeleton } from '../ui/skeleton'
+import { UUID } from 'crypto'
 
 export default function EnclosureGrid() {
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
-	const { data: orgSpecies, isLoading } = useSpecies(orgId as number)
-	console.log(orgSpecies)
+	const orgId = params?.orgId as UUID | undefined
+	const { data: orgSpecies, isLoading } = useSpecies(orgId as UUID)
 
 	const [searchValue, setSearchValue] = useState('')
 	const [searchCount, setSearchCount] = useState(0)

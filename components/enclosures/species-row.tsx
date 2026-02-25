@@ -10,16 +10,17 @@ import { Badge } from '../ui/badge'
 import { EnclosureCard } from './enclosure-card'
 import { Virtuoso } from 'react-virtuoso'
 import { EnclosureDialog } from './enclosure-dialog'
+import { UUID } from 'crypto'
 
 export default function SpeciesRow({ species }: { species: Species }) {
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
+	const orgId = params?.orgId as UUID | undefined
 
 	const [isOpen, setIsOpen] = useState(false)
 	const [selectedEnclosure, setSelectedEnclosure] = useState<Enclosure | null>(null)
 	const [dialogOpen, setDialogOpen] = useState(false)
 
-	const { data: useEnclosures } = useOrgEnclosuresForSpecies(orgId as number, species.id)
+	const { data: useEnclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
 
 	// Derive the latest enclosure data from the query cache so the dialog always shows fresh data
 	const currentEnclosure = selectedEnclosure

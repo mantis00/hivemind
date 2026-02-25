@@ -9,6 +9,7 @@ import { usePendingInvites } from '@/lib/react-query/queries'
 import { useAcceptInvite, useRejectInvite } from '@/lib/react-query/mutations'
 import getAccessLevelName from '@/context/access-levels'
 import { useState } from 'react'
+import { UUID } from 'crypto'
 
 export function PendingInvites() {
 	const { data: user } = useCurrentClientUser()
@@ -17,7 +18,7 @@ export function PendingInvites() {
 	const rejectMutation = useRejectInvite()
 	const [pendingInviteId, setPendingInviteId] = useState<string | null>(null)
 
-	const handleAccept = (inviteId: string) => {
+	const handleAccept = (inviteId: UUID) => {
 		if (!user?.id) return
 		setPendingInviteId(inviteId)
 		acceptMutation.mutate(
@@ -31,7 +32,7 @@ export function PendingInvites() {
 		)
 	}
 
-	const handleReject = (inviteId: string) => {
+	const handleReject = (inviteId: UUID) => {
 		if (!user?.id) return
 		setPendingInviteId(inviteId)
 		rejectMutation.mutate(
