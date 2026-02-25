@@ -1,6 +1,6 @@
 'use client'
 
-import { Species, useSpecies } from '@/lib/react-query/queries'
+import { OrgSpecies, useSpecies } from '@/lib/react-query/queries'
 import { ArrowDownIcon, ArrowUpIcon, Search, Warehouse } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -24,7 +24,7 @@ export default function EnclosureGrid() {
 	const [sortUp, setSortUp] = useState(true)
 	const [isSorted, setIsSorted] = useState(false)
 
-	const [displayedSpecies, setDisplayedSpecies] = useState<Species[]>([])
+	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>([])
 	const [itemHeight, setItemHeight] = useState<number>(114)
 	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
 	const measureRef = useRef<HTMLDivElement>(null)
@@ -72,18 +72,18 @@ export default function EnclosureGrid() {
 			setSortUp(true)
 			return
 		}
-		let sorted: Species[] = []
+		let sorted: OrgSpecies[] = []
 
 		if (sortOn === 'common_name') {
 			sorted = [...displayedSpecies].sort((a, b) => {
-				const na = a.common_name ?? ''
-				const nb = b.common_name ?? ''
+				const na = a.custom_common_name ?? ''
+				const nb = b.custom_common_name ?? ''
 				return na.localeCompare(nb)
 			})
 		} else if (sortOn === 'scientific_name') {
 			sorted = [...displayedSpecies].sort((a, b) => {
-				const na = a.scientific_name ?? ''
-				const nb = b.scientific_name ?? ''
+				const na = a.species?.scientific_name ?? ''
+				const nb = b.species?.scientific_name ?? ''
 				return na.localeCompare(nb)
 			})
 		}
@@ -103,13 +103,13 @@ export default function EnclosureGrid() {
 
 	const handleSearch = () => {
 		if (!searchValue.length || searchValue.trim() === '') return
-		let results: Species[] = []
+		let results: OrgSpecies[] = []
 		const val = searchValue.trim().toLowerCase()
 
 		results = [...(orgSpecies ?? [])].filter((spec) => {
-			if (spec.common_name && spec.common_name.trim().toLowerCase().includes(val)) return true
-			if (spec.scientific_name && spec.scientific_name.trim().toLowerCase().includes(val)) return true
-			if (spec.scientific_name && spec.scientific_name.trim().toLowerCase().includes(val)) return true
+			if (spec.custom_common_name && spec.custom_common_name.trim().toLowerCase().includes(val)) return true
+			if (spec.species?.scientific_name && spec.species.scientific_name.trim().toLowerCase().includes(val)) return true
+			if (spec.species?.scientific_name && spec.species.scientific_name.trim().toLowerCase().includes(val)) return true
 		})
 		setDisplayedSpecies(results)
 		setSearchCount(results.length)

@@ -8,7 +8,7 @@ import { LoaderCircle, Edit2Icon } from 'lucide-react'
 import { useState } from 'react'
 import { useUpdateEnclosure } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { Enclosure, Species, useOrgLocations, useSpecies } from '@/lib/react-query/queries'
+import { Enclosure, OrgSpecies, useOrgLocations, useSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import {
 	Combobox,
@@ -20,10 +20,10 @@ import {
 	ComboboxList
 } from '../ui/combobox'
 
-export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure; spec: Species }) {
+export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure; spec: OrgSpecies }) {
 	const [open, setOpen] = useState(false)
 	const [name, setName] = useState(enclosure?.name)
-	const [species, setSpecies] = useState(spec?.common_name)
+	const [species, setSpecies] = useState(spec?.custom_common_name)
 	const [speciesQuery, setSpeciesQuery] = useState(species ?? '')
 	const [location, setLocation] = useState(enclosure.locations?.name)
 	const [locationQuery, setLocationQuery] = useState(location ?? '')
@@ -40,8 +40,8 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 		if (isOpen) {
 			// Reset form state from latest props when dialog opens
 			setName(enclosure?.name)
-			setSpecies(spec?.common_name)
-			setSpeciesQuery(spec?.common_name ?? '')
+			setSpecies(spec?.custom_common_name)
+			setSpeciesQuery(spec?.custom_common_name ?? '')
 			setLocation(enclosure.locations?.name)
 			setLocationQuery(enclosure.locations?.name ?? '')
 			setCount(enclosure?.current_count)
@@ -54,7 +54,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 		console.log(species)
 		if (!name || !species || !location) return
 
-		const species_id = orgSpecies?.find((spec) => spec?.common_name === species)
+		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
 		const location_id = orgLocations?.find((loc) => loc?.name === location)
 
 		if (!species_id || !location_id) {

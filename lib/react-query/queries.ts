@@ -60,15 +60,18 @@ export type Enclosure = {
 		scientific_name: string
 		common_name: string
 		care_instructions: string
+		created_at: string
 	}
 }
 
-export type Species = {
-	id: number
+export type OrgSpecies = {
+	id: UUID
 	created_at: string
-	scientific_name: string
-	common_name: string
-	care_instructions: string
+	custom_common_name: string
+	custom_care_instructions: string
+	species: {
+		scientific_name: string
+	}
 }
 
 export type Location = {
@@ -261,8 +264,8 @@ export function useSpecies(orgId: number) {
 		queryKey: ['species'],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase.from('species').select('*')) as {
-				data: Species[] | null
+			const { data, error } = (await supabase.from('org_species').select('*, species(scientific_name)')) as {
+				data: OrgSpecies[] | null
 				error: PostgrestError | null
 			}
 			if (error) throw error

@@ -8,7 +8,7 @@ import { PlusIcon, LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useCreateEnclosure } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { useOrgLocations, useSpecies } from '@/lib/react-query/queries'
+import { OrgSpecies, useOrgLocations, useSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import {
 	Combobox,
@@ -35,7 +35,7 @@ export function CreateEnclosureButton() {
 
 	const { data: orgSpecies } = useSpecies(orgId as number)
 	const speciesNames = (orgSpecies ?? [])
-		.map((species) => species?.common_name)
+		.map((species) => species?.custom_common_name)
 		.filter((name): name is string => !!name && name.trim().length > 0)
 	const { data: orgLocations } = useOrgLocations(orgId as number)
 	const locationNames = (orgLocations ?? [])
@@ -47,7 +47,7 @@ export function CreateEnclosureButton() {
 		console.log(species)
 		if (!name || !species || !location) return
 
-		const species_id = orgSpecies?.find((spec) => spec?.common_name === species)
+		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
 		const location_id = orgLocations?.find((loc) => loc?.name === location)
 
 		if (!species_id || !location_id) {
@@ -124,9 +124,9 @@ export function CreateEnclosureButton() {
 									<ComboboxEmpty>No matching species.</ComboboxEmpty>
 									<ComboboxList>
 										<ComboboxCollection>
-											{(spec) => (
-												<ComboboxItem key={spec.id} value={spec.common_name}>
-													{spec.common_name}
+											{(spec: OrgSpecies) => (
+												<ComboboxItem key={spec.id} value={spec.custom_common_name}>
+													{spec.custom_common_name}
 												</ComboboxItem>
 											)}
 										</ComboboxCollection>

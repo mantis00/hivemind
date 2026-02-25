@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { Enclosure, Species } from '@/lib/react-query/queries'
+import type { Enclosure, OrgSpecies } from '@/lib/react-query/queries'
 import { useEnclosureNotes } from '@/lib/react-query/queries'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
@@ -22,7 +22,7 @@ export function EnclosureDialog({
 	onOpenChange
 }: {
 	enclosure: Enclosure
-	species: Species
+	species: OrgSpecies
 	open: boolean
 	onOpenChange: (open: boolean) => void
 }) {
@@ -35,8 +35,8 @@ export function EnclosureDialog({
 
 	return (
 		<ResponsiveDialogDrawer
-			title={enclosure.name + ' - ' + species?.common_name}
-			description={species?.scientific_name}
+			title={enclosure.name + ' - ' + species?.custom_common_name}
+			description={species?.species.scientific_name}
 			open={open}
 			onOpenChange={onOpenChange}
 			trigger={<div></div>}
