@@ -19,6 +19,7 @@ import {
 	ComboboxItem,
 	ComboboxList
 } from '../ui/combobox'
+import { UUID } from 'crypto'
 
 export function CreateEnclosureButton() {
 	const [open, setOpen] = useState(false)
@@ -31,16 +32,10 @@ export function CreateEnclosureButton() {
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
+	const orgId = params?.orgId as UUID | undefined
 
-	const { data: orgSpecies } = useSpecies(orgId as number)
-	const speciesNames = (orgSpecies ?? [])
-		.map((species) => species?.custom_common_name)
-		.filter((name): name is string => !!name && name.trim().length > 0)
-	const { data: orgLocations } = useOrgLocations(orgId as number)
-	const locationNames = (orgLocations ?? [])
-		.map((location) => location.name)
-		.filter((name): name is string => !!name && name.trim().length > 0)
+	const { data: orgSpecies } = useSpecies(orgId as UUID)
+	const { data: orgLocations } = useOrgLocations(orgId as UUID)
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -56,10 +51,10 @@ export function CreateEnclosureButton() {
 		}
 		createEnclosureMutation.mutate(
 			{
-				orgId: orgId as number,
-				species_id: species_id?.id,
+				orgId: orgId as UUID,
+				species_id: species_id?.id as UUID,
 				name: name,
-				location: location_id?.id,
+				location: location_id?.id as UUID,
 				current_count: count
 			},
 			{

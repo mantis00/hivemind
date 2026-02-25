@@ -19,6 +19,7 @@ import {
 	ComboboxItem,
 	ComboboxList
 } from '../ui/combobox'
+import { UUID } from 'crypto'
 
 export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure; spec: OrgSpecies }) {
 	const [open, setOpen] = useState(false)
@@ -31,10 +32,10 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const { data: user } = useCurrentClientUser()
 	const editEnclosureMutation = useUpdateEnclosure()
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
+	const orgId = params?.orgId as UUID | undefined
 
-	const { data: orgSpecies } = useSpecies(orgId as number)
-	const { data: orgLocations } = useOrgLocations(orgId as number)
+	const { data: orgSpecies } = useSpecies(orgId as UUID)
+	const { data: orgLocations } = useOrgLocations(orgId as UUID)
 
 	const handleOpenChange = (isOpen: boolean) => {
 		if (isOpen) {
@@ -63,7 +64,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 		}
 		editEnclosureMutation.mutate(
 			{
-				orgId: orgId as number,
+				orgId: orgId as UUID,
 				enclosure_id: enclosure.id,
 				name: name === '' ? enclosure.name : name,
 				species_id: species_id.id,

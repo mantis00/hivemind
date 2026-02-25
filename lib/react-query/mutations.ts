@@ -312,10 +312,10 @@ export function useCreateEnclosure() {
 			location,
 			current_count
 		}: {
-			orgId: number
-			species_id: number
+			orgId: UUID
+			species_id: UUID
 			name: string
-			location: number
+			location: UUID
 			current_count: number
 		}) => {
 			const supabase = createClient()
@@ -350,7 +350,7 @@ export function useDeleteEnclosure() {
 
 	return useMutation({
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		mutationFn: async ({ id, orgId }: { id: number; orgId: number }) => {
+		mutationFn: async ({ id, orgId }: { id: UUID; orgId: UUID }) => {
 			const supabase = createClient()
 
 			// Delete user_org_role relationships
@@ -380,7 +380,7 @@ export function useCreateEnclosureNote() {
 			userId,
 			noteText
 		}: {
-			enclosureId: number
+			enclosureId: UUID
 			userId: string // from auth
 			noteText: string
 		}) => {
@@ -420,11 +420,11 @@ export function useUpdateEnclosure() {
 			location_id,
 			count
 		}: {
-			orgId: number
-			enclosure_id: number
+			orgId: UUID
+			enclosure_id: UUID
 			name: string
-			species_id: number
-			location_id: number
+			species_id: UUID
+			location_id: UUID
 			count: number
 		}) => {
 			const supabase = createClient()
