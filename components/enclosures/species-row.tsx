@@ -5,11 +5,12 @@ import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Card, CardContent } from '../ui/card'
-import { Bug, ChevronRight, FlaskConical } from 'lucide-react'
+import { Bug, ChevronRight, FlaskConical, Settings, Settings2Icon, SettingsIcon } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { EnclosureCard } from './enclosure-card'
 import { Virtuoso } from 'react-virtuoso'
 import { EnclosureDialog } from './enclosure-dialog'
+import SpeciesDropdown from './species-settings-dropdown'
 
 export default function SpeciesRow({ species }: { species: Species }) {
 	const params = useParams()
@@ -53,7 +54,8 @@ export default function SpeciesRow({ species }: { species: Species }) {
 									</div>
 									<p className='text-xs text-muted-foreground italic truncate'>{species.scientific_name}</p>
 								</div>
-								<FlaskConical className='h-4 w-4 shrink-0 text-muted-foreground' />
+								{/* <FlaskConical className='h-4 w-4 shrink-0 text-muted-foreground' /> */}
+								<SpeciesDropdown species={species} />
 							</CardContent>
 						</button>
 					</CollapsibleTrigger>
