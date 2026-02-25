@@ -45,9 +45,9 @@ export type Invite = {
 }
 
 export type Enclosure = {
-	id: number
-	org_id: number
-	species_id: string
+	id: UUID
+	org_id: UUID
+	species_id: UUID
 	name: string
 	created_at: string
 	location: string
@@ -55,24 +55,29 @@ export type Enclosure = {
 	locations?: {
 		name: string
 	}
-	species?: {
-		id: number
-		scientific_name: string
-		common_name: string
-		care_instructions: string
-	}
+	Species: Species
 }
 
 export type Species = {
-	id: number
-	created_at: string
+	id: UUID
 	scientific_name: string
 	common_name: string
 	care_instructions: string
+	created_at: string
+}
+
+export type OrgSpecies = {
+	id: UUID
+	created_at: string
+	custom_common_name: string
+	custom_care_instructions: string
+	species: {
+		scientific_name: string
+	}
 }
 
 export type Location = {
-	id: number
+	id: UUID
 	org_id: number
 	name: string
 	description: string
@@ -80,10 +85,10 @@ export type Location = {
 }
 
 export type EnclosureNote = {
-	id: number
+	id: UUID
 	created_at: string
-	enclosure_id: number
-	user_id: number
+	enclosure_id: UUID
+	user_id: UUID
 	note_text: string
 }
 
@@ -256,13 +261,13 @@ export function useOrgEnclosure(orgId: number, enclosureId: number) {
 	})
 }
 
-export function useSpecies(orgId: number) {
+export function useSpecies(orgId: UUID) {
 	return useQuery({
 		queryKey: ['species'],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase.from('species').select('*')) as {
-				data: Species[] | null
+			const { data, error } = (await supabase.from('org_species').select('*, species(scientific_name)')) as {
+				data: OrgSpecies[] | null
 				error: PostgrestError | null
 			}
 			if (error) throw error
@@ -273,7 +278,7 @@ export function useSpecies(orgId: number) {
 	})
 }
 
-export function useOrgLocations(orgId: number) {
+export function useOrgLocations(orgId: UUID) {
 	return useQuery({
 		queryKey: ['orgLocations', orgId],
 		queryFn: async () => {
@@ -291,7 +296,7 @@ export function useOrgLocations(orgId: number) {
 	})
 }
 
-export function useEnclosureNotes(enclosureId: number) {
+export function useEnclosureNotes(enclosureId: UUID) {
 	return useQuery({
 		queryKey: ['enclosureNotes', enclosureId],
 		queryFn: async () => {
@@ -308,7 +313,7 @@ export function useEnclosureNotes(enclosureId: number) {
 	})
 }
 
-export function useOrgEnclosuresForSpecies(orgId: number, speciesId: number) {
+export function useOrgEnclosuresForSpecies(orgId: UUID, speciesId: UUID) {
 	return useQuery({
 		queryKey: ['speciesEnclosures', orgId, speciesId],
 		queryFn: async () => {

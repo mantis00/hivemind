@@ -8,7 +8,7 @@ import { PlusIcon, LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useCreateEnclosure } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { useOrgLocations, useSpecies } from '@/lib/react-query/queries'
+import { OrgSpecies, useOrgLocations, useSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import {
 	Combobox,
@@ -19,6 +19,7 @@ import {
 	ComboboxItem,
 	ComboboxList
 } from '../ui/combobox'
+import { UUID } from 'crypto'
 
 export function CreateEnclosureButton() {
 	const [open, setOpen] = useState(false)
@@ -31,23 +32,17 @@ export function CreateEnclosureButton() {
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
+	const orgId = params?.orgId as UUID | undefined
 
-	const { data: orgSpecies } = useSpecies(orgId as number)
-	const speciesNames = (orgSpecies ?? [])
-		.map((species) => species?.common_name)
-		.filter((name): name is string => !!name && name.trim().length > 0)
-	const { data: orgLocations } = useOrgLocations(orgId as number)
-	const locationNames = (orgLocations ?? [])
-		.map((location) => location.name)
-		.filter((name): name is string => !!name && name.trim().length > 0)
+	const { data: orgSpecies } = useSpecies(orgId as UUID)
+	const { data: orgLocations } = useOrgLocations(orgId as UUID)
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		console.log(species)
 		if (!name || !species || !location) return
 
-		const species_id = orgSpecies?.find((spec) => spec?.common_name === species)
+		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
 		const location_id = orgLocations?.find((loc) => loc?.name === location)
 
 		if (!species_id || !location_id) {
@@ -56,10 +51,10 @@ export function CreateEnclosureButton() {
 		}
 		createEnclosureMutation.mutate(
 			{
-				orgId: orgId as number,
-				species_id: species_id?.id,
+				orgId: orgId as UUID,
+				species_id: species_id?.id as UUID,
 				name: name,
-				location: location_id?.id,
+				location: location_id?.id as UUID,
 				current_count: count
 			},
 			{
@@ -124,9 +119,9 @@ export function CreateEnclosureButton() {
 									<ComboboxEmpty>No matching species.</ComboboxEmpty>
 									<ComboboxList>
 										<ComboboxCollection>
-											{(spec) => (
-												<ComboboxItem key={spec.id} value={spec.common_name}>
-													{spec.common_name}
+											{(spec: OrgSpecies) => (
+												<ComboboxItem key={spec.id} value={spec.custom_common_name}>
+													{spec.custom_common_name}
 												</ComboboxItem>
 											)}
 										</ComboboxCollection>
