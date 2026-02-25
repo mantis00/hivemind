@@ -6,8 +6,12 @@ import { LoaderCircle, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { useLeaveOrg } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { UUID } from 'crypto'
+import { useParams } from 'next/navigation'
 
-export function LeaveOrgButton({ orgId }: { orgId: number }) {
+export function LeaveOrgButton() {
+	const params = useParams()
+	const orgId = params?.orgId as UUID | undefined
 	const [open, setOpen] = useState(false)
 	const { data: user } = useCurrentClientUser()
 	const leaveOrgMutation = useLeaveOrg()
@@ -17,7 +21,7 @@ export function LeaveOrgButton({ orgId }: { orgId: number }) {
 		if (!user?.id) return
 
 		leaveOrgMutation.mutate(
-			{ orgId, userId: user.id },
+			{ orgId: orgId as UUID, userId: user.id },
 			{
 				onSuccess: () => {
 					setOpen(false)
@@ -44,7 +48,7 @@ export function LeaveOrgButton({ orgId }: { orgId: number }) {
 					<Button type='button' variant='outline' disabled={leaveOrgMutation.isPending} onClick={() => setOpen(false)}>
 						Cancel
 					</Button>
-					<Button type='submit' variant='destructive' disabled={leaveOrgMutation.isPending || !user}>
+					<Button type='submit' variant='destructive' disabled={leaveOrgMutation.isPending || !user || !orgId}>
 						{leaveOrgMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Leave Organization'}
 					</Button>
 				</div>

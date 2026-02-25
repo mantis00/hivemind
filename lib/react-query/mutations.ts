@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { UUID } from 'crypto'
 
 export function useCreateOrg() {
 	const queryClient = useQueryClient()
@@ -42,7 +43,7 @@ export function useDeleteOrg() {
 
 	return useMutation({
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		mutationFn: async ({ orgId, userId }: { orgId: number; userId: string }) => {
+		mutationFn: async ({ orgId, userId }: { orgId: UUID; userId: string }) => {
 			const supabase = createClient()
 
 			// Delete user_org_role relationships
@@ -64,7 +65,7 @@ export function useLeaveOrg() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ orgId, userId }: { orgId: number; userId: string }) => {
+		mutationFn: async ({ orgId, userId }: { orgId: UUID; userId: string }) => {
 			const supabase = createClient()
 
 			const { error } = await supabase.from('user_org_role').delete().eq('org_id', orgId).eq('user_id', userId)
@@ -113,7 +114,7 @@ export function useInviteMember() {
 			inviteeEmail,
 			accessLvl
 		}: {
-			orgId: number
+			orgId: UUID
 			inviterId: string
 			inviteeEmail: string
 			accessLvl: number
@@ -286,7 +287,7 @@ export function useKickMember() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ orgId, userId }: { orgId: number; userId: string }) => {
+		mutationFn: async ({ orgId, userId }: { orgId: UUID; userId: string }) => {
 			const supabase = createClient()
 
 			// Delete the user_org_role relationship
@@ -311,10 +312,10 @@ export function useCreateEnclosure() {
 			location,
 			current_count
 		}: {
-			orgId: number
-			species_id: number
+			orgId: UUID
+			species_id: UUID
 			name: string
-			location: number
+			location: UUID
 			current_count: number
 		}) => {
 			const supabase = createClient()
@@ -349,7 +350,7 @@ export function useDeleteEnclosure() {
 
 	return useMutation({
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		mutationFn: async ({ id, orgId }: { id: number; orgId: number }) => {
+		mutationFn: async ({ id, orgId }: { id: UUID; orgId: UUID }) => {
 			const supabase = createClient()
 
 			// Delete user_org_role relationships
@@ -379,7 +380,7 @@ export function useCreateEnclosureNote() {
 			userId,
 			noteText
 		}: {
-			enclosureId: number
+			enclosureId: UUID
 			userId: string // from auth
 			noteText: string
 		}) => {
@@ -419,11 +420,11 @@ export function useUpdateEnclosure() {
 			location_id,
 			count
 		}: {
-			orgId: number
-			enclosure_id: number
+			orgId: UUID
+			enclosure_id: UUID
 			name: string
-			species_id: number
-			location_id: number
+			species_id: UUID
+			location_id: UUID
 			count: number
 		}) => {
 			const supabase = createClient()

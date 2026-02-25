@@ -5,14 +5,19 @@ import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { LoaderCircle, UserRoundX } from 'lucide-react'
 import { useState } from 'react'
 import { useKickMember } from '@/lib/react-query/mutations'
-export function KickMemberButton({ orgId, memberUserId }: { orgId: number; memberUserId: string }) {
+import { UUID } from 'crypto'
+import { useParams } from 'next/navigation'
+
+export function KickMemberButton({ memberUserId }: { memberUserId: string }) {
+	const params = useParams()
+	const orgId = params?.orgId as UUID | undefined
 	const [open, setOpen] = useState(false)
 	const kickMemberMutation = useKickMember()
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		kickMemberMutation.mutate(
-			{ orgId, userId: memberUserId },
+			{ orgId: orgId as UUID, userId: memberUserId },
 			{
 				onSuccess: () => {
 					setOpen(false)

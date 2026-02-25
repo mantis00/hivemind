@@ -9,10 +9,11 @@ import { LeaveOrgButton } from './leave-org-button'
 import getAccessLevelName from '@/context/access-levels'
 import { useUserOrgs, type UserOrg } from '@/lib/react-query/queries'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { UUID } from 'crypto'
 
 export function OrgRow() {
 	const router = useRouter()
-	const [loadingOrgId, setLoadingOrgId] = useState<number | null>(null)
+	const [loadingOrgId, setLoadingOrgId] = useState<UUID | null>(null)
 	const { data: user } = useCurrentClientUser()
 	const { data: userOrgs, isLoading: isOrgsLoading } = useUserOrgs(user?.id || '')
 
@@ -66,7 +67,7 @@ export function OrgRow() {
 						</TableCell>
 						{userOrg.access_lvl !== 3 && (
 							<TableCell>
-								<LeaveOrgButton orgId={userOrg.orgs.org_id} />
+								<LeaveOrgButton />
 							</TableCell>
 						)}
 					</TableRow>

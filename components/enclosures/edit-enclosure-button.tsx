@@ -8,7 +8,7 @@ import { LoaderCircle, Edit2Icon } from 'lucide-react'
 import { useState } from 'react'
 import { useUpdateEnclosure } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { Enclosure, Species, useOrgLocations, useSpecies } from '@/lib/react-query/queries'
+import { Enclosure, OrgSpecies, useOrgLocations, useSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import {
 	Combobox,
@@ -19,11 +19,12 @@ import {
 	ComboboxItem,
 	ComboboxList
 } from '../ui/combobox'
+import { UUID } from 'crypto'
 
-export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure; spec: Species }) {
+export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure; spec: OrgSpecies }) {
 	const [open, setOpen] = useState(false)
 	const [name, setName] = useState(enclosure?.name)
-	const [species, setSpecies] = useState(spec?.common_name)
+	const [species, setSpecies] = useState(spec?.custom_common_name)
 	const [speciesQuery, setSpeciesQuery] = useState(species ?? '')
 	const [location, setLocation] = useState(enclosure.locations?.name)
 	const [locationQuery, setLocationQuery] = useState(location ?? '')
@@ -31,17 +32,17 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const { data: user } = useCurrentClientUser()
 	const editEnclosureMutation = useUpdateEnclosure()
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
+	const orgId = params?.orgId as UUID | undefined
 
-	const { data: orgSpecies } = useSpecies(orgId as number)
-	const { data: orgLocations } = useOrgLocations(orgId as number)
+	const { data: orgSpecies } = useSpecies(orgId as UUID)
+	const { data: orgLocations } = useOrgLocations(orgId as UUID)
 
 	const handleOpenChange = (isOpen: boolean) => {
 		if (isOpen) {
 			// Reset form state from latest props when dialog opens
 			setName(enclosure?.name)
-			setSpecies(spec?.common_name)
-			setSpeciesQuery(spec?.common_name ?? '')
+			setSpecies(spec?.custom_common_name)
+			setSpeciesQuery(spec?.custom_common_name ?? '')
 			setLocation(enclosure.locations?.name)
 			setLocationQuery(enclosure.locations?.name ?? '')
 			setCount(enclosure?.current_count)
@@ -54,7 +55,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 		console.log(species)
 		if (!name || !species || !location) return
 
-		const species_id = orgSpecies?.find((spec) => spec?.common_name === species)
+		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
 		const location_id = orgLocations?.find((loc) => loc?.name === location)
 
 		if (!species_id || !location_id) {
@@ -63,7 +64,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 		}
 		editEnclosureMutation.mutate(
 			{
-				orgId: orgId as number,
+				orgId: orgId as UUID,
 				enclosure_id: enclosure.id,
 				name: name === '' ? enclosure.name : name,
 				species_id: species_id.id,

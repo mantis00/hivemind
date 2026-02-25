@@ -57,7 +57,10 @@ export function AppSidebar() {
 	const userFirstName = currentUser?.user_metadata.first_name ?? ''
 	const userLastName = currentUser?.user_metadata.last_name ?? ''
 	const orgId = useMemo(() => {
-		const match = pathname?.match(/^\/protected\/orgs\/(\d+)/)
+		// Match UUIDs (8-4-4-4-12 hex)
+		const match = pathname?.match(
+			/^\/protected\/orgs\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/
+		)
 		return match?.[1] ?? null
 	}, [pathname])
 
