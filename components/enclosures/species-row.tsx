@@ -65,9 +65,9 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 		<>
 			<Collapsible open={isOpen} onOpenChange={setIsOpen}>
 				<Card className='overflow-hidden py-2'>
-					<CollapsibleTrigger asChild>
-						<button className='w-full text-left' type='button'>
-							<CardContent className='p-2 flex items-center gap-3 hover:bg-accent/50 transition-colors'>
+					<CardContent className='p-2 flex items-center gap-3 hover:bg-accent/50 transition-colors'>
+						<CollapsibleTrigger asChild>
+							<button className='flex flex-1 items-center gap-3 text-left' type='button'>
 								<ChevronRight
 									className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
 										isOpen ? 'rotate-90' : ''
@@ -83,11 +83,11 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 									</div>
 									<p className='text-xs text-muted-foreground italic truncate'>{species.species.scientific_name}</p>
 								</div>
-								{/* <FlaskConical className='h-4 w-4 shrink-0 text-muted-foreground' /> */}
-								<SpeciesDropdown species={species} />
-							</CardContent>
-						</button>
-					</CollapsibleTrigger>
+							</button>
+						</CollapsibleTrigger>
+						{/* <FlaskConical className='h-4 w-4 shrink-0 text-muted-foreground' /> */}
+						<SpeciesDropdown species={species} />
+					</CardContent>
 
 					<CollapsibleContent>
 						<div className='border-t bg-muted/30 p-2'>

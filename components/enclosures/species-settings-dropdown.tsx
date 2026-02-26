@@ -22,7 +22,7 @@ export default function SpeciesDropdown({ species }: { species: OrgSpecies }) {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
+			<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
 				<MoreVertical className='ml-auto size-4 group-data-[collapsible=icon]:hidden' />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent

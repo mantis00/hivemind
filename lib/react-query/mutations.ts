@@ -446,3 +446,24 @@ export function useUpdateEnclosure() {
 		}
 	})
 }
+
+export function useUpdateSpeciesImage() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ species_id, picture_url }: { species_id: UUID; picture_url: string }) => {
+			const supabase = createClient()
+
+			if (!species_id || picture_url === '') {
+				throw new Error('Missing id or url is empty')
+			}
+
+			const { error } = await supabase.from('species').update({ picture_url: picture_url }).eq('id', species_id)
+
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['singleSpecies', variables.species_id] })
+		}
+	})
+}

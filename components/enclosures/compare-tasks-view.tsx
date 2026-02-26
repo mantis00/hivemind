@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { UUID } from 'crypto'
 
-import { useTasksForEnclosures, useOrgEnclosures, type Task, type Enclosure } from '@/lib/react-query/queries'
+import { useTasksForEnclosures, useEnclosuresByIds, type Task, type Enclosure } from '@/lib/react-query/queries'
 import { createClient } from '@/lib/supabase/client'
 
 import { Badge } from '@/components/ui/badge'
@@ -33,45 +33,47 @@ export default function CompareTasksView() {
 		return raw.split(',').filter(Boolean) as UUID[]
 	}, [searchParams])
 
-	const { data: allEnclosures } = useOrgEnclosures(orgId as UUID)
+	const { data: enclosures } = useEnclosuresByIds(enclosureIds)
 	const { data: tasks, isLoading } = useTasksForEnclosures(enclosureIds)
 
 	const queryClient = useQueryClient()
 	const [selectedTaskIds, setSelectedTaskIds] = useState<Set<UUID>>(new Set())
 
-	// Resolve enclosure objects from IDs
-	const enclosures = useMemo(() => {
-		if (!allEnclosures) return []
-		return enclosureIds.map((id) => allEnclosures.find((e) => e.id === id)).filter(Boolean) as Enclosure[]
-	}, [allEnclosures, enclosureIds])
+	// Build an enclosure lookup map
+	const enclosureMap = useMemo(() => {
+		const map = new Map<UUID, Enclosure>()
+		for (const enc of enclosures ?? []) map.set(enc.id, enc)
+		return map
+	}, [enclosures])
 
-	// Group tasks by name and find common ones (present in 2+ enclosures)
+	// Group tasks by template_id (if present) or name, then split into common vs unique
 	const { commonTasks, uniqueTasks } = useMemo(() => {
-		if (!tasks || !enclosures.length) return { commonTasks: [], uniqueTasks: [] }
+		if (!tasks || !enclosureMap.size) return { commonTasks: [], uniqueTasks: [] }
 
-		const byName = new Map<string, { enclosure: Enclosure; task: Task }[]>()
+		const grouped = new Map<string, { enclosure: Enclosure; task: Task }[]>()
 
 		for (const task of tasks) {
-			const key = (task.name ?? '').toLowerCase().trim()
-			if (!key) continue
+			// Use template_id as the grouping key when available, otherwise fall back to name
+			const key = task.template_id ? `tmpl:${task.template_id}` : `name:${(task.name ?? '').toLowerCase().trim()}`
+			if (key === 'name:') continue
 
-			const enclosure = enclosures.find((e) => e.id === task.enclosure_id)
+			const enclosure = enclosureMap.get(task.enclosure_id)
 			if (!enclosure) continue
 
-			if (!byName.has(key)) byName.set(key, [])
-			byName.get(key)!.push({ enclosure, task })
+			if (!grouped.has(key)) grouped.set(key, [])
+			grouped.get(key)!.push({ enclosure, task })
 		}
 
 		const common: CommonTask[] = []
 		const unique: CommonTask[] = []
 
-		for (const [, entries] of byName) {
-			const uniqueEnclosureIds = new Set(entries.map((e) => e.enclosure.id))
+		for (const [, entries] of grouped) {
+			const distinctEnclosures = new Set(entries.map((e) => e.enclosure.id))
 			const group: CommonTask = {
 				name: entries[0].task.name ?? '',
 				enclosureTasks: entries
 			}
-			if (uniqueEnclosureIds.size >= 2) {
+			if (distinctEnclosures.size >= 2) {
 				common.push(group)
 			} else {
 				unique.push(group)
@@ -79,7 +81,7 @@ export default function CompareTasksView() {
 		}
 
 		return { commonTasks: common, uniqueTasks: unique }
-	}, [tasks, enclosures])
+	}, [tasks, enclosureMap])
 
 	// Mutation to bulk-complete selected tasks
 	const bulkComplete = useMutation({
@@ -154,7 +156,7 @@ export default function CompareTasksView() {
 					Back
 				</Button>
 				<span className='text-sm text-muted-foreground'>Comparing:</span>
-				{enclosures.map((enc) => (
+				{(enclosures ?? []).map((enc) => (
 					<Badge key={enc.id} variant='secondary'>
 						{enc.name}
 					</Badge>

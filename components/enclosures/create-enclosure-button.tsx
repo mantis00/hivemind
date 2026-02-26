@@ -29,7 +29,7 @@ export function CreateEnclosureButton() {
 	const [speciesQuery, setSpeciesQuery] = useState('')
 	const [location, setLocation] = useState('')
 	const [locationQuery, setLocationQuery] = useState('')
-	const [count, setCount] = useState(0)
+	const [count, setCount] = useState('')
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
 	const params = useParams()
@@ -56,7 +56,7 @@ export function CreateEnclosureButton() {
 				species_id: species_id?.id as UUID,
 				name: name,
 				location: location_id?.id as UUID,
-				current_count: count
+				current_count: count ? parseInt(count, 10) : 0
 			},
 			{
 				onSuccess: () => {
@@ -66,7 +66,7 @@ export function CreateEnclosureButton() {
 					setSpeciesQuery('')
 					setLocation('')
 					setLocationQuery('')
-					setCount(0)
+					setCount('')
 				}
 			}
 		)
@@ -171,7 +171,7 @@ export function CreateEnclosureButton() {
 							value={count}
 							type='number'
 							min='0'
-							onChange={(e) => setCount(Number(e.target.value))}
+							onChange={(e) => setCount(e.target.value)}
 							required
 							disabled={createEnclosureMutation.isPending}
 						/>
