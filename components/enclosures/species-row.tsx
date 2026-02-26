@@ -51,7 +51,7 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 
 	const handleCompare = () => {
 		const ids = Array.from(selectedIds).join(',')
-		router.push(`/protected/orgs/${orgId}/enclosures/compare?ids=${ids}`)
+		// router.push(`/protected/orgs/${orgId}/enclosures/compare?ids=${ids}`)
 	}
 
 	const toggleSelectMode = () => {
