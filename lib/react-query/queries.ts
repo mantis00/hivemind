@@ -64,6 +64,7 @@ export type Species = {
 	common_name: string
 	care_instructions: string
 	created_at: string
+	picture_url: string
 }
 
 export type OrgSpecies = {
@@ -71,6 +72,7 @@ export type OrgSpecies = {
 	created_at: string
 	custom_common_name: string
 	custom_care_instructions: string
+	master_species_id: UUID
 	species: {
 		scientific_name: string
 	}
@@ -90,6 +92,25 @@ export type EnclosureNote = {
 	enclosure_id: UUID
 	user_id: UUID
 	note_text: string
+}
+
+export type Task = {
+	id: UUID
+	created_at: string
+	enclosure_id: UUID
+	name: string | null
+	description: string | null
+	status: string | null
+	due_date: string | null
+	priority: string | null
+	completed_by: UUID | null
+	completed_time: string | null
+	template_id: UUID | null
+	form_data: Record<string, unknown> | null
+	schedule_id: UUID | null
+	time_window: string | null
+	start_time: string | null
+	time_to_completion: string | null
 }
 
 export function useUserOrgs(userId: string) {
@@ -222,21 +243,36 @@ export function useOrgDetails(orgId: UUID) {
 	})
 }
 
-export function useOrgEnclosures(orgId: number) {
+export function useOrgEnclosures(orgId: UUID) {
 	return useQuery({
 		queryKey: ['orgEnclosures', orgId],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('enclosures')
-				.select(
-					'id, species_id, name, location, current_count, locations(id, name, description), species(id, scientific_name, common_name, care_instructions)'
-				)
+				.select('*')
 				.eq('org_id', orgId)
 				.order('current_count', { ascending: true })) as { data: Enclosure[] | null; error: PostgrestError | null }
 
 			if (error) throw error
 			return data
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useOrgEnclosureCount(orgId: UUID) {
+	return useQuery({
+		queryKey: ['orgEnclosureCount', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { count, error } = await supabase
+				.from('enclosures')
+				.select('*', { count: 'exact', head: true })
+				.eq('org_id', orgId)
+
+			if (error) throw error
+			return count ?? 0
 		},
 		enabled: !!orgId
 	})
@@ -328,5 +364,53 @@ export function useOrgEnclosuresForSpecies(orgId: UUID, speciesId: UUID) {
 			return data
 		},
 		enabled: !!orgId && !!speciesId
+	})
+}
+
+export function useEnclosuresByIds(enclosureIds: UUID[]) {
+	return useQuery({
+		queryKey: ['enclosuresByIds', enclosureIds],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('enclosures')
+				.select('id, org_id, species_id, name, location, current_count, locations(name, description), created_at')
+				.in('id', enclosureIds)) as { data: Enclosure[] | null; error: PostgrestError | null }
+			if (error) throw error
+			return data
+		},
+		enabled: enclosureIds.length > 0
+	})
+}
+
+export function useTasksForEnclosures(enclosureIds: UUID[]) {
+	return useQuery({
+		queryKey: ['tasksForEnclosures', enclosureIds],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase.from('tasks').select('*').in('enclosure_id', enclosureIds)) as {
+				data: Task[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+			return data
+		},
+		enabled: enclosureIds.length > 0
+	})
+}
+
+export function useOneSpecies(master_species_id: UUID) {
+	return useQuery({
+		queryKey: ['singleSpecies', master_species_id],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase.from('species').select('*').eq('id', master_species_id).single()) as {
+				data: Species | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+			return data
+		},
+		enabled: !!master_species_id
 	})
 }
