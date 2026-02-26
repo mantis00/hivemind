@@ -5,21 +5,18 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { XIcon, LoaderCircle, ChevronDownIcon } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { useSentInvites } from '@/lib/react-query/queries'
-import { useRetractInvite } from '@/lib/react-query/mutations'
-import getAccessLevelName from '@/context/access-levels'
+import { useMyOrgRequests } from '@/lib/react-query/queries'
+import { useRetractOrgRequest } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { useIsOwnerOrSuperadmin } from '@/lib/react-query/queries'
 import { useState } from 'react'
-import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 
 function getStatusBadge(status: string) {
 	switch (status) {
 		case 'pending':
 			return <Badge variant='secondary'>Pending</Badge>
-		case 'accepted':
-			return <Badge variant='default'>Accepted</Badge>
+		case 'approved':
+			return <Badge variant='default'>Approved</Badge>
 		case 'rejected':
 			return <Badge variant='destructive'>Rejected</Badge>
 		case 'cancelled':
@@ -29,26 +26,19 @@ function getStatusBadge(status: string) {
 	}
 }
 
-export function ViewSentInvites() {
-	const params = useParams()
-	const orgId = params?.orgId as UUID | undefined
-	const { data: invites, isLoading } = useSentInvites(orgId as UUID)
-	const retractMutation = useRetractInvite()
+export function ViewSentRequests() {
 	const { data: user } = useCurrentClientUser()
-	const isOwnerOrSuperadmin = useIsOwnerOrSuperadmin(orgId)
-	const [pendingInviteId, setPendingInviteId] = useState<string | null>(null)
+	const { data: requests, isLoading } = useMyOrgRequests(user?.id ?? '')
+	const retractMutation = useRetractOrgRequest()
+	const [pendingRequestId, setPendingRequestId] = useState<UUID | null>(null)
 
-	if (!isOwnerOrSuperadmin) return null
-
-	const handleRetract = (inviteId: UUID) => {
+	const handleRetract = (requestId: UUID) => {
 		if (!user?.id) return
-		setPendingInviteId(inviteId)
+		setPendingRequestId(requestId)
 		retractMutation.mutate(
+			{ requestId },
 			{
-				inviteId
-			},
-			{
-				onSettled: () => setPendingInviteId(null)
+				onSettled: () => setPendingRequestId(null)
 			}
 		)
 	}
@@ -57,19 +47,19 @@ export function ViewSentInvites() {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Sent Invites</CardTitle>
-					<CardDescription>Loading invitations...</CardDescription>
+					<CardTitle>Organization Requests</CardTitle>
+					<CardDescription>Loading your requests...</CardDescription>
 				</CardHeader>
 			</Card>
 		)
 	}
 
-	if (!invites || invites.length === 0) {
+	if (!requests || requests.length === 0) {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Sent Invites</CardTitle>
-					<CardDescription>No invites sent yet</CardDescription>
+					<CardTitle>Organization Requests</CardTitle>
+					<CardDescription>No requests submitted yet</CardDescription>
 				</CardHeader>
 			</Card>
 		)
@@ -85,10 +75,10 @@ export function ViewSentInvites() {
 							className='group w-full justify-between px-0 hover:bg-transparent active:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0'
 						>
 							<div className='flex flex-col items-start'>
-								<CardTitle>Sent Invites</CardTitle>
+								<CardTitle>Organization Requests</CardTitle>
 								<CardDescription>
 									<div className='flex flex-row gap-2 items-center'>
-										<span>{invites.length} invite(s) sent</span>
+										<span>{requests.length} request(s) submitted</span>
 									</div>
 								</CardDescription>
 							</div>
@@ -99,42 +89,39 @@ export function ViewSentInvites() {
 				<CollapsibleContent>
 					<CardContent className='px-6 pb-6'>
 						<div className='space-y-4'>
-							{invites.map((invite) => (
+							{requests.map((request) => (
 								<div
-									key={invite.invite_id}
+									key={request.request_id}
 									className='flex flex-col md:flex-row md:justify-between gap-4 rounded-lg border bg-background p-4'
 								>
 									<div className='flex-1'>
 										<div className='flex items-center justify-center md:justify-start gap-2 flex-wrap flex-col md:flex-row'>
-											<p className='font-medium'>{invite.invitee_email}</p>
-											<div className='flex items-center gap-2'>
-												<Badge variant='secondary'>{getAccessLevelName(invite.access_lvl)}</Badge>
-												{getStatusBadge(invite.status)}
-											</div>
+											<p className='font-medium'>{request.org_name}</p>
+											<div className='flex items-center gap-2'>{getStatusBadge(request.status)}</div>
 										</div>
 										<div className='flex flex-row items-center justify-center md:justify-start gap-2 md:gap-0 mt-1'>
 											<p className='text-sm text-muted-foreground'>
-												Sent on {new Date(invite.created_at).toLocaleDateString()}
+												Submitted on {new Date(request.created_at).toLocaleDateString()}
 											</p>
-											{invite.status === 'pending' && (
+											{request.reviewed_at && (
 												<>
 													<span className='mx-1 md:mx-2 text-muted-foreground'>•</span>
-													<p className='text-sm text-muted-foreground text-red-600'>
-														Expires on {new Date(invite.expires_at).toLocaleDateString()}
+													<p className='text-sm text-muted-foreground'>
+														Reviewed on {new Date(request.reviewed_at).toLocaleDateString()}
 													</p>
 												</>
 											)}
 										</div>
 									</div>
-									{invite.status === 'pending' && (
+									{request.status === 'pending' && (
 										<div className='flex gap-2 mx-auto md:mx-0 my-auto'>
 											<Button
 												size='sm'
 												variant='destructive'
-												onClick={() => handleRetract(invite.invite_id)}
-												disabled={pendingInviteId === invite.invite_id}
+												onClick={() => handleRetract(request.request_id)}
+												disabled={pendingRequestId === request.request_id}
 											>
-												{pendingInviteId === invite.invite_id && retractMutation.isPending ? (
+												{pendingRequestId === request.request_id && retractMutation.isPending ? (
 													<LoaderCircle className='w-4 h-4 animate-spin' />
 												) : (
 													<>

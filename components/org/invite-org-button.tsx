@@ -11,6 +11,7 @@ import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
+import { useIsOwnerOrSuperadmin } from '@/lib/react-query/queries'
 
 export function InviteMemberButton() {
 	const params = useParams()
@@ -20,6 +21,9 @@ export function InviteMemberButton() {
 	const [accessLvl, setAccessLvl] = useState('1')
 	const { data: user } = useCurrentClientUser()
 	const inviteMutation = useInviteMember()
+	const isOwnerOrSuperadmin = useIsOwnerOrSuperadmin(orgId)
+
+	if (!isOwnerOrSuperadmin) return null
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -76,8 +80,7 @@ export function InviteMemberButton() {
 							</SelectTrigger>
 							<SelectContent position='popper' side='bottom' align='start'>
 								<SelectItem value='1'>Caretaker</SelectItem>
-								<SelectItem value='2'>Admin</SelectItem>
-								<SelectItem value='3'>Owner</SelectItem>
+								<SelectItem value='2'>Owner</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
