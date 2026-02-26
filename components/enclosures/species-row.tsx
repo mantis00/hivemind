@@ -1,5 +1,5 @@
 'use client'
-import { type Species, type Enclosure, useOrgEnclosuresForSpecies } from '@/lib/react-query/queries'
+import { type OrgSpecies, type Enclosure, useOrgEnclosuresForSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
@@ -10,16 +10,17 @@ import { Badge } from '../ui/badge'
 import { EnclosureCard } from './enclosure-card'
 import { Virtuoso } from 'react-virtuoso'
 import { EnclosureDialog } from './enclosure-dialog'
+import { UUID } from 'crypto'
 
-export default function SpeciesRow({ species }: { species: Species }) {
+export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
+	const orgId = params?.orgId as UUID | undefined
 
 	const [isOpen, setIsOpen] = useState(false)
 	const [selectedEnclosure, setSelectedEnclosure] = useState<Enclosure | null>(null)
 	const [dialogOpen, setDialogOpen] = useState(false)
 
-	const { data: useEnclosures } = useOrgEnclosuresForSpecies(orgId as number, species.id)
+	const { data: useEnclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
 
 	// Derive the latest enclosure data from the query cache so the dialog always shows fresh data
 	const currentEnclosure = selectedEnclosure
@@ -30,6 +31,8 @@ export default function SpeciesRow({ species }: { species: Species }) {
 		setSelectedEnclosure(enclosure)
 		setDialogOpen(true)
 	}
+
+	console.log('SpeciesRow render', species)
 
 	return (
 		<>
@@ -46,12 +49,12 @@ export default function SpeciesRow({ species }: { species: Species }) {
 								<Bug className='h-5 w-5 shrink-0 text-muted-foreground' />
 								<div className='flex-1 min-w-0'>
 									<div className='flex items-center gap-2'>
-										<p className='font-medium text-sm truncate'>{species.common_name}</p>
+										<p className='font-medium text-sm truncate'>{species.custom_common_name}</p>
 										<Badge variant='outline' className='shrink-0 text-xs'>
 											{useEnclosures?.length} {useEnclosures?.length === 1 ? 'enclosure' : 'enclosures'}
 										</Badge>
 									</div>
-									<p className='text-xs text-muted-foreground italic truncate'>{species.scientific_name}</p>
+									<p className='text-xs text-muted-foreground italic truncate'>{species.species.scientific_name}</p>
 								</div>
 								<FlaskConical className='h-4 w-4 shrink-0 text-muted-foreground' />
 							</CardContent>
@@ -63,7 +66,7 @@ export default function SpeciesRow({ species }: { species: Species }) {
 							{/* Care instructions */}
 							<div className='mb-3 rounded-md bg-muted p-3'>
 								<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
-								<p className='text-xs leading-relaxed'>{species.care_instructions}</p>
+								<p className='text-xs leading-relaxed'>{species.custom_care_instructions}</p>
 							</div>
 
 							{/* Enclosures Virtuoso list */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { Species, useSpecies } from '@/lib/react-query/queries'
+import { OrgSpecies, useSpecies } from '@/lib/react-query/queries'
 import { ArrowDownIcon, ArrowUpIcon, Search, Warehouse } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -12,11 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Button } from '../ui/button'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group'
 import { Skeleton } from '../ui/skeleton'
+import { UUID } from 'crypto'
 
 export default function EnclosureGrid() {
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
-	const { data: orgSpecies, isLoading } = useSpecies(orgId as number)
+	const orgId = params?.orgId as UUID | undefined
+	const { data: orgSpecies, isLoading } = useSpecies(orgId as UUID)
 	console.log(orgSpecies)
 
 	const [searchValue, setSearchValue] = useState('')
@@ -24,7 +25,7 @@ export default function EnclosureGrid() {
 	const [sortUp, setSortUp] = useState(true)
 	const [isSorted, setIsSorted] = useState(false)
 
-	const [displayedSpecies, setDisplayedSpecies] = useState<Species[]>([])
+	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>([])
 	const [itemHeight, setItemHeight] = useState<number>(114)
 	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
 	const measureRef = useRef<HTMLDivElement>(null)
@@ -72,18 +73,18 @@ export default function EnclosureGrid() {
 			setSortUp(true)
 			return
 		}
-		let sorted: Species[] = []
+		let sorted: OrgSpecies[] = []
 
 		if (sortOn === 'common_name') {
 			sorted = [...displayedSpecies].sort((a, b) => {
-				const na = a.common_name ?? ''
-				const nb = b.common_name ?? ''
+				const na = a.custom_common_name ?? ''
+				const nb = b.custom_common_name ?? ''
 				return na.localeCompare(nb)
 			})
 		} else if (sortOn === 'scientific_name') {
 			sorted = [...displayedSpecies].sort((a, b) => {
-				const na = a.scientific_name ?? ''
-				const nb = b.scientific_name ?? ''
+				const na = a.species?.scientific_name ?? ''
+				const nb = b.species?.scientific_name ?? ''
 				return na.localeCompare(nb)
 			})
 		}
@@ -103,13 +104,13 @@ export default function EnclosureGrid() {
 
 	const handleSearch = () => {
 		if (!searchValue.length || searchValue.trim() === '') return
-		let results: Species[] = []
+		let results: OrgSpecies[] = []
 		const val = searchValue.trim().toLowerCase()
 
 		results = [...(orgSpecies ?? [])].filter((spec) => {
-			if (spec.common_name && spec.common_name.trim().toLowerCase().includes(val)) return true
-			if (spec.scientific_name && spec.scientific_name.trim().toLowerCase().includes(val)) return true
-			if (spec.scientific_name && spec.scientific_name.trim().toLowerCase().includes(val)) return true
+			if (spec.custom_common_name && spec.custom_common_name.trim().toLowerCase().includes(val)) return true
+			if (spec.species?.scientific_name && spec.species.scientific_name.trim().toLowerCase().includes(val)) return true
+			if (spec.species?.scientific_name && spec.species.scientific_name.trim().toLowerCase().includes(val)) return true
 		})
 		setDisplayedSpecies(results)
 		setSearchCount(results.length)
@@ -132,45 +133,28 @@ export default function EnclosureGrid() {
 	const tableHeight = dynamicTableHeight || initialTableHeight
 
 	return (
-		<div className='bg-background full min-h-screen'>
-			<div className='mx-auto max-w-3xl px-4 py-8'>
-				{/* Header */}
-				<div className='mb-2'>
-					<div className='flex items-center gap-3 mb-2'>
-						<Warehouse className='h-7 w-7 text-foreground' />
-						<h1 className='text-2xl font-bold tracking-tight text-balance'>Enclosures</h1>
-						<div className='ml-auto'>
-							<CreateEnclosureButton />
-						</div>
-					</div>
-					<p className='text-sm text-muted-foreground'>
-						Browse species and manage their enclosures, tanks, and vivariums.
-					</p>
-					<div className='flex items-center gap-3 mt-3'>
-						<Badge variant='secondary'>{orgSpecies?.length} species</Badge>
-						{/* <Badge variant="outline">{totalEnclosures} enclosures</Badge> */}
+		<div className='bg-background full'>
+			<div className='mx-auto max-w-3xl px-4'>
+				<div className='mb-2 flex items-center gap-3 mt-3'>
+					<Badge variant='secondary'>{orgSpecies?.length} species</Badge>
+					<div className='ml-auto'>
+						<CreateEnclosureButton />
 					</div>
 				</div>
 
 				{/* Sort and Search */}
 				<div className='w-full py-2 flex flex-row gap-3'>
-					<Select onValueChange={handleSortChange} defaultValue='sort' disabled={isLoading}>
+					<Select onValueChange={handleSortChange} defaultValue='' disabled={isLoading}>
 						<SelectTrigger className='w-40'>
 							<SelectValue placeholder='Sort' />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value='sort' className='text-l'>
-								Sort
-							</SelectItem>
 							<SelectItem value='common_name' className='text-l'>
 								Common Name
 							</SelectItem>
 							<SelectItem value='scientific_name' className='text-l'>
 								Scientific Name
 							</SelectItem>
-							{/* <SelectItem value='population' className='text-l'>
-								# of Enclosures
-							</SelectItem> */}
 						</SelectContent>
 					</Select>
 					<Button variant='outline' size='icon' onClick={() => setSortUp(!sortUp)} disabled={isLoading || !isSorted}>

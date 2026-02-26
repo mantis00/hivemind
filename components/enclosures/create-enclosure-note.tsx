@@ -5,8 +5,9 @@ import { useCreateEnclosureNote } from '@/lib/react-query/mutations'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { LoaderCircle } from 'lucide-react'
+import { UUID } from 'crypto'
 
-export default function CreateEnclosureNote({ enclosureId }: { enclosureId: number }) {
+export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID }) {
 	const [noteText, setNoteText] = useState('')
 	const createEnclosureNoteMutation = useCreateEnclosureNote()
 	const [user, setUser] = useState<User | null>(null)

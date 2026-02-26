@@ -11,6 +11,7 @@ import getAccessLevelName from '@/context/access-levels'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
+import { UUID } from 'crypto'
 
 function getStatusBadge(status: string) {
 	switch (status) {
@@ -27,8 +28,8 @@ function getStatusBadge(status: string) {
 
 export function ViewSentInvites() {
 	const params = useParams()
-	const orgId = Number(params.orgId)
-	const { data: invites, isLoading } = useSentInvites(orgId)
+	const orgId = params?.orgId as UUID | undefined
+	const { data: invites, isLoading } = useSentInvites(orgId as UUID)
 	const retractMutation = useRetractInvite()
 	const { data: user } = useCurrentClientUser()
 	const [pendingInviteId, setPendingInviteId] = useState<string | null>(null)
