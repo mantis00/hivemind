@@ -6,6 +6,7 @@ import { type Enclosure } from '@/lib/react-query/queries'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '../ui/badge'
+import { Checkbox } from '../ui/checkbox'
 
 // const urgencyRing: Record<NonNullable<any['urgency']>, string> = {
 // 	low: 'border-sky-400',
@@ -14,18 +15,46 @@ import { Badge } from '../ui/badge'
 // 	critical: 'border-red-500'
 // }
 
-export function EnclosureCard({ enclosure, onClick }: { enclosure: Enclosure; onClick: () => void }) {
+export function EnclosureCard({
+	enclosure,
+	onClick,
+	selectable = false,
+	selected = false,
+	onSelectChange
+}: {
+	enclosure: Enclosure
+	onClick: () => void
+	selectable?: boolean
+	selected?: boolean
+	onSelectChange?: (checked: boolean) => void
+}) {
 	// const ringClass = enclosure.urgency ? urgencyRing[enclosure.urgency] : 'border-sky-400'
 
 	return (
 		<>
 			<Card
-				className='cursor-pointer transition-colors hover:bg-accent/50 border-l-4 border-l-primary/20 py-2'
-				onClick={onClick}
+				className={`cursor-pointer transition-colors hover:bg-accent/50 border-l-4 py-2 ${
+					selected ? 'border-l-primary bg-accent/30' : 'border-l-primary/20'
+				}`}
+				onClick={() => {
+					if (selectable) {
+						onSelectChange?.(!selected)
+					} else {
+						onClick()
+					}
+				}}
 			>
 				<CardContent>
 					<div className='flex items-start justify-between gap-1'>
-						<div className='space-y-1.5'>
+						{selectable && (
+							<Checkbox
+								checked={selected}
+								onCheckedChange={(checked) => onSelectChange?.(!!checked)}
+								onClick={(e) => e.stopPropagation()}
+								className='mt-1 shrink-0'
+							/>
+						)}
+						<div className='space-y-1.5 flex-1 min-w-0'>
 							<p className='font-medium text-sm truncate'>{enclosure.name}</p>
 							<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
 								<MapPin className='h-3 w-3 shrink-0' />

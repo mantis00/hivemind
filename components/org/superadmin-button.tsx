@@ -10,7 +10,6 @@ export default function SuperadminButton() {
 	const { data: user } = useCurrentClientUser()
 	const { data: userProfile } = useMemberProfiles(user?.id ? [user.id] : [])
 	const router = useRouter()
-	console.log('userProfile:', userProfile)
 	const isSuperadmin = userProfile?.some((profile) => profile.is_superadmin === true)
 
 	if (!isSuperadmin) return null

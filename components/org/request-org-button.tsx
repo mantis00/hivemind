@@ -8,13 +8,16 @@ import { useState } from 'react'
 import { useRequestOrg } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import { toast } from 'sonner'
+import { useMemberProfiles } from '@/lib/react-query/queries'
 
 export function RequestOrgButton() {
 	const [name, setName] = useState('')
 	const [open, setOpen] = useState(false)
 	const { data: user } = useCurrentClientUser()
 	const requestOrgMutation = useRequestOrg()
+	const { data: userProfile } = useMemberProfiles(user?.id ? [user.id] : [])
+	const isSuperadmin = userProfile?.some((profile) => profile.is_superadmin === true)
+	if (!isSuperadmin) return null
 
 	return (
 		<ResponsiveDialogDrawer

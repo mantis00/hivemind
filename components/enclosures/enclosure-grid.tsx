@@ -1,6 +1,7 @@
 'use client'
 
-import { OrgSpecies, useSpecies } from '@/lib/react-query/queries'
+import { OrgSpecies, useSpecies, useOrgEnclosureCount } from '@/lib/react-query/queries'
+import { createClient } from '@/lib/supabase/client'
 import { ArrowDownIcon, ArrowUpIcon, Search, Warehouse } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -13,12 +14,14 @@ import { Button } from '../ui/button'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group'
 import { Skeleton } from '../ui/skeleton'
 import { UUID } from 'crypto'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useSpecies(orgId as UUID)
-	console.log(orgSpecies)
+	const { data: enclosureCount } = useOrgEnclosureCount(orgId as UUID)
+	// console.log(orgSpecies)
 
 	const [searchValue, setSearchValue] = useState('')
 	const [searchCount, setSearchCount] = useState(0)
@@ -102,16 +105,32 @@ export default function EnclosureGrid() {
 		setIsSorted(true)
 	}
 
-	const handleSearch = () => {
+	const handleSearch = async () => {
 		if (!searchValue.length || searchValue.trim() === '') return
-		let results: OrgSpecies[] = []
 		const val = searchValue.trim().toLowerCase()
 
-		results = [...(orgSpecies ?? [])].filter((spec) => {
+		// 1. Filter species by name match
+		const nameMatches = [...(orgSpecies ?? [])].filter((spec) => {
 			if (spec.custom_common_name && spec.custom_common_name.trim().toLowerCase().includes(val)) return true
 			if (spec.species?.scientific_name && spec.species.scientific_name.trim().toLowerCase().includes(val)) return true
-			if (spec.species?.scientific_name && spec.species.scientific_name.trim().toLowerCase().includes(val)) return true
+			return false
 		})
+
+		// 2. Query enclosures whose name matches the search string
+		const supabase = createClient()
+		const { data: matchingEnclosures } = await supabase
+			.from('enclosures')
+			.select('species_id')
+			.eq('org_id', orgId!)
+			.ilike('name', `%${val}%`)
+
+		// 3. Merge species that have matching enclosures
+		const matchedSpeciesIds = new Set(matchingEnclosures?.map((e) => e.species_id) ?? [])
+		const enclosureMatches = [...(orgSpecies ?? [])].filter(
+			(spec) => matchedSpeciesIds.has(spec.id) && !nameMatches.some((nm) => nm.id === spec.id)
+		)
+
+		const results = [...nameMatches, ...enclosureMatches]
 		setDisplayedSpecies(results)
 		setSearchCount(results.length)
 	}
@@ -135,8 +154,11 @@ export default function EnclosureGrid() {
 	return (
 		<div className='bg-background full'>
 			<div className='mx-auto max-w-3xl px-4'>
-				<div className='mb-2 flex items-center gap-3 mt-3'>
+				<div className={`mb-2 flex items-center ${useIsMobile() ? 'gap-1' : 'gap-3'}`}>
 					<Badge variant='secondary'>{orgSpecies?.length} species</Badge>
+					<Badge variant='secondary' className='gap-1'>
+						{enclosureCount ?? 0} enclosures
+					</Badge>
 					<div className='ml-auto'>
 						<CreateEnclosureButton />
 					</div>
