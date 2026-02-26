@@ -1,12 +1,13 @@
 'use client'
 import { type OrgSpecies, type Enclosure, useOrgEnclosuresForSpecies } from '@/lib/react-query/queries'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Card, CardContent } from '../ui/card'
-import { Bug, ChevronRight, FlaskConical, Settings, Settings2Icon, SettingsIcon } from 'lucide-react'
+import { Bug, ChevronRight, ClipboardCheck, ListChecks } from 'lucide-react'
 import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
 import { EnclosureCard } from './enclosure-card'
 import { Virtuoso } from 'react-virtuoso'
 import { EnclosureDialog } from './enclosure-dialog'
@@ -16,10 +17,13 @@ import SpeciesDropdown from './species-settings-dropdown'
 export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
+	const router = useRouter()
 
 	const [isOpen, setIsOpen] = useState(false)
 	const [selectedEnclosure, setSelectedEnclosure] = useState<Enclosure | null>(null)
 	const [dialogOpen, setDialogOpen] = useState(false)
+	const [selectMode, setSelectMode] = useState(false)
+	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
 
 	const { data: useEnclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
 
@@ -33,7 +37,29 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 		setDialogOpen(true)
 	}
 
-	console.log('SpeciesRow render', species)
+	const handleSelectChange = (enclosureId: UUID, checked: boolean) => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev)
+			if (checked) {
+				next.add(enclosureId)
+			} else {
+				next.delete(enclosureId)
+			}
+			return next
+		})
+	}
+
+	const handleCompare = () => {
+		const ids = Array.from(selectedIds).join(',')
+		router.push(`/protected/orgs/${orgId}/enclosures/compare?ids=${ids}`)
+	}
+
+	const toggleSelectMode = () => {
+		setSelectMode((prev) => !prev)
+		if (selectMode) {
+			setSelectedIds(new Set())
+		}
+	}
 
 	return (
 		<>
@@ -65,6 +91,28 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 
 					<CollapsibleContent>
 						<div className='border-t bg-muted/30 p-2'>
+							{/* Select mode controls */}
+							<div className='flex items-center gap-2 mb-3'>
+								<Button
+									variant={selectMode ? 'secondary' : 'outline'}
+									size='sm'
+									className='gap-1.5 text-xs'
+									onClick={toggleSelectMode}
+								>
+									<ListChecks className='h-3.5 w-3.5' />
+									{selectMode ? 'Cancel Selection' : 'Select Enclosures'}
+								</Button>
+								{selectMode && selectedIds.size >= 2 && (
+									<Button size='sm' className='gap-1.5 text-xs' onClick={handleCompare}>
+										<ClipboardCheck className='h-3.5 w-3.5' />
+										Compare Tasks ({selectedIds.size})
+									</Button>
+								)}
+								{selectMode && (
+									<span className='text-xs text-muted-foreground ml-auto'>{selectedIds.size} selected</span>
+								)}
+							</div>
+
 							{/* Care instructions */}
 							<div className='mb-3 rounded-md bg-muted p-3'>
 								<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
@@ -84,7 +132,13 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 										data={useEnclosures}
 										itemContent={(index, enclosure) => (
 											<div className='p-1 pb-0 last:pb-2'>
-												<EnclosureCard enclosure={enclosure} onClick={() => handleEnclosureClick(enclosure)} />
+												<EnclosureCard
+													enclosure={enclosure}
+													onClick={() => handleEnclosureClick(enclosure)}
+													selectable={selectMode}
+													selected={selectedIds.has(enclosure.id)}
+													onSelectChange={(checked) => handleSelectChange(enclosure.id, checked)}
+												/>
 											</div>
 										)}
 									/>

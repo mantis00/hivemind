@@ -15,9 +15,9 @@ import { SidebarMenuButton } from '../ui/sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Separator } from 'radix-ui'
 import EditImageDialog from './edit-species-image'
-import { Species } from '@/lib/react-query/queries'
+import { OrgSpecies, Species } from '@/lib/react-query/queries'
 
-export default function SpeciesDropdown({ species }: { species: Species }) {
+export default function SpeciesDropdown({ species }: { species: OrgSpecies }) {
 	const isMobile = useIsMobile()
 
 	return (

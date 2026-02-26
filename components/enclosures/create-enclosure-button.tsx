@@ -20,6 +20,7 @@ import {
 	ComboboxList
 } from '../ui/combobox'
 import { UUID } from 'crypto'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export function CreateEnclosureButton() {
 	const [open, setOpen] = useState(false)
@@ -79,7 +80,7 @@ export function CreateEnclosureButton() {
 			onOpenChange={(isOpen) => setOpen(isOpen)}
 			trigger={
 				<Button variant='secondary' onClick={() => setOpen(true)}>
-					Create Enclosure <PlusIcon className='w-4 h-4' />
+					Create {useIsMobile() ? '' : 'Enclosure'} <PlusIcon className='w-4 h-4' />
 				</Button>
 			}
 		>
