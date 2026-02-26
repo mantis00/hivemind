@@ -11,7 +11,7 @@ import { useUserOrgs, type UserOrg } from '@/lib/react-query/queries'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { UUID } from 'crypto'
 
-export function OrgRow() {
+export default function OrgRow() {
 	const router = useRouter()
 	const [loadingOrgId, setLoadingOrgId] = useState<UUID | null>(null)
 	const { data: user } = useCurrentClientUser()
@@ -65,7 +65,7 @@ export function OrgRow() {
 								)}
 							</Button>
 						</TableCell>
-						{userOrg.access_lvl !== 3 && (
+						{userOrg.access_lvl < 2 && (
 							<TableCell>
 								<LeaveOrgButton />
 							</TableCell>

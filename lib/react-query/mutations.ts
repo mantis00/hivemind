@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { UUID } from 'crypto'
+import { toast } from 'sonner'
 
 export function useCreateOrg() {
 	const queryClient = useQueryClient()
@@ -190,6 +191,7 @@ export function useInviteMember() {
 		onSuccess: () => {
 			// Invalidate invites
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
+			toast.success('Invite sent successfully!')
 		}
 	})
 }
@@ -198,7 +200,7 @@ export function useAcceptInvite() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ inviteId, userId }: { inviteId: string; userId: string }) => {
+		mutationFn: async ({ inviteId, userId }: { inviteId: UUID; userId: string }) => {
 			const supabase = createClient()
 
 			// Get the invite details
@@ -248,7 +250,7 @@ export function useRejectInvite() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ inviteId }: { inviteId: string }) => {
+		mutationFn: async ({ inviteId }: { inviteId: UUID }) => {
 			const supabase = createClient()
 
 			// Update invite status to rejected
@@ -267,11 +269,15 @@ export function useRetractInvite() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ inviteId }: { inviteId: string }) => {
+		mutationFn: async ({ inviteId }: { inviteId: UUID }) => {
 			const supabase = createClient()
 
-			// Delete the invite
-			const { error } = await supabase.from('invites').delete().eq('invite_id', inviteId).eq('status', 'pending')
+			// Mark the invite as cancelled
+			const { error } = await supabase
+				.from('invites')
+				.update({ status: 'cancelled' })
+				.eq('invite_id', inviteId)
+				.eq('status', 'pending')
 
 			if (error) throw error
 		},
@@ -443,6 +449,126 @@ export function useUpdateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+		}
+	})
+}
+
+export function useSuperadminElavate() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ userId }: { userId: string }) => {
+			const supabase = createClient()
+
+			// Update the user's superadmin status
+			const { error } = await supabase.from('profiles').update({ is_superadmin: true }).eq('id', userId)
+
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			// Invalidate and refetch superadmin data
+			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+		}
+	})
+}
+
+export function useRequestOrg() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requesterId, orgName }: { requesterId: string; orgName: string }) => {
+			const supabase = createClient()
+
+			if (orgName.trim() === '') {
+				throw new Error('Organization name cannot be empty')
+			}
+
+			// Prevent duplicate pending requests for the same name by the same user
+			const { data: existing, error: checkError } = await supabase
+				.from('org_requests')
+				.select('request_id')
+				.eq('requester_id', requesterId)
+				.eq('org_name', orgName.trim())
+				.eq('status', 'pending')
+				.maybeSingle()
+
+			if (checkError) throw checkError
+			if (existing) throw new Error('There is already a pending request for this organization')
+
+			const { error } = await supabase.from('org_requests').insert({
+				requester_id: requesterId,
+				org_name: orgName.trim()
+			})
+
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgRequests', variables.requesterId] })
+			toast.success('Request submitted! A superadmin will review it shortly.')
+		}
+	})
+}
+
+export function useApproveOrgRequest() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requestId, reviewerId }: { requestId: UUID; reviewerId: string }) => {
+			const supabase = createClient()
+			const { error } = await supabase.rpc('approve_org_request', {
+				p_request_id: requestId,
+				p_reviewer_id: reviewerId
+			})
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+			queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
+		}
+	})
+}
+
+export function useRejectOrgRequest() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requestId, reviewerId }: { requestId: UUID; reviewerId: string }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase
+				.from('org_requests')
+				.update({ status: 'rejected', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
+				.eq('request_id', requestId)
+				.eq('status', 'pending')
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+			queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+		}
+	})
+}
+
+export function useRetractOrgRequest() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requestId }: { requestId: UUID }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase
+				.from('org_requests')
+				.update({ status: 'cancelled' })
+				.eq('request_id', requestId)
+				.eq('status', 'pending')
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+			queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
 		}
 	})
 }

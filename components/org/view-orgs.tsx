@@ -1,12 +1,16 @@
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { OrgRow } from './org-row'
-import { PendingInvites } from './view-pending-invites'
+import OrgRow from './org-row'
+import PendingInvites from '@/components/org/view-pending-invites'
+import SuperadminButton from '@/components/org/superadmin-button'
+import { ViewSentRequests } from './view-sent-requests'
 
 export function ViewOrgs() {
 	return (
 		<>
-			<div className='mb-4 flex flex-col mx-auto'>
+			<div className='mb-4 flex flex-col mx-auto gap-4'>
+				<SuperadminButton />
 				<PendingInvites />
+				<ViewSentRequests />
 			</div>
 			<Table>
 				<TableHeader>

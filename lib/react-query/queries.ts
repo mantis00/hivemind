@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { UUID } from 'crypto'
+import { useCurrentClientUser } from '@/lib/react-query/auth'
 
 export type Org = {
 	org_id: UUID
@@ -27,15 +28,16 @@ export type MemberProfile = {
 	last_name: string
 	email: string
 	full_name: string
+	is_superadmin: boolean
 }
 
 export type Invite = {
-	invite_id: string
+	invite_id: UUID
 	org_id: UUID
 	inviter_id: string
 	invitee_email: string
 	access_lvl: number
-	status: 'pending' | 'accepted' | 'rejected'
+	status: 'pending' | 'accepted' | 'rejected' | 'cancelled'
 	created_at: string
 	expires_at: string
 	orgs?: {
@@ -92,6 +94,38 @@ export type EnclosureNote = {
 	note_text: string
 }
 
+export type AllProfile = {
+	id: UUID
+	first_name: string
+	last_name: string
+	email: string
+	full_name: string
+	updated_at: string
+	theme_preference: string | null
+	is_superadmin: boolean
+	user_org_role: {
+		org_id: UUID
+		access_lvl: number
+		orgs: {
+			name: string
+		}
+	}[]
+}
+
+export type OrgRequest = {
+	request_id: UUID
+	requester_id: string
+	org_name: string
+	status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+	created_at: string
+	reviewed_by: string | null
+	reviewed_at: string | null
+	profiles?: {
+		full_name: string
+		email: string
+	}
+}
+
 export function useUserOrgs(userId: string) {
 	return useQuery({
 		queryKey: ['orgs', userId],
@@ -127,15 +161,23 @@ export function useOrgMembers(orgId: UUID) {
 	})
 }
 
+export function useIsOwnerOrSuperadmin(orgId: UUID | undefined): boolean {
+	const { data: user } = useCurrentClientUser()
+	const { data: orgMembers } = useOrgMembers(orgId as UUID)
+	if (!user || !orgId) return false
+	const accessLevel = orgMembers?.find((m) => m.user_id === user.id)?.access_lvl ?? 0
+	return accessLevel >= 2
+}
+
 export function useMemberProfiles(userIds: string[]) {
 	return useQuery({
 		queryKey: ['profiles', userIds],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
-				.from('profiles')
-				.select('id, first_name, last_name, email, full_name')
-				.in('id', userIds)) as { data: MemberProfile[] | null; error: PostgrestError | null }
+			const { data, error } = (await supabase.from('profiles').select('*').in('id', userIds)) as {
+				data: MemberProfile[] | null
+				error: PostgrestError | null
+			}
 
 			if (error) throw error
 
@@ -328,5 +370,56 @@ export function useOrgEnclosuresForSpecies(orgId: UUID, speciesId: UUID) {
 			return data
 		},
 		enabled: !!orgId && !!speciesId
+	})
+}
+
+export function useAllProfiles() {
+	return useQuery({
+		queryKey: ['allProfiles'],
+		queryFn: async () => {
+			const supabase = createClient()
+
+			const { data, error } = (await supabase
+				.from('profiles')
+				.select('*, user_org_role(org_id, access_lvl, orgs(name))')
+				.order('full_name', { ascending: true })) as { data: AllProfile[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data
+		}
+	})
+}
+
+export function useMyOrgRequests(userId: string) {
+	return useQuery({
+		queryKey: ['orgRequests', userId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('org_requests')
+				.select('*')
+				.eq('requester_id', userId)
+				.order('created_at', { ascending: false })) as { data: OrgRequest[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data
+		},
+		enabled: !!userId
+	})
+}
+
+export function useAllOrgRequests() {
+	return useQuery({
+		queryKey: ['allOrgRequests'],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('org_requests')
+				.select('*, profiles!org_requests_requester_id_fkey(full_name, email)')
+				.order('created_at', { ascending: false })) as { data: OrgRequest[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data
+		}
 	})
 }
