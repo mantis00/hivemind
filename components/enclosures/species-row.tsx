@@ -5,7 +5,7 @@ import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Card, CardContent } from '../ui/card'
-import { Bug, ChevronRight, ClipboardCheck, ListChecks } from 'lucide-react'
+import { Bug, ChevronRight, Group, ListChecks, TrashIcon } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { EnclosureCard } from './enclosure-card'
@@ -13,11 +13,14 @@ import { Virtuoso } from 'react-virtuoso'
 import { EnclosureDialog } from './enclosure-dialog'
 import { UUID } from 'crypto'
 import SpeciesDropdown from './species-settings-dropdown'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 
 export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const router = useRouter()
+	const isMobile = useIsMobile()
 
 	const [isOpen, setIsOpen] = useState(false)
 	const [selectedEnclosure, setSelectedEnclosure] = useState<Enclosure | null>(null)
@@ -26,6 +29,7 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
 
 	const { data: useEnclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
+	const batchDeleteMutation = useBatchDeleteEnclosures()
 
 	// Derive the latest enclosure data from the query cache so the dialog always shows fresh data
 	const currentEnclosure = selectedEnclosure
@@ -49,9 +53,27 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 		})
 	}
 
-	const handleCompare = () => {
-		const ids = Array.from(selectedIds).join(',')
-		// router.push(`/protected/orgs/${orgId}/enclosures/compare?ids=${ids}`)
+	const handleDelete = () => {
+		if (selectedIds.size === 0 || !orgId) return
+
+		const confirmed = window.confirm(
+			`Are you sure you want to delete ${selectedIds.size} enclosure${selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.`
+		)
+		if (!confirmed) return
+
+		batchDeleteMutation.mutate(
+			{ ids: Array.from(selectedIds), orgId },
+			{
+				onSuccess: () => {
+					setSelectedIds(new Set())
+					setSelectMode(false)
+				},
+				onError: (err) => {
+					console.error('Failed to delete enclosures:', err)
+					alert('Failed to delete enclosures')
+				}
+			}
+		)
 	}
 
 	const toggleSelectMode = () => {
@@ -100,16 +122,24 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 									onClick={toggleSelectMode}
 								>
 									<ListChecks className='h-3.5 w-3.5' />
-									{selectMode ? 'Cancel Selection' : 'Select Enclosures'}
+									{selectMode ? (isMobile ? 'Cancel' : 'Cancel Selection') : isMobile ? 'Select' : 'Select Enclosures'}
 								</Button>
-								{selectMode && selectedIds.size >= 2 && (
-									<Button size='sm' className='gap-1.5 text-xs' onClick={handleCompare}>
-										<ClipboardCheck className='h-3.5 w-3.5' />
-										Compare Tasks ({selectedIds.size})
-									</Button>
-								)}
-								{selectMode && (
-									<span className='text-xs text-muted-foreground ml-auto'>{selectedIds.size} selected</span>
+								{selectMode && selectedIds.size >= 1 && (
+									<div className='flex w-full items-center gap-2'>
+										<div className='text-muted-foreground text-xs ml-auto'>Selected: {selectedIds.size}</div>
+										<div>
+											<Button
+												size='sm'
+												variant='destructive'
+												className='gap-1.5 text-xs'
+												onClick={handleDelete}
+												disabled={batchDeleteMutation.isPending}
+											>
+												<TrashIcon className='h-3.5 w-3.5' />
+												{batchDeleteMutation.isPending ? 'Deleting...' : 'Delete'}
+											</Button>
+										</div>
+									</div>
 								)}
 							</div>
 
