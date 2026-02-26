@@ -20,6 +20,7 @@ import {
 	ComboboxList
 } from '../ui/combobox'
 import { UUID } from 'crypto'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export function CreateEnclosureButton() {
 	const [open, setOpen] = useState(false)
@@ -28,7 +29,7 @@ export function CreateEnclosureButton() {
 	const [speciesQuery, setSpeciesQuery] = useState('')
 	const [location, setLocation] = useState('')
 	const [locationQuery, setLocationQuery] = useState('')
-	const [count, setCount] = useState(0)
+	const [count, setCount] = useState('')
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
 	const params = useParams()
@@ -55,7 +56,7 @@ export function CreateEnclosureButton() {
 				species_id: species_id?.id as UUID,
 				name: name,
 				location: location_id?.id as UUID,
-				current_count: count
+				current_count: count ? parseInt(count, 10) : 0
 			},
 			{
 				onSuccess: () => {
@@ -65,7 +66,7 @@ export function CreateEnclosureButton() {
 					setSpeciesQuery('')
 					setLocation('')
 					setLocationQuery('')
-					setCount(0)
+					setCount('')
 				}
 			}
 		)
@@ -79,7 +80,7 @@ export function CreateEnclosureButton() {
 			onOpenChange={(isOpen) => setOpen(isOpen)}
 			trigger={
 				<Button variant='secondary' onClick={() => setOpen(true)}>
-					Create Enclosure <PlusIcon className='w-4 h-4' />
+					Create {useIsMobile() ? '' : 'Enclosure'} <PlusIcon className='w-4 h-4' />
 				</Button>
 			}
 		>
@@ -170,7 +171,7 @@ export function CreateEnclosureButton() {
 							value={count}
 							type='number'
 							min='0'
-							onChange={(e) => setCount(Number(e.target.value))}
+							onChange={(e) => setCount(e.target.value)}
 							required
 							disabled={createEnclosureMutation.isPending}
 						/>

@@ -372,6 +372,32 @@ export function useDeleteEnclosure() {
 	})
 }
 
+export function useBatchDeleteEnclosures() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ ids, orgId }: { ids: UUID[]; orgId: UUID }) => {
+			const supabase = createClient()
+
+			// Delete tasks for all enclosures
+			const { error: tasksError } = await supabase.from('tasks').delete().in('enclosure_id', ids)
+			if (tasksError) throw tasksError
+
+			// Delete tank notes for all enclosures
+			const { error: notesError } = await supabase.from('tank_notes').delete().in('enclosure_id', ids)
+			if (notesError) throw notesError
+
+			// Delete all enclosures
+			const { error: enclosuresError } = await supabase.from('enclosures').delete().in('id', ids)
+			if (enclosuresError) throw enclosuresError
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+		}
+	})
+}
+
 export function useCreateEnclosureNote() {
 	const queryClient = useQueryClient()
 	return useMutation({
@@ -443,6 +469,27 @@ export function useUpdateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+		}
+	})
+}
+
+export function useUpdateSpeciesImage() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ species_id, picture_url }: { species_id: UUID; picture_url: string }) => {
+			const supabase = createClient()
+
+			if (!species_id || picture_url === '') {
+				throw new Error('Missing id or url is empty')
+			}
+
+			const { error } = await supabase.from('species').update({ picture_url: picture_url }).eq('id', species_id)
+
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['singleSpecies', variables.species_id] })
 		}
 	})
 }
