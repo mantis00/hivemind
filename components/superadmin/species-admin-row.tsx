@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { type Species } from '@/lib/react-query/queries'
 import { Card, CardContent } from '@/components/ui/card'
 import { Bug } from 'lucide-react'
-import { EditSpeciesDialog } from './edit-species-dialog'
+import { EditSpeciesButton } from './edit-species-button'
 
 export function SpeciesAdminRow({ species }: { species: Species }) {
 	const [editOpen, setEditOpen] = useState(false)
@@ -35,7 +35,7 @@ export function SpeciesAdminRow({ species }: { species: Species }) {
 				</CardContent>
 			</Card>
 
-			<EditSpeciesDialog species={species} open={editOpen} onOpenChange={setEditOpen} />
+			<EditSpeciesButton species={species} open={editOpen} onOpenChange={setEditOpen} />
 		</>
 	)
 }

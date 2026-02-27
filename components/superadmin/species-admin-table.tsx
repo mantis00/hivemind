@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowDownIcon, ArrowUpIcon, Search, XIcon } from 'lucide-react'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
 import { SpeciesAdminRow } from './species-admin-row'
-import { CreateSpeciesDialog } from './create-species-dialog'
+import { CreateSpeciesButton } from './create-species-button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 
@@ -106,7 +106,7 @@ export function SpeciesAdminTable() {
 			<div className='flex justify-between gap-3 items-center'>
 				<Badge variant='secondary'>{allSpecies?.length ?? 0} species</Badge>
 				<div className='flex flex-row items-center gap-3 ml-auto'>
-					<CreateSpeciesDialog />
+					<CreateSpeciesButton />
 					<Select onValueChange={handleSortChange} value={sortKey || ''} disabled={isLoading}>
 						<SelectTrigger className='w-45'>
 							<SelectValue placeholder='Sort' className='flex-1 min-w-0 truncate' />

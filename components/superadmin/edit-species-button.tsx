@@ -19,7 +19,7 @@ interface EditSpeciesDialogProps {
 	onOpenChange: (open: boolean) => void
 }
 
-export function EditSpeciesDialog({ species, open, onOpenChange }: EditSpeciesDialogProps) {
+export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDialogProps) {
 	const [scientificName, setScientificName] = useState(species.scientific_name)
 	const [commonName, setCommonName] = useState(species.common_name)
 	const [careInstructions, setCareInstructions] = useState(species.care_instructions ?? '')

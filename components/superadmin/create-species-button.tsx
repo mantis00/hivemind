@@ -11,7 +11,7 @@ import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { SpeciesImageDropzone } from './species-image-dropzone'
 import { createClient } from '@/lib/supabase/client'
 
-export function CreateSpeciesDialog() {
+export function CreateSpeciesButton() {
 	const [open, setOpen] = useState(false)
 	const [scientificName, setScientificName] = useState('')
 	const [commonName, setCommonName] = useState('')
