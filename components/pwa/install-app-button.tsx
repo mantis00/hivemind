@@ -37,7 +37,6 @@ export default function InstallAppButton() {
 			open={showInstructions}
 			onOpenChange={(isOpen) => setShowInstructions(isOpen)}
 		>
-			<div className='py-2' />
 			<Button variant='outline' onClick={() => setShowInstructions(false)}>
 				Close
 			</Button>
