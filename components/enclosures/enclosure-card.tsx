@@ -1,35 +1,29 @@
 'use client'
 import { format } from 'date-fns'
+import { useState } from 'react'
 
 import { Calendar, MapPin, Users } from 'lucide-react'
-import { type Enclosure } from '@/lib/react-query/queries'
+import { type Enclosure, type OrgSpecies } from '@/lib/react-query/queries'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '../ui/badge'
 import { Checkbox } from '../ui/checkbox'
 
-// const urgencyRing: Record<NonNullable<any['urgency']>, string> = {
-// 	low: 'border-sky-400',
-// 	med: 'border-amber-400',
-// 	high: 'border-orange-500',
-// 	critical: 'border-red-500'
-// }
-
 export function EnclosureCard({
 	enclosure,
+	species,
 	onClick,
 	selectable = false,
 	selected = false,
 	onSelectChange
 }: {
 	enclosure: Enclosure
+	species: OrgSpecies
 	onClick: () => void
 	selectable?: boolean
 	selected?: boolean
 	onSelectChange?: (checked: boolean) => void
 }) {
-	// const ringClass = enclosure.urgency ? urgencyRing[enclosure.urgency] : 'border-sky-400'
-
 	return (
 		<>
 			<Card
@@ -44,14 +38,14 @@ export function EnclosureCard({
 					}
 				}}
 			>
-				<CardContent>
-					<div className='flex items-start justify-between gap-1'>
+				<CardContent className='p-2'>
+					<div className='flex items-center justify-between gap-1'>
 						{selectable && (
 							<Checkbox
 								checked={selected}
 								onCheckedChange={(checked) => onSelectChange?.(!!checked)}
 								onClick={(e) => e.stopPropagation()}
-								className='mt-1 shrink-0'
+								className='shrink-0 m-2'
 							/>
 						)}
 						<div className='space-y-1.5 flex-1 min-w-0'>
@@ -67,7 +61,7 @@ export function EnclosureCard({
 								)}
 							</div>
 						</div>
-						<Badge variant='secondary' className='shrink-0 gap-1 my-auto'>
+						<Badge variant='secondary' className='gap-1 self-center shrink-0'>
 							<Users className='h-3 w-3' />
 							{enclosure.current_count}
 						</Badge>

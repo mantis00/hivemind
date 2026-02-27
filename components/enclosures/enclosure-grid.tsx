@@ -1,7 +1,6 @@
 'use client'
 
 import { OrgSpecies, useSpecies, useOrgEnclosureCount } from '@/lib/react-query/queries'
-import { createClient } from '@/lib/supabase/client'
 import { ArrowDownIcon, ArrowUpIcon, Search, Warehouse } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -21,7 +20,6 @@ export default function EnclosureGrid() {
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useSpecies(orgId as UUID)
 	const { data: enclosureCount } = useOrgEnclosureCount(orgId as UUID)
-	// console.log(orgSpecies)
 
 	const [searchValue, setSearchValue] = useState('')
 	const [searchCount, setSearchCount] = useState(0)
@@ -116,21 +114,7 @@ export default function EnclosureGrid() {
 			return false
 		})
 
-		// 2. Query enclosures whose name matches the search string
-		const supabase = createClient()
-		const { data: matchingEnclosures } = await supabase
-			.from('enclosures')
-			.select('species_id')
-			.eq('org_id', orgId!)
-			.ilike('name', `%${val}%`)
-
-		// 3. Merge species that have matching enclosures
-		const matchedSpeciesIds = new Set(matchingEnclosures?.map((e) => e.species_id) ?? [])
-		const enclosureMatches = [...(orgSpecies ?? [])].filter(
-			(spec) => matchedSpeciesIds.has(spec.id) && !nameMatches.some((nm) => nm.id === spec.id)
-		)
-
-		const results = [...nameMatches, ...enclosureMatches]
+		const results = [...nameMatches]
 		setDisplayedSpecies(results)
 		setSearchCount(results.length)
 	}

@@ -38,7 +38,7 @@ export default function DeleteEnclosureButton({
 			open={open}
 			onOpenChange={(isOpen) => setOpen(isOpen)}
 			trigger={
-				<Button variant='destructive'>
+				<Button variant='destructive' className='w-full'>
 					<TrashIcon /> Delete Enclosure
 				</Button>
 			}

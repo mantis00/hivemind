@@ -29,6 +29,7 @@ interface ResponsiveDialogDrawerProps {
 	children: React.ReactNode
 	className?: string
 	footer?: React.ReactNode
+	titleAction?: React.ReactNode
 	open?: boolean
 	onOpenChange?: (isOpen: boolean) => void
 }
@@ -40,6 +41,7 @@ export function ResponsiveDialogDrawer({
 	children,
 	className,
 	footer,
+	titleAction,
 	open: controlledOpen,
 	onOpenChange
 }: ResponsiveDialogDrawerProps) {
@@ -64,7 +66,10 @@ export function ResponsiveDialogDrawer({
 				{trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
 				<DialogContent className={cn('sm:max-w-[425px] p-6 rounded-2xl', className)}>
 					<DialogHeader>
-						<DialogTitle>{title}</DialogTitle>
+						<div className='flex items-center gap-2 pr-6'>
+							<DialogTitle className='flex-1'>{title}</DialogTitle>
+							{titleAction}
+						</div>
 						<DialogDescription>{description}</DialogDescription>
 					</DialogHeader>
 					{children}
@@ -79,7 +84,10 @@ export function ResponsiveDialogDrawer({
 			{trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
 			<DrawerContent className={cn('w-full px-4 pb-6', className)}>
 				<DrawerHeader className='text-left pt-5 pb-2'>
-					<DrawerTitle>{title}</DrawerTitle>
+					<div className='flex items-center gap-2'>
+						<DrawerTitle className='flex-1'>{title}</DrawerTitle>
+						{titleAction}
+					</div>
 					<DrawerDescription>{description}</DrawerDescription>
 				</DrawerHeader>
 				{children}

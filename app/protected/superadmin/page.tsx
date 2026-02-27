@@ -1,5 +1,6 @@
 import { AllMembersTable } from '@/components/superadmin/all-members-table'
 import { ViewPendingRequests } from '@/components/superadmin/view-pending-requests'
+import { SpeciesAdminTable } from '@/components/superadmin/species-admin-table'
 
 export default async function Page() {
 	return (
@@ -17,6 +18,10 @@ export default async function Page() {
 					<section className='space-y-3'>
 						<h2 className='text-lg font-semibold'>All Members</h2>
 						<AllMembersTable />
+					</section>
+					<section className='space-y-3'>
+						<h2 className='text-lg font-semibold'>Species Management</h2>
+						<SpeciesAdminTable />
 					</section>
 				</div>
 			</div>

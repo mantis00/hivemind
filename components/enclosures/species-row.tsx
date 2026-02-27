@@ -5,14 +5,14 @@ import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Card, CardContent } from '../ui/card'
-import { Bug, ChevronRight, Group, ListChecks, TrashIcon } from 'lucide-react'
+import { Bug, ChevronRight, EyeIcon, ListChecks, TrashIcon, X } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { EnclosureCard } from './enclosure-card'
 import { Virtuoso } from 'react-virtuoso'
 import { EnclosureDialog } from './enclosure-dialog'
+import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { UUID } from 'crypto'
-import SpeciesDropdown from './species-settings-dropdown'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 
@@ -22,18 +22,20 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 	const router = useRouter()
 	const isMobile = useIsMobile()
 
+	const { data: enclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
+
 	const [isOpen, setIsOpen] = useState(false)
 	const [selectedEnclosure, setSelectedEnclosure] = useState<Enclosure | null>(null)
 	const [dialogOpen, setDialogOpen] = useState(false)
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
+	const [detailsOpen, setDetailsOpen] = useState(false)
 
-	const { data: useEnclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
 	const batchDeleteMutation = useBatchDeleteEnclosures()
 
-	// Derive the latest enclosure data from the query cache so the dialog always shows fresh data
+	// Derive the latest enclosure data from the passed list so the dialog always shows fresh data
 	const currentEnclosure = selectedEnclosure
-		? (useEnclosures?.find((e) => e.id === selectedEnclosure.id) ?? selectedEnclosure)
+		? (enclosures?.find((e) => e.id === selectedEnclosure.id) ?? selectedEnclosure)
 		: null
 
 	const handleEnclosureClick = (enclosure: Enclosure) => {
@@ -95,20 +97,38 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 										isOpen ? 'rotate-90' : ''
 									}`}
 								/>
-								<Bug className='h-5 w-5 shrink-0 text-muted-foreground' />
+								{species.species.picture_url ? (
+									<img
+										src={species.species.picture_url}
+										alt={species.custom_common_name}
+										className='h-8 w-8 rounded-md object-cover shrink-0 border'
+									/>
+								) : (
+									<div className='h-8 w-8 rounded-md border flex items-center justify-center shrink-0 bg-muted'>
+										<Bug className='h-4 w-4 text-muted-foreground' />
+									</div>
+								)}
 								<div className='flex-1 min-w-0'>
 									<div className='flex items-center gap-2'>
 										<p className='font-medium text-sm truncate'>{species.custom_common_name}</p>
 										<Badge variant='outline' className='shrink-0 text-xs'>
-											{useEnclosures?.length} {useEnclosures?.length === 1 ? 'enclosure' : 'enclosures'}
+											{enclosures?.length} {enclosures?.length === 1 ? 'enclosure' : 'enclosures'}
 										</Badge>
 									</div>
 									<p className='text-xs text-muted-foreground italic truncate'>{species.species.scientific_name}</p>
 								</div>
 							</button>
 						</CollapsibleTrigger>
-						{/* <FlaskConical className='h-4 w-4 shrink-0 text-muted-foreground' /> */}
-						<SpeciesDropdown species={species} />
+						<Button
+							size='sm'
+							className='gap-1.5 h-7 text-xs shrink-0 mr-1'
+							onClick={(e) => {
+								e.stopPropagation()
+								setDetailsOpen(true)
+							}}
+						>
+							View Details <EyeIcon className='h-3.5 w-3.5' />
+						</Button>
 					</CardContent>
 
 					<CollapsibleContent>
@@ -121,7 +141,7 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 									className='gap-1.5 text-xs'
 									onClick={toggleSelectMode}
 								>
-									<ListChecks className='h-3.5 w-3.5' />
+									{selectMode ? <X className='h-3.5 w-3.5' /> : <ListChecks className='h-3.5 w-3.5' />}
 									{selectMode ? (isMobile ? 'Cancel' : 'Cancel Selection') : isMobile ? 'Select' : 'Select Enclosures'}
 								</Button>
 								{selectMode && selectedIds.size >= 1 && (
@@ -143,27 +163,19 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 								)}
 							</div>
 
-							{/* Care instructions */}
-							<div className='mb-3 rounded-md bg-muted p-3'>
-								<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
-								<p className='text-xs leading-relaxed'>{species.custom_care_instructions}</p>
-							</div>
-
 							{/* Enclosures Virtuoso list */}
-							{useEnclosures?.length && useEnclosures?.length > 0 ? (
+							{enclosures?.length && enclosures?.length > 0 ? (
 								<div className='rounded-md border bg-background'>
 									<Virtuoso
 										style={{
-											height:
-												useEnclosures?.length && useEnclosures?.length <= 4
-													? `${useEnclosures?.length * 114}px`
-													: '352px'
+											height: enclosures?.length && enclosures?.length <= 4 ? `${enclosures?.length * 114}px` : '352px'
 										}}
-										data={useEnclosures}
+										data={enclosures}
 										itemContent={(index, enclosure) => (
 											<div className='p-1 pb-0 last:pb-2'>
 												<EnclosureCard
 													enclosure={enclosure}
+													species={species}
 													onClick={() => handleEnclosureClick(enclosure)}
 													selectable={selectMode}
 													selected={selectedIds.has(enclosure.id)}
@@ -191,6 +203,32 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 					onOpenChange={setDialogOpen}
 				/>
 			)}
+
+			<ResponsiveDialogDrawer
+				title={species.custom_common_name}
+				description={species.species.scientific_name}
+				open={detailsOpen}
+				onOpenChange={setDetailsOpen}
+				trigger={<span className='hidden' />}
+			>
+				<div className='flex flex-col gap-4'>
+					{species.species.picture_url ? (
+						<img
+							src={species.species.picture_url}
+							alt={species.custom_common_name}
+							className='rounded-md max-h-48 w-full object-contain mx-auto'
+						/>
+					) : (
+						<div className='rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground'>
+							No image available
+						</div>
+					)}
+					<div className='rounded-md bg-muted p-3'>
+						<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
+						<p className='text-sm leading-relaxed'>{species.custom_care_instructions}</p>
+					</div>
+				</div>
+			</ResponsiveDialogDrawer>
 		</>
 	)
 }
