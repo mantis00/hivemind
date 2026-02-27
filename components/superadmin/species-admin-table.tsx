@@ -5,10 +5,12 @@ import { Virtuoso } from 'react-virtuoso'
 import { useAllSpecies, type Species } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search } from 'lucide-react'
+import { ArrowDownIcon, ArrowUpIcon, Search, XIcon } from 'lucide-react'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
 import { SpeciesAdminRow } from './species-admin-row'
 import { CreateSpeciesDialog } from './create-species-dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 
 const MAX_HEIGHT = 600
 const ROW_HEIGHT = 74
@@ -18,6 +20,9 @@ export function SpeciesAdminTable() {
 	const [search, setSearch] = useState('')
 	const [searchCount, setSearchCount] = useState(0)
 	const [displayedSpecies, setDisplayedSpecies] = useState<Species[]>([])
+	const [sortKey, setSortKey] = useState<string>('')
+	const [sortUp, setSortUp] = useState(true)
+	const [isSorted, setIsSorted] = useState(false)
 
 	useEffect(() => {
 		if (allSpecies && search.trim() === '') {
@@ -25,9 +30,39 @@ export function SpeciesAdminTable() {
 		}
 	}, [allSpecies, search])
 
+	const applySortToList = (list: Species[], key: string, up: boolean): Species[] => {
+		if (!key) return list
+		const sorted = [...list].sort((a, b) => {
+			const na = (key === 'common_name' ? a.common_name : a.scientific_name) ?? ''
+			const nb = (key === 'common_name' ? b.common_name : b.scientific_name) ?? ''
+			return na.localeCompare(nb)
+		})
+		return up ? sorted : sorted.toReversed()
+	}
+
+	const handleSortChange = (value: string) => {
+		if (value === 'reset') {
+			setSortKey('')
+			setIsSorted(false)
+			setSortUp(true)
+			setDisplayedSpecies(allSpecies ?? [])
+			return
+		}
+		setSortKey(value)
+		setIsSorted(true)
+		setDisplayedSpecies(applySortToList(displayedSpecies, value, sortUp))
+	}
+
+	const handleToggleDirection = () => {
+		const next = !sortUp
+		setSortUp(next)
+		if (isSorted) setDisplayedSpecies((prev) => [...prev].toReversed())
+	}
+
 	const handleSearch = () => {
 		if (!search.trim()) {
-			setDisplayedSpecies(allSpecies ?? [])
+			const base = allSpecies ?? []
+			setDisplayedSpecies(sortKey ? applySortToList(base, sortKey, sortUp) : base)
 			setSearchCount(0)
 			return
 		}
@@ -35,16 +70,25 @@ export function SpeciesAdminTable() {
 		const results = (allSpecies ?? []).filter(
 			(s) => s.common_name?.toLowerCase().includes(val) || s.scientific_name?.toLowerCase().includes(val)
 		)
-		setDisplayedSpecies(results)
-		setSearchCount(results.length)
+		const sorted = sortKey ? applySortToList(results, sortKey, sortUp) : results
+		setDisplayedSpecies(sorted)
+		setSearchCount(sorted.length)
 	}
 
 	const handleSearchChange = (val: string) => {
 		setSearch(val)
 		if (val.trim() === '') {
-			setDisplayedSpecies(allSpecies ?? [])
+			const base = allSpecies ?? []
+			setDisplayedSpecies(sortKey ? applySortToList(base, sortKey, sortUp) : base)
 			setSearchCount(0)
 		}
+	}
+
+	const handleClearSearch = () => {
+		setSearch('')
+		const base = allSpecies ?? []
+		setDisplayedSpecies(sortKey ? applySortToList(base, sortKey, sortUp) : base)
+		setSearchCount(0)
 	}
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -61,14 +105,53 @@ export function SpeciesAdminTable() {
 			{/* Toolbar */}
 			<div className='flex justify-between gap-3 items-center'>
 				<Badge variant='secondary'>{allSpecies?.length ?? 0} species</Badge>
-				<div className='flex flex-row items-center gap-3'>
+				<div className='flex flex-row items-center gap-3 ml-auto'>
 					<CreateSpeciesDialog />
-					<InputGroup className='w-40 sm:w-60 ml-auto' onKeyDown={handleKeyDown}>
+					<Select onValueChange={handleSortChange} value={sortKey || ''} disabled={isLoading}>
+						<SelectTrigger className='w-45'>
+							<SelectValue placeholder='Sort' className='flex-1 min-w-0 truncate' />
+							{isSorted && (
+								<span
+									role='button'
+									tabIndex={-1}
+									onPointerDown={(e) => {
+										e.stopPropagation()
+										e.preventDefault()
+									}}
+									onClick={(e) => {
+										e.stopPropagation()
+										handleSortChange('reset')
+									}}
+									className='flex-shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-foreground cursor-pointer'
+								>
+									<XIcon className='size-3.5 text-current' />
+								</span>
+							)}
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value='common_name'>Common Name</SelectItem>
+							<SelectItem value='scientific_name'>Scientific Name</SelectItem>
+						</SelectContent>
+					</Select>
+					<Button variant='outline' size='icon' onClick={handleToggleDirection} disabled={isLoading || !isSorted}>
+						{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
+					</Button>
+					<InputGroup className='w-40 sm:w-60' onKeyDown={handleKeyDown}>
 						<InputGroupInput
 							placeholder='Search…'
 							value={search}
 							onChange={(e) => handleSearchChange(e.target.value)}
 						/>
+						{search && (
+							<InputGroupAddon align='inline-end' className='pr-1'>
+								<InputGroupButton
+									onClick={handleClearSearch}
+									className='h-6 w-6 text-muted-foreground hover:text-foreground'
+								>
+									<XIcon className='h-3 w-3' />
+								</InputGroupButton>
+							</InputGroupAddon>
+						)}
 						<InputGroupAddon>
 							<InputGroupButton onClick={handleSearch} disabled={isLoading}>
 								<Search />

@@ -1,5 +1,5 @@
 import { AllMembersTable } from '@/components/superadmin/all-members-table'
-import { ViewPendingRequests } from '@/components/superadmin/view-pending-requests'
+import { ViewPendingRequests } from '@/components/superadmin/view-pending-org-requests'
 import { SpeciesAdminTable } from '@/components/superadmin/species-admin-table'
 
 export default async function Page() {

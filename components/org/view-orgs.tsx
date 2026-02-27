@@ -2,7 +2,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components
 import OrgRow from './org-row'
 import PendingInvites from '@/components/org/view-pending-invites'
 import SuperadminButton from '@/components/org/superadmin-button'
-import { ViewSentRequests } from './view-sent-requests'
+import { ViewSentRequests } from './view-sent-org-requests'
 
 export function ViewOrgs() {
 	return (

@@ -1,6 +1,5 @@
 'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { XIcon, LoaderCircle, ChevronDownIcon } from 'lucide-react'
@@ -14,19 +13,29 @@ import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 
-function getStatusBadge(status: string) {
-	switch (status) {
-		case 'pending':
-			return <Badge variant='secondary'>Pending</Badge>
-		case 'accepted':
-			return <Badge variant='default'>Accepted</Badge>
-		case 'rejected':
-			return <Badge variant='destructive'>Rejected</Badge>
-		case 'cancelled':
-			return <Badge variant='outline'>Cancelled</Badge>
-		default:
-			return <Badge variant='outline'>{status}</Badge>
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function formatDate(iso: string, includeYear = true): string {
+	const d = new Date(iso)
+	const month = MONTHS[d.getUTCMonth()]
+	const day = d.getUTCDate()
+	if (!includeYear) return `${month} ${day}`
+	return `${month} ${day}, ${d.getUTCFullYear()}`
+}
+
+function StatusDot({ status }: { status: string }) {
+	const colorMap: Record<string, string> = {
+		pending: 'bg-amber-400',
+		accepted: 'bg-emerald-500',
+		rejected: 'bg-destructive',
+		cancelled: 'bg-muted-foreground'
 	}
+	return (
+		<span
+			className={`inline-block h-1.5 w-1.5 rounded-full shrink-0 ${colorMap[status] ?? 'bg-muted-foreground'}`}
+			aria-hidden='true'
+		/>
+	)
 }
 
 export function ViewSentInvites() {
@@ -43,114 +52,75 @@ export function ViewSentInvites() {
 	const handleRetract = (inviteId: UUID) => {
 		if (!user?.id) return
 		setPendingInviteId(inviteId)
-		retractMutation.mutate(
-			{
-				inviteId
-			},
-			{
-				onSettled: () => setPendingInviteId(null)
-			}
-		)
-	}
-
-	if (isLoading) {
-		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Sent Invites</CardTitle>
-					<CardDescription>Loading invitations...</CardDescription>
-				</CardHeader>
-			</Card>
-		)
-	}
-
-	if (!invites || invites.length === 0) {
-		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Sent Invites</CardTitle>
-					<CardDescription>No invites sent yet</CardDescription>
-				</CardHeader>
-			</Card>
-		)
+		retractMutation.mutate({ inviteId }, { onSettled: () => setPendingInviteId(null) })
 	}
 
 	return (
-		<Card className='border-0 bg-transparent py-0 shadow-none'>
-			<Collapsible className='rounded-xl border bg-card'>
-				<CardHeader className='px-6 pt-6 pb-2'>
-					<CollapsibleTrigger asChild>
-						<Button
-							variant='ghost'
-							className='group w-full justify-between px-0 hover:bg-transparent active:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0'
-						>
-							<div className='flex flex-col items-start'>
-								<CardTitle>Sent Invites</CardTitle>
-								<CardDescription>
-									<div className='flex flex-row gap-2 items-center'>
-										<span>{invites.length} invite(s) sent</span>
+		<Collapsible defaultOpen>
+			<CollapsibleTrigger asChild>
+				<button
+					type='button'
+					className='group flex w-full items-center justify-between py-3 text-left transition-opacity hover:opacity-70'
+				>
+					<div className='flex items-center gap-3'>
+						<h3 className='text-sm font-medium text-foreground'>Sent Invites</h3>
+						<span className='text-xs text-muted-foreground'>{invites?.length ?? 0}</span>
+					</div>
+					<ChevronDownIcon className='h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180' />
+				</button>
+			</CollapsibleTrigger>
+			<CollapsibleContent>
+				{isLoading ? (
+					<p className='py-2 text-sm text-muted-foreground text-center'>Loading invitations...</p>
+				) : !invites || invites.length === 0 ? (
+					<p className='py-2 text-sm text-muted-foreground text-center'>No invites sent yet.</p>
+				) : (
+					<div className='divide-y divide-border'>
+						{invites.map((invite) => (
+							<div key={invite.invite_id} className='flex items-center justify-between gap-3 py-3 first:pt-1'>
+								<div className='flex min-w-0 flex-1 flex-col gap-1'>
+									<div className='flex flex-wrap items-center gap-2'>
+										<p className='truncate text-sm font-medium text-foreground'>{invite.invitee_email}</p>
+										<Badge variant='secondary' className='h-5 px-1.5 py-0 text-[11px] font-normal'>
+											{getAccessLevelName(invite.access_lvl)}
+										</Badge>
 									</div>
-								</CardDescription>
-							</div>
-							<ChevronDownIcon className='ml-2 h-4 w-4 transition-transform group-data-[state=open]:rotate-180' />
-						</Button>
-					</CollapsibleTrigger>
-				</CardHeader>
-				<CollapsibleContent>
-					<CardContent className='px-6 pb-6'>
-						<div className='space-y-4'>
-							{invites.map((invite) => (
-								<div
-									key={invite.invite_id}
-									className='flex flex-col md:flex-row md:justify-between gap-4 rounded-lg border bg-background p-4'
-								>
-									<div className='flex-1'>
-										<div className='flex items-center justify-center md:justify-start gap-2 flex-wrap flex-col md:flex-row'>
-											<p className='font-medium'>{invite.invitee_email}</p>
-											<div className='flex items-center gap-2'>
-												<Badge variant='secondary'>{getAccessLevelName(invite.access_lvl)}</Badge>
-												{getStatusBadge(invite.status)}
-											</div>
-										</div>
-										<div className='flex flex-row items-center justify-center md:justify-start gap-2 md:gap-0 mt-1'>
-											<p className='text-sm text-muted-foreground'>
-												Sent on {new Date(invite.created_at).toLocaleDateString()}
-											</p>
-											{invite.status === 'pending' && (
-												<>
-													<span className='mx-1 md:mx-2 text-muted-foreground'>•</span>
-													<p className='text-sm text-muted-foreground text-red-600'>
-														Expires on {new Date(invite.expires_at).toLocaleDateString()}
-													</p>
-												</>
-											)}
-										</div>
+									<div className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
+										<StatusDot status={invite.status} />
+										<span className='capitalize'>{invite.status}</span>
+										<span className='text-border'>/</span>
+										<span>{formatDate(invite.created_at)}</span>
+										{invite.status === 'pending' && (
+											<>
+												<span className='text-border'>/</span>
+												<span>Expires {formatDate(invite.expires_at, false)}</span>
+											</>
+										)}
 									</div>
-									{invite.status === 'pending' && (
-										<div className='flex gap-2 mx-auto md:mx-0 my-auto'>
-											<Button
-												size='sm'
-												variant='destructive'
-												onClick={() => handleRetract(invite.invite_id)}
-												disabled={pendingInviteId === invite.invite_id}
-											>
-												{pendingInviteId === invite.invite_id && retractMutation.isPending ? (
-													<LoaderCircle className='w-4 h-4 animate-spin' />
-												) : (
-													<>
-														<XIcon className='w-4 h-4' />
-														Cancel
-													</>
-												)}
-											</Button>
-										</div>
-									)}
 								</div>
-							))}
-						</div>
-					</CardContent>
-				</CollapsibleContent>
-			</Collapsible>
-		</Card>
+								{invite.status === 'pending' && (
+									<Button
+										size='sm'
+										variant='ghost'
+										onClick={() => handleRetract(invite.invite_id)}
+										disabled={pendingInviteId === invite.invite_id}
+										className='ml-2 h-8 shrink-0 text-xs text-muted-foreground hover:text-destructive'
+									>
+										{pendingInviteId === invite.invite_id && retractMutation.isPending ? (
+											<LoaderCircle className='h-3.5 w-3.5 animate-spin' />
+										) : (
+											<>
+												<XIcon className='h-3.5 w-3.5' />
+												<span className='hidden sm:inline'>Revoke</span>
+											</>
+										)}
+									</Button>
+								)}
+							</div>
+						))}
+					</div>
+				)}
+			</CollapsibleContent>
+		</Collapsible>
 	)
 }

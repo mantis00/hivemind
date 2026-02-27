@@ -91,7 +91,7 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 				<Card className='overflow-hidden py-2'>
 					<CardContent className='p-2 flex items-center gap-3 hover:bg-accent/50 transition-colors'>
 						<CollapsibleTrigger asChild>
-							<button className='flex flex-1 items-center gap-3 text-left' type='button'>
+							<button className='flex flex-1 min-w-0 items-center gap-3 text-left' type='button'>
 								<ChevronRight
 									className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
 										isOpen ? 'rotate-90' : ''
@@ -127,7 +127,7 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 								setDetailsOpen(true)
 							}}
 						>
-							View Details <EyeIcon className='h-3.5 w-3.5' />
+							<EyeIcon className='h-3.5 w-3.5' />
 						</Button>
 					</CardContent>
 
