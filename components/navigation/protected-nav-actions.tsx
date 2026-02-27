@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { NotificationsDropdown } from '@/components/notification/notifications'
 import { LogoutButton } from '@/components/account/logout-button'
 import { useEffect, useState } from 'react'
 import InstallAppButton from '@/components/pwa/install-app-button'
@@ -26,11 +27,16 @@ export function ProtectedNavActions() {
 	}
 
 	if (isOrgRoute(pathname)) {
-		return null
+		return (
+			<div className='flex items-center flex-row justify-end gap-2 mr-6 max-w-full'>
+				<NotificationsDropdown />
+			</div>
+		)
 	}
 
 	return (
 		<div className='flex items-center flex-row justify-end gap-2 max-w-full'>
+			<NotificationsDropdown />
 			<Button variant='default' size='sm' className='w-auto px-4' onClick={() => router.push('/protected/account')}>
 				Account
 			</Button>
