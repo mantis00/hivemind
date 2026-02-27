@@ -101,11 +101,11 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 									<img
 										src={species.species.picture_url}
 										alt={species.custom_common_name}
-										className='h-8 w-8 rounded-md object-cover shrink-0 border'
+										className='h-10 w-10 rounded-md object-cover shrink-0 border'
 									/>
 								) : (
-									<div className='h-8 w-8 rounded-md border flex items-center justify-center shrink-0 bg-muted'>
-										<Bug className='h-4 w-4 text-muted-foreground' />
+									<div className='h-10 w-10 rounded-md border flex items-center justify-center shrink-0 bg-muted'>
+										<Bug className='h-5 w-5 text-muted-foreground' />
 									</div>
 								)}
 								<div className='flex-1 min-w-0'>
