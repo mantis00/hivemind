@@ -43,7 +43,6 @@ export function CreateTaskButton({ open, setOpen }: { open: boolean; setOpen: (o
 	}
 
 	return (
-
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogContent>
 				<form onSubmit={handleSubmit} className='my-auto'>
