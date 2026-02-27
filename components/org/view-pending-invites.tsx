@@ -56,7 +56,9 @@ export default function PendingInvites() {
 			</CollapsibleTrigger>
 			<CollapsibleContent>
 				{isLoading ? (
-					<p className='py-2 text-sm text-muted-foreground text-center'>Loading your invitations...</p>
+					<div className='flex justify-center items-center py-4'>
+						<LoaderCircle className='animate-spin' />
+					</div>
 				) : !invites || invites.length === 0 ? (
 					<p className='py-2 text-sm text-muted-foreground text-center'>No pending invites.</p>
 				) : (

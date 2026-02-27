@@ -71,7 +71,9 @@ export function ViewSentInvites() {
 			</CollapsibleTrigger>
 			<CollapsibleContent>
 				{isLoading ? (
-					<p className='py-2 text-sm text-muted-foreground text-center'>Loading invitations...</p>
+					<div className='flex justify-center items-center py-4'>
+						<LoaderCircle className='animate-spin' />
+					</div>
 				) : !invites || invites.length === 0 ? (
 					<p className='py-2 text-sm text-muted-foreground text-center'>No invites sent yet.</p>
 				) : (

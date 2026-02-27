@@ -61,7 +61,9 @@ export function ViewSentRequests() {
 			</CollapsibleTrigger>
 			<CollapsibleContent>
 				{isLoading ? (
-					<p className='py-2 text-sm text-muted-foreground text-center'>Loading your requests...</p>
+					<div className='flex justify-center items-center py-4'>
+						<LoaderCircle className='animate-spin' />
+					</div>
 				) : !requests || requests.length === 0 ? (
 					<p className='py-2 text-sm text-muted-foreground text-center'>No requests submitted yet.</p>
 				) : (
