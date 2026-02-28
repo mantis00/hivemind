@@ -46,6 +46,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/use-mobile'
 import Link from 'next/link'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { useOrgDetails } from '@/lib/react-query/queries'
+import { UUID } from 'crypto'
 
 export function AppSidebar() {
 	const pathname = usePathname()
@@ -63,6 +65,8 @@ export function AppSidebar() {
 		)
 		return match?.[1] ?? null
 	}, [pathname])
+
+	const { data: orgDetails } = useOrgDetails(orgId as UUID)
 
 	const items = [
 		{
@@ -132,7 +136,7 @@ export function AppSidebar() {
 									tooltip='Organization'
 									onClick={handleOrgClick}
 								>
-									<div className='flex items-center gap-2'>
+									<div className='flex items-center gap-2 font-bold text-lg'>
 										<Building2 className='size-4' />
 										<span>Organization</span>
 									</div>
@@ -165,7 +169,7 @@ export function AppSidebar() {
 									tooltip='Caretaking'
 									onClick={handleCaretakingClick}
 								>
-									<div className='flex items-center gap-2'>
+									<div className='flex items-center gap-2 text-lg font-bold'>
 										<FolderHeart className='size-4' />
 										<span>Caretaking</span>
 									</div>
@@ -190,6 +194,12 @@ export function AppSidebar() {
 			</SidebarContent>
 			<SidebarFooter>
 				<SidebarMenu className='gap-2'>
+					<SidebarMenuItem>
+						<p className='px-3 py-1.5 text-lg font-bold text-sidebar-foreground font-dancing-script text-center truncate rounded-md group-data-[collapsible=icon]:hidden'>
+							{orgDetails?.name ?? ''}
+						</p>
+					</SidebarMenuItem>
+
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							asChild

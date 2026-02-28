@@ -339,12 +339,17 @@ export function useOrgEnclosure(orgId: number, enclosureId: number) {
 	})
 }
 
-export function useEnclosureById(enclosureId: UUID) {
+export function useEnclosureById(enclosureId: UUID, orgId: UUID) {
 	return useQuery({
-		queryKey: ['enclosure', enclosureId],
+		queryKey: ['enclosure', orgId, enclosureId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase.from('enclosures').select('*').eq('id', enclosureId).single()) as {
+			const { data, error } = (await supabase
+				.from('enclosures')
+				.select('*')
+				.eq('id', enclosureId)
+				.eq('org_id', orgId)
+				.single()) as {
 				data: Enclosure | null
 				error: PostgrestError | null
 			}
@@ -352,7 +357,7 @@ export function useEnclosureById(enclosureId: UUID) {
 			if (error) throw error
 			return data
 		},
-		enabled: !!enclosureId
+		enabled: !!enclosureId && !!orgId
 	})
 }
 

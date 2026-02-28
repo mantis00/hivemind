@@ -11,7 +11,7 @@ import {
 	useReactTable
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
-import { ArrowUpDown, ChevronDown } from 'lucide-react'
+import { ArrowUpDown, ChevronDown, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -42,7 +42,7 @@ function getColumns(enclosureName: string): ColumnDef<Task>[] {
 	return [
 		{
 			accessorKey: 'enclosure_id',
-			header: 'Enclosure',
+			header: enclosureName,
 			cell: () => <div className='font-medium'>{enclosureName}</div>
 		},
 		{
@@ -114,7 +114,7 @@ function getColumns(enclosureName: string): ColumnDef<Task>[] {
 
 const TARGET_VISIBLE_ROWS = 15
 
-export function TasksDataTable({ enclosureId }: { enclosureId: UUID }) {
+export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgId: UUID }) {
 	const [sorting, setSorting] = React.useState<SortingState>([])
 	const [globalFilter, setGlobalFilter] = React.useState('')
 	const [priorityFilter, setPriorityFilter] = React.useState<string[]>([])
@@ -124,8 +124,16 @@ export function TasksDataTable({ enclosureId }: { enclosureId: UUID }) {
 	const rowRef = React.useRef<HTMLTableRowElement | null>(null)
 	const measuredRef = React.useRef(false)
 
+	const hasActiveFilters = priorityFilter.length > 0 || statusFilter.length > 0 || globalFilter !== ''
+
+	const resetFilters = () => {
+		setPriorityFilter([])
+		setStatusFilter([])
+		setGlobalFilter('')
+	}
+
 	const { data: enclosureTasks } = useTasksForEnclosures([enclosureId])
-	const { data: enclosure } = useEnclosureById(enclosureId)
+	const { data: enclosure } = useEnclosureById(enclosureId, orgId)
 
 	const columns = React.useMemo(() => getColumns(enclosure?.name ?? enclosureId), [enclosure, enclosureId])
 
@@ -183,6 +191,17 @@ export function TasksDataTable({ enclosureId }: { enclosureId: UUID }) {
 				/>
 
 				<div className='flex flex-wrap gap-2'>
+					{hasActiveFilters && (
+						<Button
+							variant='ghost'
+							onClick={resetFilters}
+							className='gap-1.5 text-muted-foreground hover:text-foreground'
+						>
+							Reset
+							<X className='h-4 w-4' />
+						</Button>
+					)}
+
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant='outline' className='gap-2'>
@@ -195,6 +214,7 @@ export function TasksDataTable({ enclosureId }: { enclosureId: UUID }) {
 								<DropdownMenuCheckboxItem
 									key={priority}
 									checked={priorityFilter.includes(priority)}
+									onSelect={(e) => e.preventDefault()}
 									onCheckedChange={(checked) => {
 										setPriorityFilter((prev) => (checked ? [...prev, priority] : prev.filter((p) => p !== priority)))
 									}}
@@ -217,6 +237,7 @@ export function TasksDataTable({ enclosureId }: { enclosureId: UUID }) {
 								<DropdownMenuCheckboxItem
 									key={status}
 									checked={statusFilter.includes(status)}
+									onSelect={(e) => e.preventDefault()}
 									onCheckedChange={(checked) => {
 										setStatusFilter((prev) => (checked ? [...prev, status] : prev.filter((s) => s !== status)))
 									}}
