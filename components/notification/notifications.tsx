@@ -11,14 +11,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator'
 import { useNotifications } from '@/lib/react-query/queries'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import type { Notification } from '@/lib/react-query/queries' // <-- adjust path if needed
+import type { Notification } from '@/lib/react-query/queries'
+import { useMemberProfiles } from '@/lib/react-query/queries'
 
 // ─── Types ───────────────────────────────────────────────
 
 type NotificationType = 'mention' | 'invite' | 'update' | 'alert'
 
 type NotificationWithProfile = Notification & {
-	profiles: { id: string; full_name: string } | null
+	senderProfile: { id: string; full_name: string } | null
 }
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -66,8 +67,8 @@ const typeColors: Record<NotificationType, string> = {
 
 function NotificationItem({ notification }: { notification: NotificationWithProfile }) {
 	const Icon = typeIcons[notification.type as NotificationType] ?? Bell
-	const senderName = notification.profiles?.full_name ?? 'Unknown'
-	const initials = getInitials(notification.profiles?.full_name)
+	const senderName = notification.senderProfile?.full_name ?? 'Unknown'
+	const initials = getInitials(notification.senderProfile?.full_name)
 
 	const content = (
 		<div
@@ -119,9 +120,39 @@ function NotificationItem({ notification }: { notification: NotificationWithProf
 
 export function NotificationsDropdown() {
 	const { data: user } = useCurrentClientUser()
+	console.log('Current user:', user) // Debug log
 	const { data } = useNotifications(user?.id ?? '')
+	console.log('Notifications data:', data) // Debug log
+	const notifications: Notification[] = data ?? []
 
-	const notifications: NotificationWithProfile[] = data ?? []
+	const involvedUserIds = useMemo(() => {
+		const ids = new Set<string>()
+		notifications.forEach((n) => {
+			if (n.sender_id) ids.add(n.sender_id)
+			if (n.recipient_id) ids.add(n.recipient_id)
+		})
+		return Array.from(ids)
+	}, [notifications])
+
+	const { data: profiles } = useMemberProfiles(involvedUserIds)
+	console.log('Profiles data:', data) // Debug log
+
+	const profileMap = useMemo(() => {
+		const map = new Map<string, { id: string; full_name: string }>()
+
+		profiles?.forEach((p) => {
+			map.set(p.id, p)
+		})
+
+		return map
+	}, [profiles])
+
+	const notificationsWithProfiles: NotificationWithProfile[] = useMemo(() => {
+		return notifications.map((n) => ({
+			...n,
+			senderProfile: profileMap.get(n.sender_id) ?? null
+		}))
+	}, [notifications, profileMap])
 
 	const pathname = usePathname()
 
@@ -132,7 +163,7 @@ export function NotificationsDropdown() {
 
 	const [open, setOpen] = useState(false)
 
-	const unviewedCount = notifications.filter((n) => !n.viewed).length
+	const unviewedCount = notificationsWithProfiles.filter((n) => !n.viewed).length
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -147,7 +178,7 @@ export function NotificationsDropdown() {
 				</Button>
 			</PopoverTrigger>
 
-			<PopoverContent align='end' sideOffset={8} className='flex max-h-[480px] w-95 flex-col overflow-hidden p-0'>
+			<PopoverContent align='end' sideOffset={8} className='flex max-h-120 w-95 flex-col overflow-hidden p-0'>
 				<div className='flex shrink-0 items-center justify-between px-4 py-3'>
 					<h3 className='text-sm font-semibold'>Notifications</h3>
 				</div>
@@ -155,8 +186,10 @@ export function NotificationsDropdown() {
 				<Separator />
 
 				<div className='flex-1 overflow-y-auto p-1'>
-					{notifications.length > 0 ? (
-						notifications.map((notification) => <NotificationItem key={notification.id} notification={notification} />)
+					{notificationsWithProfiles.length > 0 ? (
+						notificationsWithProfiles.map((notification) => (
+							<NotificationItem key={notification.id} notification={notification} />
+						))
 					) : (
 						<div className='flex flex-col items-center justify-center py-8 text-center'>
 							<Bell className='mb-2 size-8 text-muted-foreground/40' />
