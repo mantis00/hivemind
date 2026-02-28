@@ -618,6 +618,103 @@ export function useUpdateSpeciesImage() {
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['singleSpecies', variables.species_id] })
+			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['species'] })
+		}
+	})
+}
+
+export function useCreateSpecies() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			scientific_name,
+			common_name,
+			care_instructions,
+			picture_url
+		}: {
+			scientific_name: string
+			common_name: string
+			care_instructions: string
+			picture_url?: string
+		}) => {
+			const supabase = createClient()
+
+			if (!scientific_name.trim() || !common_name.trim()) {
+				throw new Error('Scientific name and common name are required')
+			}
+
+			const { error } = await supabase.from('species').insert({
+				scientific_name: scientific_name.trim(),
+				common_name: common_name.trim(),
+				care_instructions: care_instructions.trim(),
+				...(picture_url ? { picture_url } : {})
+			})
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['species'] })
+			toast.success('Species created successfully!')
+		}
+	})
+}
+
+export function useDeleteSpecies() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ species_id }: { species_id: UUID }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('species').delete().eq('id', species_id)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['species'] })
+			toast.success('Species deleted successfully!')
+		}
+	})
+}
+
+export function useUpdateSpecies() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			species_id,
+			scientific_name,
+			common_name,
+			care_instructions
+		}: {
+			species_id: UUID
+			scientific_name: string
+			common_name: string
+			care_instructions: string
+		}) => {
+			const supabase = createClient()
+
+			if (!scientific_name.trim() || !common_name.trim()) {
+				throw new Error('Scientific name and common name are required')
+			}
+
+			const { error } = await supabase
+				.from('species')
+				.update({
+					scientific_name: scientific_name.trim(),
+					common_name: common_name.trim(),
+					care_instructions: care_instructions.trim()
+				})
+				.eq('id', species_id)
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['species'] })
+			toast.success('Species updated successfully!')
 		}
 	})
 }

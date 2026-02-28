@@ -1,8 +1,7 @@
 'use client'
 
 import { OrgSpecies, useSpecies, useOrgEnclosureCount } from '@/lib/react-query/queries'
-import { createClient } from '@/lib/supabase/client'
-import { ArrowDownIcon, ArrowUpIcon, Search, Warehouse } from 'lucide-react'
+import { ArrowDownIcon, ArrowUpIcon, Search, XIcon } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Virtuoso } from 'react-virtuoso'
@@ -21,12 +20,12 @@ export default function EnclosureGrid() {
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useSpecies(orgId as UUID)
 	const { data: enclosureCount } = useOrgEnclosureCount(orgId as UUID)
-	// console.log(orgSpecies)
 
 	const [searchValue, setSearchValue] = useState('')
 	const [searchCount, setSearchCount] = useState(0)
 	const [sortUp, setSortUp] = useState(true)
 	const [isSorted, setIsSorted] = useState(false)
+	const [sortKey, setSortKey] = useState('')
 
 	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>([])
 	const [itemHeight, setItemHeight] = useState<number>(114)
@@ -74,6 +73,7 @@ export default function EnclosureGrid() {
 			setDisplayedSpecies(orgSpecies ?? [])
 			setIsSorted(false)
 			setSortUp(true)
+			setSortKey('')
 			return
 		}
 		let sorted: OrgSpecies[] = []
@@ -102,6 +102,7 @@ export default function EnclosureGrid() {
 		if (sorted.length > 0) {
 			setDisplayedSpecies(sorted)
 		}
+		setSortKey(sortOn)
 		setIsSorted(true)
 	}
 
@@ -116,21 +117,7 @@ export default function EnclosureGrid() {
 			return false
 		})
 
-		// 2. Query enclosures whose name matches the search string
-		const supabase = createClient()
-		const { data: matchingEnclosures } = await supabase
-			.from('enclosures')
-			.select('species_id')
-			.eq('org_id', orgId!)
-			.ilike('name', `%${val}%`)
-
-		// 3. Merge species that have matching enclosures
-		const matchedSpeciesIds = new Set(matchingEnclosures?.map((e) => e.species_id) ?? [])
-		const enclosureMatches = [...(orgSpecies ?? [])].filter(
-			(spec) => matchedSpeciesIds.has(spec.id) && !nameMatches.some((nm) => nm.id === spec.id)
-		)
-
-		const results = [...nameMatches, ...enclosureMatches]
+		const results = [...nameMatches]
 		setDisplayedSpecies(results)
 		setSearchCount(results.length)
 	}
@@ -140,6 +127,12 @@ export default function EnclosureGrid() {
 			event.preventDefault()
 			handleSearch()
 		}
+	}
+
+	const handleClearSearch = () => {
+		setSearchValue('')
+		setDisplayedSpecies(orgSpecies ?? [])
+		setSearchCount(0)
 	}
 
 	// Calculate initial table height based on item count
@@ -153,7 +146,7 @@ export default function EnclosureGrid() {
 
 	return (
 		<div className='bg-background full'>
-			<div className='mx-auto max-w-3xl px-4'>
+			<div className='mx-auto px-4'>
 				<div className={`mb-2 flex items-center ${useIsMobile() ? 'gap-1' : 'gap-3'}`}>
 					<Badge variant='secondary'>{orgSpecies?.length} species</Badge>
 					<Badge variant='secondary' className='gap-1'>
@@ -166,9 +159,26 @@ export default function EnclosureGrid() {
 
 				{/* Sort and Search */}
 				<div className='w-full py-2 flex flex-row gap-3'>
-					<Select onValueChange={handleSortChange} defaultValue='' disabled={isLoading}>
-						<SelectTrigger className='w-40'>
-							<SelectValue placeholder='Sort' />
+					<Select onValueChange={handleSortChange} value={sortKey} disabled={isLoading}>
+						<SelectTrigger className='w-45'>
+							<SelectValue placeholder='Sort' className='flex-1 min-w-0 truncate' />
+							{isSorted && (
+								<span
+									role='button'
+									tabIndex={-1}
+									onPointerDown={(e) => {
+										e.stopPropagation()
+										e.preventDefault()
+									}}
+									onClick={(e) => {
+										e.stopPropagation()
+										handleSortChange('sort')
+									}}
+									className='flex-shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-foreground cursor-pointer'
+								>
+									<XIcon className='size-3.5 text-current' />
+								</span>
+							)}
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value='common_name' className='text-l'>
@@ -182,7 +192,7 @@ export default function EnclosureGrid() {
 					<Button variant='outline' size='icon' onClick={() => setSortUp(!sortUp)} disabled={isLoading || !isSorted}>
 						{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
 					</Button>
-					<InputGroup className='w-40 sm:w-60 mx-auto sm:ml-auto sm:mr-0' onKeyDown={handleKeyDown}>
+					<InputGroup className='w-40 sm:w-60 ml-auto' onKeyDown={handleKeyDown}>
 						<InputGroupInput
 							placeholder='Search...'
 							value={searchValue}
@@ -190,6 +200,16 @@ export default function EnclosureGrid() {
 								setSearchValue(e.target.value)
 							}}
 						/>
+						{searchValue && (
+							<InputGroupAddon align='inline-end' className='pr-1'>
+								<InputGroupButton
+									onClick={handleClearSearch}
+									className='h-6 w-6 text-muted-foreground hover:text-foreground'
+								>
+									<XIcon className='h-3 w-3' />
+								</InputGroupButton>
+							</InputGroupAddon>
+						)}
 						<InputGroupAddon>
 							<InputGroupButton onClick={handleSearch} disabled={isLoading}>
 								<Search />
@@ -227,11 +247,7 @@ export default function EnclosureGrid() {
 						<div
 							ref={measureRef}
 							aria-hidden='true'
-							style={{
-								position: 'absolute',
-								visibility: 'hidden',
-								pointerEvents: 'none'
-							}}
+							style={{ position: 'absolute', visibility: 'hidden', pointerEvents: 'none' }}
 						>
 							<div className='p-2 pb-0 last:pb-2'>
 								<SpeciesRow species={displayedSpecies[0]} />

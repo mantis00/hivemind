@@ -17,7 +17,7 @@ export function RequestOrgButton() {
 	const requestOrgMutation = useRequestOrg()
 	const { data: userProfile } = useMemberProfiles(user?.id ? [user.id] : [])
 	const isSuperadmin = userProfile?.some((profile) => profile.is_superadmin === true)
-	if (!isSuperadmin) return null
+	if (isSuperadmin) return null
 
 	return (
 		<ResponsiveDialogDrawer
