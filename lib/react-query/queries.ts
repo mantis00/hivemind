@@ -525,3 +525,22 @@ export function useAllSpecies() {
 		}
 	})
 }
+
+export function useOrgSpecies(org_id: UUID) {
+	return useQuery({
+		queryKey: ['orgSpecies'],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('org_species')
+				.select('*')
+				.eq('org_id', org_id)
+				.order('custom_common_name', { ascending: true })) as {
+				data: OrgSpecies[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+			return data
+		}
+	})
+}

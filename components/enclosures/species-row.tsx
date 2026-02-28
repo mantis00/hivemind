@@ -1,6 +1,6 @@
 'use client'
 import { type OrgSpecies, type Enclosure, useOrgEnclosuresForSpecies } from '@/lib/react-query/queries'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -11,15 +11,19 @@ import { Button } from '../ui/button'
 import { EnclosureCard } from './enclosure-card'
 import { Virtuoso } from 'react-virtuoso'
 import { EnclosureDialog } from './enclosure-dialog'
-import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { UUID } from 'crypto'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 
-export default function SpeciesRow({ species }: { species: OrgSpecies }) {
+export default function SpeciesRow({
+	species,
+	onDetailsOpenChange
+}: {
+	species: OrgSpecies
+	onDetailsOpenChange: () => void
+}) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
-	const router = useRouter()
 	const isMobile = useIsMobile()
 
 	const { data: enclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
@@ -29,7 +33,6 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 	const [dialogOpen, setDialogOpen] = useState(false)
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
-	const [detailsOpen, setDetailsOpen] = useState(false)
 
 	const batchDeleteMutation = useBatchDeleteEnclosures()
 
@@ -124,7 +127,7 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 							className='gap-1.5 h-7 text-xs shrink-0 mr-1'
 							onClick={(e) => {
 								e.stopPropagation()
-								setDetailsOpen(true)
+								onDetailsOpenChange()
 							}}
 						>
 							<EyeIcon className='h-3.5 w-3.5' />
@@ -203,32 +206,6 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 					onOpenChange={setDialogOpen}
 				/>
 			)}
-
-			<ResponsiveDialogDrawer
-				title={species.custom_common_name}
-				description={species.species.scientific_name}
-				open={detailsOpen}
-				onOpenChange={setDetailsOpen}
-				trigger={<span className='hidden' />}
-			>
-				<div className='flex flex-col gap-4'>
-					{species.species.picture_url ? (
-						<img
-							src={species.species.picture_url}
-							alt={species.custom_common_name}
-							className='rounded-md max-h-48 w-full object-contain mx-auto'
-						/>
-					) : (
-						<div className='rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground'>
-							No image available
-						</div>
-					)}
-					<div className='rounded-md bg-muted p-3'>
-						<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
-						<p className='text-sm leading-relaxed'>{species.custom_care_instructions}</p>
-					</div>
-				</div>
-			</ResponsiveDialogDrawer>
 		</>
 	)
 }

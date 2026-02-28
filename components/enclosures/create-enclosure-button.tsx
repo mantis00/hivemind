@@ -79,7 +79,7 @@ export function CreateEnclosureButton() {
 			open={open}
 			onOpenChange={(isOpen) => setOpen(isOpen)}
 			trigger={
-				<Button variant='secondary' onClick={() => setOpen(true)}>
+				<Button variant='secondary' size='default' onClick={() => setOpen(true)}>
 					Create {useIsMobile() ? '' : 'Enclosure'} <PlusIcon className='w-4 h-4' />
 				</Button>
 			}
