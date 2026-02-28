@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { UUID } from 'crypto'
+import { toast } from 'sonner'
 
 export function useCreateOrg() {
 	const queryClient = useQueryClient()
@@ -190,6 +191,7 @@ export function useInviteMember() {
 		onSuccess: () => {
 			// Invalidate invites
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
+			toast.success('Invite sent successfully!')
 		}
 	})
 }
@@ -198,7 +200,7 @@ export function useAcceptInvite() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ inviteId, userId }: { inviteId: string; userId: string }) => {
+		mutationFn: async ({ inviteId, userId }: { inviteId: UUID; userId: string }) => {
 			const supabase = createClient()
 
 			// Get the invite details
@@ -248,7 +250,7 @@ export function useRejectInvite() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ inviteId }: { inviteId: string }) => {
+		mutationFn: async ({ inviteId }: { inviteId: UUID }) => {
 			const supabase = createClient()
 
 			// Update invite status to rejected
@@ -267,11 +269,15 @@ export function useRetractInvite() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ inviteId }: { inviteId: string }) => {
+		mutationFn: async ({ inviteId }: { inviteId: UUID }) => {
 			const supabase = createClient()
 
-			// Delete the invite
-			const { error } = await supabase.from('invites').delete().eq('invite_id', inviteId).eq('status', 'pending')
+			// Mark the invite as cancelled
+			const { error } = await supabase
+				.from('invites')
+				.update({ status: 'cancelled' })
+				.eq('invite_id', inviteId)
+				.eq('status', 'pending')
 
 			if (error) throw error
 		},
@@ -372,6 +378,32 @@ export function useDeleteEnclosure() {
 	})
 }
 
+export function useBatchDeleteEnclosures() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ ids, orgId }: { ids: UUID[]; orgId: UUID }) => {
+			const supabase = createClient()
+
+			// Delete tasks for all enclosures
+			const { error: tasksError } = await supabase.from('tasks').delete().in('enclosure_id', ids)
+			if (tasksError) throw tasksError
+
+			// Delete tank notes for all enclosures
+			const { error: notesError } = await supabase.from('tank_notes').delete().in('enclosure_id', ids)
+			if (notesError) throw notesError
+
+			// Delete all enclosures
+			const { error: enclosuresError } = await supabase.from('enclosures').delete().in('id', ids)
+			if (enclosuresError) throw enclosuresError
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+		}
+	})
+}
+
 export function useCreateEnclosureNote() {
 	const queryClient = useQueryClient()
 	return useMutation({
@@ -443,6 +475,246 @@ export function useUpdateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+		}
+	})
+}
+
+export function useSuperadminElavate() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ userId }: { userId: string }) => {
+			const supabase = createClient()
+
+			// Update the user's superadmin status
+			const { error } = await supabase.from('profiles').update({ is_superadmin: true }).eq('id', userId)
+
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			// Invalidate and refetch superadmin data
+			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+		}
+	})
+}
+
+export function useRequestOrg() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requesterId, orgName }: { requesterId: string; orgName: string }) => {
+			const supabase = createClient()
+
+			if (orgName.trim() === '') {
+				throw new Error('Organization name cannot be empty')
+			}
+
+			// Prevent duplicate pending requests for the same name by the same user
+			const { data: existing, error: checkError } = await supabase
+				.from('org_requests')
+				.select('request_id')
+				.eq('requester_id', requesterId)
+				.eq('org_name', orgName.trim())
+				.eq('status', 'pending')
+				.maybeSingle()
+
+			if (checkError) throw checkError
+			if (existing) throw new Error('There is already a pending request for this organization')
+
+			const { error } = await supabase.from('org_requests').insert({
+				requester_id: requesterId,
+				org_name: orgName.trim()
+			})
+
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgRequests', variables.requesterId] })
+			toast.success('Request submitted! A superadmin will review it shortly.')
+		}
+	})
+}
+
+export function useApproveOrgRequest() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requestId, reviewerId }: { requestId: UUID; reviewerId: string }) => {
+			const supabase = createClient()
+			const { error } = await supabase.rpc('approve_org_request', {
+				p_request_id: requestId,
+				p_reviewer_id: reviewerId
+			})
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+			queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
+			queryClient.invalidateQueries({ queryKey: ['orgMembers'] })
+			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+		}
+	})
+}
+
+export function useRejectOrgRequest() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requestId, reviewerId }: { requestId: UUID; reviewerId: string }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase
+				.from('org_requests')
+				.update({ status: 'rejected', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
+				.eq('request_id', requestId)
+				.eq('status', 'pending')
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+			queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+		}
+	})
+}
+
+export function useRetractOrgRequest() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requestId }: { requestId: UUID }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase
+				.from('org_requests')
+				.update({ status: 'cancelled' })
+				.eq('request_id', requestId)
+				.eq('status', 'pending')
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+			queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+		}
+	})
+}
+
+export function useUpdateSpeciesImage() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ species_id, picture_url }: { species_id: UUID; picture_url: string }) => {
+			const supabase = createClient()
+
+			if (!species_id || picture_url === '') {
+				throw new Error('Missing id or url is empty')
+			}
+
+			const { error } = await supabase.from('species').update({ picture_url: picture_url }).eq('id', species_id)
+
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['singleSpecies', variables.species_id] })
+			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['species'] })
+		}
+	})
+}
+
+export function useCreateSpecies() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			scientific_name,
+			common_name,
+			care_instructions,
+			picture_url
+		}: {
+			scientific_name: string
+			common_name: string
+			care_instructions: string
+			picture_url?: string
+		}) => {
+			const supabase = createClient()
+
+			if (!scientific_name.trim() || !common_name.trim()) {
+				throw new Error('Scientific name and common name are required')
+			}
+
+			const { error } = await supabase.from('species').insert({
+				scientific_name: scientific_name.trim(),
+				common_name: common_name.trim(),
+				care_instructions: care_instructions.trim(),
+				...(picture_url ? { picture_url } : {})
+			})
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['species'] })
+			toast.success('Species created successfully!')
+		}
+	})
+}
+
+export function useDeleteSpecies() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ species_id }: { species_id: UUID }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('species').delete().eq('id', species_id)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['species'] })
+			toast.success('Species deleted successfully!')
+		}
+	})
+}
+
+export function useUpdateSpecies() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			species_id,
+			scientific_name,
+			common_name,
+			care_instructions
+		}: {
+			species_id: UUID
+			scientific_name: string
+			common_name: string
+			care_instructions: string
+		}) => {
+			const supabase = createClient()
+
+			if (!scientific_name.trim() || !common_name.trim()) {
+				throw new Error('Scientific name and common name are required')
+			}
+
+			const { error } = await supabase
+				.from('species')
+				.update({
+					scientific_name: scientific_name.trim(),
+					common_name: common_name.trim(),
+					care_instructions: care_instructions.trim()
+				})
+				.eq('id', species_id)
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['species'] })
+			toast.success('Species updated successfully!')
 		}
 	})
 }

@@ -48,7 +48,6 @@ export default function LoginInstallPrompt() {
 			<Button variant='outline' onClick={handleDismiss}>
 				Dismiss
 			</Button>
-			<div className='py-2' />
 			{!isIOS && (
 				<Button onClick={handleInstallClick}>
 					Install

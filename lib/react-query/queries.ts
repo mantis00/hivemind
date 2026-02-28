@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { UUID } from 'crypto'
+import { useCurrentClientUser } from '@/lib/react-query/auth'
 
 export type Org = {
 	org_id: UUID
@@ -27,15 +28,16 @@ export type MemberProfile = {
 	last_name: string
 	email: string
 	full_name: string
+	is_superadmin: boolean
 }
 
 export type Invite = {
-	invite_id: string
+	invite_id: UUID
 	org_id: UUID
 	inviter_id: string
 	invitee_email: string
 	access_lvl: number
-	status: 'pending' | 'accepted' | 'rejected'
+	status: 'pending' | 'accepted' | 'rejected' | 'cancelled'
 	created_at: string
 	expires_at: string
 	orgs?: {
@@ -64,6 +66,7 @@ export type Species = {
 	common_name: string
 	care_instructions: string
 	created_at: string
+	picture_url: string
 }
 
 export type OrgSpecies = {
@@ -71,8 +74,10 @@ export type OrgSpecies = {
 	created_at: string
 	custom_common_name: string
 	custom_care_instructions: string
+	master_species_id: UUID
 	species: {
 		scientific_name: string
+		picture_url: string
 	}
 }
 
@@ -90,6 +95,57 @@ export type EnclosureNote = {
 	enclosure_id: UUID
 	user_id: UUID
 	note_text: string
+}
+
+export type AllProfile = {
+	id: UUID
+	first_name: string
+	last_name: string
+	email: string
+	full_name: string
+	updated_at: string
+	theme_preference: string | null
+	is_superadmin: boolean
+	user_org_role: {
+		org_id: UUID
+		access_lvl: number
+		orgs: {
+			name: string
+		}
+	}[]
+}
+
+export type OrgRequest = {
+	request_id: UUID
+	requester_id: string
+	org_name: string
+	status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+	created_at: string
+	reviewed_by: string | null
+	reviewed_at: string | null
+	profiles?: {
+		full_name: string
+		email: string
+	}
+}
+
+export type Task = {
+	id: UUID
+	created_at: string
+	enclosure_id: UUID
+	name: string | null
+	description: string | null
+	status: string | null
+	due_date: string | null
+	priority: string | null
+	completed_by: UUID | null
+	completed_time: string | null
+	template_id: UUID | null
+	form_data: Record<string, unknown> | null
+	schedule_id: UUID | null
+	time_window: string | null
+	start_time: string | null
+	time_to_completion: string | null
 }
 
 export function useUserOrgs(userId: string) {
@@ -127,15 +183,23 @@ export function useOrgMembers(orgId: UUID) {
 	})
 }
 
+export function useIsOwnerOrSuperadmin(orgId: UUID | undefined): boolean {
+	const { data: user } = useCurrentClientUser()
+	const { data: orgMembers } = useOrgMembers(orgId as UUID)
+	if (!user || !orgId) return false
+	const accessLevel = orgMembers?.find((m) => m.user_id === user.id)?.access_lvl ?? 0
+	return accessLevel >= 2
+}
+
 export function useMemberProfiles(userIds: string[]) {
 	return useQuery({
 		queryKey: ['profiles', userIds],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
-				.from('profiles')
-				.select('id, first_name, last_name, email, full_name')
-				.in('id', userIds)) as { data: MemberProfile[] | null; error: PostgrestError | null }
+			const { data, error } = (await supabase.from('profiles').select('*').in('id', userIds)) as {
+				data: MemberProfile[] | null
+				error: PostgrestError | null
+			}
 
 			if (error) throw error
 
@@ -222,21 +286,36 @@ export function useOrgDetails(orgId: UUID) {
 	})
 }
 
-export function useOrgEnclosures(orgId: number) {
+export function useOrgEnclosures(orgId: UUID) {
 	return useQuery({
 		queryKey: ['orgEnclosures', orgId],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('enclosures')
-				.select(
-					'id, species_id, name, location, current_count, locations(id, name, description), species(id, scientific_name, common_name, care_instructions)'
-				)
+				.select('*, locations(name, description)')
 				.eq('org_id', orgId)
 				.order('current_count', { ascending: true })) as { data: Enclosure[] | null; error: PostgrestError | null }
 
 			if (error) throw error
 			return data
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useOrgEnclosureCount(orgId: UUID) {
+	return useQuery({
+		queryKey: ['orgEnclosureCount', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { count, error } = await supabase
+				.from('enclosures')
+				.select('*', { count: 'exact', head: true })
+				.eq('org_id', orgId)
+
+			if (error) throw error
+			return count ?? 0
 		},
 		enabled: !!orgId
 	})
@@ -266,7 +345,9 @@ export function useSpecies(orgId: UUID) {
 		queryKey: ['species'],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase.from('org_species').select('*, species(scientific_name)')) as {
+			const { data, error } = (await supabase
+				.from('org_species')
+				.select('*, species(scientific_name, picture_url)')) as {
 				data: OrgSpecies[] | null
 				error: PostgrestError | null
 			}
@@ -328,5 +409,119 @@ export function useOrgEnclosuresForSpecies(orgId: UUID, speciesId: UUID) {
 			return data
 		},
 		enabled: !!orgId && !!speciesId
+	})
+}
+
+export function useAllProfiles() {
+	return useQuery({
+		queryKey: ['allProfiles'],
+		queryFn: async () => {
+			const supabase = createClient()
+
+			const { data, error } = (await supabase
+				.from('profiles')
+				.select('*, user_org_role(org_id, access_lvl, orgs(name))')
+				.order('full_name', { ascending: true })) as { data: AllProfile[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data
+		}
+	})
+}
+
+export function useMyOrgRequests(userId: string) {
+	return useQuery({
+		queryKey: ['orgRequests', userId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('org_requests')
+				.select('*')
+				.eq('requester_id', userId)
+				.order('created_at', { ascending: false })) as { data: OrgRequest[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data
+		},
+		enabled: !!userId
+	})
+}
+
+export function useAllOrgRequests() {
+	return useQuery({
+		queryKey: ['allOrgRequests'],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('org_requests')
+				.select('*, profiles!org_requests_requester_id_fkey(full_name, email)')
+				.order('created_at', { ascending: false })) as { data: OrgRequest[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data
+		}
+	})
+}
+
+export function useEnclosuresByIds(enclosureIds: UUID[]) {
+	return useQuery({
+		queryKey: ['enclosuresByIds', enclosureIds],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('enclosures')
+				.select('id, org_id, species_id, name, location, current_count, locations(name, description), created_at')
+				.in('id', enclosureIds)) as { data: Enclosure[] | null; error: PostgrestError | null }
+			if (error) throw error
+			return data
+		},
+		enabled: enclosureIds.length > 0
+	})
+}
+
+export function useTasksForEnclosures(enclosureIds: UUID[]) {
+	return useQuery({
+		queryKey: ['tasksForEnclosures', enclosureIds],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase.from('tasks').select('*').in('enclosure_id', enclosureIds)) as {
+				data: Task[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+			return data
+		},
+		enabled: enclosureIds.length > 0
+	})
+}
+
+export function useOneSpecies(master_species_id: UUID) {
+	return useQuery({
+		queryKey: ['singleSpecies', master_species_id],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase.from('species').select('*').eq('id', master_species_id).single()) as {
+				data: Species | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+			return data
+		},
+		enabled: !!master_species_id
+	})
+}
+
+export function useAllSpecies() {
+	return useQuery({
+		queryKey: ['allSpecies'],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('species')
+				.select('*')
+				.order('common_name', { ascending: true })) as { data: Species[] | null; error: PostgrestError | null }
+			if (error) throw error
+			return data
+		}
 	})
 }
