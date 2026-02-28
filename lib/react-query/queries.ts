@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { UUID } from 'crypto'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { useCurrentClientUser } from '@/lib/react-query/auth'
 
 export type Org = {
 	org_id: UUID
@@ -28,6 +29,7 @@ export type MemberProfile = {
 	last_name: string
 	email: string
 	full_name: string
+	is_superadmin: boolean
 	is_superadmin: boolean
 }
 
