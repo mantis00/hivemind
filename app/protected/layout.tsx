@@ -5,7 +5,6 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import { ProtectedSidebar } from '@/components/navigation/protected-sidebar'
 import { ProtectedNavActions } from '@/components/navigation/protected-nav-actions'
 import { ProtectedNavHomeLink } from '@/components/navigation/protected-nav-home-link'
-import { NotificationsDropdown } from '@/components/notification/notifications'
 import LoginInstallPrompt from '@/components/pwa/login-install-prompt'
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
