@@ -6,7 +6,10 @@ import { useEffect, useState } from 'react'
 
 export function ProtectedNavHomeLink() {
 	const pathname = usePathname()
-	const match = pathname?.match(/^\/protected\/orgs\/(\d+)/)
+	// Match UUIDs (8-4-4-4-12 hex)
+	const match = pathname?.match(
+		/^\/protected\/orgs\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/
+	)
 	const orgId = match?.[1]
 	const href = orgId ? `/protected/orgs/${orgId}` : '/protected/orgs'
 	const [isMounted, setIsMounted] = useState(false)

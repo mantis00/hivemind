@@ -1,7 +1,7 @@
 'use client'
 
 import { TableRow, TableCell } from '../ui/table'
-import { useOrgMembers, useMemberProfiles } from '@/lib/react-query/queries'
+import { useOrgMembers, useMemberProfiles, useIsOwnerOrSuperadmin } from '@/lib/react-query/queries'
 import getAccessLevelName from '@/context/access-levels'
 import { LoaderCircle } from 'lucide-react'
 import { useParams } from 'next/navigation'
@@ -16,6 +16,7 @@ export function MemberRow() {
 	const userIds = orgMembers?.map((user) => user.user_id) ?? []
 	const { data: memberProfiles, isLoading: profilesLoading } = useMemberProfiles(userIds)
 	const { data: currentUser } = useCurrentClientUser()
+	const isOwnerOrSuperadmin = useIsOwnerOrSuperadmin(orgId)
 
 	const isLoading = orgMembersLoading || profilesLoading
 
@@ -45,8 +46,6 @@ export function MemberRow() {
 		return orgMembers?.find((member) => member.user_id === userId)?.access_lvl || 0
 	}
 
-	const currentUserAccessLevel = currentUser?.id ? getMemberAccessLevel(currentUser.id) : 0
-
 	return (
 		<>
 			{memberProfiles.map((user) => (
@@ -60,7 +59,7 @@ export function MemberRow() {
 						{new Date(orgMembers?.find((member) => member.user_id === user.id)?.created_at || '').toLocaleDateString()}
 					</TableCell>
 					<TableCell>
-						{currentUserAccessLevel === 3 && currentUser?.id !== user.id ? (
+						{isOwnerOrSuperadmin && currentUser?.id !== user.id ? (
 							<KickMemberButton memberUserId={user.id} />
 						) : (
 							<span className='text-muted-foreground text-sm'>—</span>

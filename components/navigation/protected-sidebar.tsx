@@ -7,7 +7,10 @@ import { useEffect, useState } from 'react'
 
 function isOrgRoute(pathname: string | null) {
 	if (!pathname) return false
-	return /^\/protected\/orgs\/\d+/.test(pathname)
+	// Match UUIDs (8-4-4-4-12 hex)
+	return /^\/protected\/orgs\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/.test(
+		pathname
+	)
 }
 
 export function ProtectedSidebar() {

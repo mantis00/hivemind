@@ -13,7 +13,6 @@ import { useParams } from 'next/navigation'
 import CreateEnclosureNote from './create-enclosure-note'
 import DeleteEnclosureButton from './delete-enclosure-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
-import { EditEnclosureButton } from './edit-enclosure-button'
 
 export function EnclosureDialog({
 	enclosure,
@@ -41,15 +40,8 @@ export function EnclosureDialog({
 			onOpenChange={onOpenChange}
 			trigger={<div></div>}
 		>
-			<div className='overflow-y-auto max-h-[70vh] px-1'>
-				<Button
-					className='gap-2 w-full'
-					onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}
-				>
-					<ClipboardList className='h-4 w-4' />
-					View Tasks
-				</Button>
-				<div className='grid gap-4 py-2'>
+			<div className='overflow-y-auto max-h-[70vh]'>
+				<div className='grid gap-4'>
 					{/* Tank Details */}
 					<div className='grid grid-cols-2 gap-3'>
 						<div className='flex items-center gap-2 rounded-md border p-3'>
@@ -109,10 +101,15 @@ export function EnclosureDialog({
 						)}
 
 						<CreateEnclosureNote enclosureId={enclosure.id} />
-						<div className='flex flex-row justify-center gap-2'>
+						<div className='flex flex-col gap-2 pt-1'>
+							<Button
+								className='gap-2 w-full'
+								onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}
+							>
+								<ClipboardList className='h-4 w-4' />
+								View Tasks
+							</Button>
 							<DeleteEnclosureButton enclosure_id={enclosure.id} onDeleted={() => onOpenChange(false)} />
-
-							<EditEnclosureButton enclosure={enclosure} spec={species} />
 						</div>
 					</div>
 				</div>

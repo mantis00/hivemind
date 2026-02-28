@@ -1,4 +1,4 @@
-## Hivemind
+### Hivemind
 
 Minimal notes to get the app running locally and know what is inside.
 

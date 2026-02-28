@@ -31,7 +31,6 @@ export function LogoutButton() {
 			<Button variant='outline' onClick={() => setOpen(false)}>
 				Cancel
 			</Button>
-			<div className='py-2' />
 			<Button variant='destructive' onClick={logout}>
 				Logout
 			</Button>
