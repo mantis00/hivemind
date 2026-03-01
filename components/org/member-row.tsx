@@ -59,7 +59,8 @@ export function MemberRow() {
 						{new Date(orgMembers?.find((member) => member.user_id === user.id)?.created_at || '').toLocaleDateString()}
 					</TableCell>
 					<TableCell>
-						{isOwnerOrSuperadmin && currentUser?.id !== user.id ? (
+						{/* can only kick users that are not owners or superadmins */}
+						{isOwnerOrSuperadmin && currentUser?.id !== user.id && getMemberAccessLevel(user.id) < 2 ? (
 							<KickMemberButton memberUserId={user.id} />
 						) : (
 							<span className='text-muted-foreground text-sm'>—</span>
