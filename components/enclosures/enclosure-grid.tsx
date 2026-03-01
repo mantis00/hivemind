@@ -155,7 +155,7 @@ export default function EnclosureGrid() {
 
 	return (
 		<div className='bg-background full'>
-			<div className='mx-auto px-4'>
+			<div className='mx-auto px-2'>
 				<div className={`mb-2 flex items-center ${useIsMobile() ? 'flex-col gap-1' : 'flex-row gap-3'}`}>
 					<div>
 						<Badge variant='secondary'>{orgSpecies?.length} species</Badge>
