@@ -457,7 +457,11 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 							<X className='h-4 w-4' />
 						</Button>
 					)}
-					{!isMobile && <CreateTaskButton />}
+					{!isMobile && (
+						<div className='ml-auto'>
+							<CreateTaskButton />
+						</div>
+					)}
 				</div>
 			</div>
 
