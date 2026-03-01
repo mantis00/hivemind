@@ -1,5 +1,5 @@
 import { ViewOrgs } from '@/components/org/view-orgs'
-import { RequestOrgButton } from '@/components/org/request-org-button'
+import { OrgCreationButtons } from '@/components/org/org-creation-buttons'
 
 export default function Page() {
 	return (
@@ -9,7 +9,7 @@ export default function Page() {
 					<div className='flex-col'>
 						<h1 className='text-2xl font-semibold'>Your organizations</h1>
 					</div>
-					<RequestOrgButton />
+					<OrgCreationButtons />
 				</div>
 				<ViewOrgs />
 			</div>
