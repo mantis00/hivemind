@@ -178,7 +178,7 @@ export function TaskTemplatesButton({ species, usedTypes = [] }: TaskTemplatesBu
 			{/* ── Create view ── */}
 			{view === 'create' && (
 				<form onSubmit={handleSubmitCreate} className='flex flex-col gap-5'>
-					<div className='overflow-y-auto max-h-[58vh] space-y-5 py-1 pr-1'>
+					<div className='overflow-y-auto max-h-[58vh] space-y-5 py-1 px-1'>
 						{/* Task Type */}
 						<div className='space-y-2'>
 							<Label>

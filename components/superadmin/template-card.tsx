@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDownIcon, ChevronUpIcon, LoaderCircle, PlusIcon, TrashIcon, XIcon } from 'lucide-react'
+import { ChevronDownIcon, LoaderCircle, PlusIcon, TrashIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -13,6 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { useUpdateTaskTemplate } from '@/lib/react-query/mutations'
 import { DeleteTemplateButton } from '@/components/superadmin/delete-template-button'
+import { useAllTaskTypes } from '@/lib/react-query/queries'
 import type { Species, TaskTemplate } from '@/lib/react-query/queries'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -86,10 +88,16 @@ interface TemplateCardProps {
 export function TemplateCard({ template, species, allTemplateTypes }: TemplateCardProps) {
 	const [expanded, setExpanded] = useState(false)
 	const [type, setType] = useState(template.type)
+	const [showNewTypeInput, setShowNewTypeInput] = useState(false)
 	const [description, setDescription] = useState(template.description ?? '')
 	const [fields, setFields] = useState<FieldDef[]>(() => templateToFields(template))
 
 	const updateTemplate = useUpdateTaskTemplate()
+	const { data: allTypes } = useAllTaskTypes()
+
+	// Types available to switch to: all global types minus types used by OTHER templates for this species
+	const otherUsedTypes = allTemplateTypes.filter((t) => t !== template.type)
+	const availableTypes = (allTypes ?? []).filter((t) => !otherUsedTypes.includes(t))
 
 	// Dirty detection — compare serialized current vs original template
 	const originalSerialized = JSON.stringify(
@@ -109,6 +117,7 @@ export function TemplateCard({ template, species, allTemplateTypes }: TemplateCa
 
 	const reset = () => {
 		setType(template.type)
+		setShowNewTypeInput(false)
 		setDescription(template.description ?? '')
 		setFields(templateToFields(template))
 	}
@@ -162,51 +171,96 @@ export function TemplateCard({ template, species, allTemplateTypes }: TemplateCa
 	}
 
 	return (
-		<div className='rounded-lg border-2 ring-1 ring-border bg-card overflow-hidden'>
-			{/* Header — always visible */}
-			<div className='flex items-center gap-2 px-3 py-2.5 select-none'>
-				{/* Clickable area: badge + description */}
-				<div
-					className='flex items-center gap-2 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity'
-					onClick={() => setExpanded((p) => !p)}
-				>
-					<Badge variant='outline' className='font-mono text-xs capitalize shrink-0'>
-						{template.type}
-					</Badge>
-					<span className='text-xs text-muted-foreground truncate min-w-0'>
-						{template.description ??
-							`${template.question_templates?.length ?? 0} field${(template.question_templates?.length ?? 0) !== 1 ? 's' : ''}`}
-					</span>
-				</div>
+		<Collapsible
+			open={expanded}
+			onOpenChange={setExpanded}
+			className='rounded-lg border-2 ring-1 ring-border bg-card overflow-hidden'
+		>
+			{/* Sticky header */}
+			<div className='sticky top-0 z-10 bg-card'>
+				<CollapsibleTrigger asChild>
+					<div className='flex items-center gap-2 px-3 py-2.5 select-none cursor-pointer hover:bg-accent/40 transition-colors'>
+						{/* Badge + description */}
+						<div className='flex items-center gap-2 flex-1 min-w-0'>
+							<Badge variant='outline' className='font-mono text-xs capitalize shrink-0'>
+								{template.type}
+							</Badge>
+							<span className='text-xs text-muted-foreground truncate min-w-0'>
+								{template.description ??
+									`${template.question_templates?.length ?? 0} field${(template.question_templates?.length ?? 0) !== 1 ? 's' : ''}`}
+							</span>
+						</div>
 
-				{/* Delete button — dialog confirm */}
-				<DeleteTemplateButton template={template} species={species} />
+						{/* Delete button — stop propagation so it doesn't toggle the collapsible */}
+						<div onClick={(e) => e.stopPropagation()}>
+							<DeleteTemplateButton template={template} species={species} />
+						</div>
 
-				{/* Expand chevron */}
-				<Button
-					type='button'
-					variant='ghost'
-					size='icon'
-					className='h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground'
-					onClick={() => setExpanded((p) => !p)}
-				>
-					{expanded ? <ChevronUpIcon className='h-4 w-4' /> : <ChevronDownIcon className='h-4 w-4' />}
-				</Button>
+						{/* Expand chevron */}
+						<ChevronDownIcon
+							className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+						/>
+					</div>
+				</CollapsibleTrigger>
 			</div>
 
 			{/* Expanded edit form */}
-			{expanded && (
+			<CollapsibleContent>
 				<form onSubmit={handleSave} className='border-t px-3 py-3 space-y-4 bg-muted/20'>
 					<div className='space-y-1'>
 						<Label className='text-xs'>
 							Task Type <span className='text-destructive'>*</span>
 						</Label>
-						<Input
-							value={type}
-							onChange={(e) => setType(e.target.value)}
-							className='h-8 text-sm'
-							placeholder='e.g. feeding'
-						/>
+						{showNewTypeInput || availableTypes.length === 0 ? (
+							<div className='flex gap-2'>
+								<Input
+									value={type}
+									onChange={(e) => setType(e.target.value)}
+									className='h-8 text-sm flex-1'
+									placeholder='e.g. feeding'
+									autoFocus
+								/>
+								{availableTypes.length > 0 && (
+									<Button
+										type='button'
+										variant='outline'
+										size='sm'
+										className='shrink-0'
+										onClick={() => {
+											setShowNewTypeInput(false)
+											setType(template.type)
+										}}
+									>
+										Pick existing
+									</Button>
+								)}
+							</div>
+						) : (
+							<Select
+								value={type}
+								onValueChange={(val) => {
+									if (val === '__new__') {
+										setShowNewTypeInput(true)
+										setType('')
+									} else {
+										setType(val)
+									}
+								}}
+							>
+								<SelectTrigger className='h-8 text-sm'>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{availableTypes.map((t) => (
+										<SelectItem key={t} value={t}>
+											{t}
+										</SelectItem>
+									))}
+									<Separator className='my-1' />
+									<SelectItem value='__new__'>+ Create new type…</SelectItem>
+								</SelectContent>
+							</Select>
+						)}
 					</div>
 
 					<div className='space-y-1'>
@@ -263,8 +317,8 @@ export function TemplateCard({ template, species, allTemplateTypes }: TemplateCa
 						</div>
 					)}
 				</form>
-			)}
-		</div>
+			</CollapsibleContent>
+		</Collapsible>
 	)
 }
 
