@@ -878,7 +878,7 @@ export function useDeleteSpeciesFromOrg() {
 			const { error: speciesError } = await supabase
 				.from('org_species')
 				.delete()
-				.eq('species_id', species_id)
+				.eq('id', species_id)
 				.eq('org_id', orgId)
 			if (speciesError) throw speciesError
 		},
@@ -927,7 +927,7 @@ export function useDeleteBatchSpeciesFromOrg() {
 			const { error: speciesError } = await supabase
 				.from('org_species')
 				.delete()
-				.in('species_id', species_ids)
+				.in('id', species_ids)
 				.eq('org_id', orgId)
 			if (speciesError) throw speciesError
 		},

@@ -17,10 +17,12 @@ import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 
 export default function SpeciesRow({
 	species,
-	onDetailsOpenChange
+	onDetailsOpenChange,
+	sortKey
 }: {
 	species: OrgSpecies
 	onDetailsOpenChange: () => void
+	sortKey: string
 }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
@@ -113,12 +115,20 @@ export default function SpeciesRow({
 								)}
 								<div className='flex-1 min-w-0'>
 									<div className='flex items-center gap-2'>
-										<p className='font-medium text-sm truncate'>{species.custom_common_name}</p>
+										{sortKey === 'scientific_name' ? (
+											<p className='font-medium text-sm truncate'>{species.species.scientific_name}</p>
+										) : (
+											<p className='font-medium text-sm truncate'>{species.custom_common_name}</p>
+										)}
 										<Badge variant='outline' className='shrink-0 text-xs'>
 											{enclosures?.length} {enclosures?.length === 1 ? 'enclosure' : 'enclosures'}
 										</Badge>
 									</div>
-									<p className='text-xs text-muted-foreground italic truncate'>{species.species.scientific_name}</p>
+									{sortKey === 'scientific_name' ? (
+										<p className='text-xs text-muted-foreground italic truncate'>{species.custom_common_name}</p>
+									) : (
+										<p className='text-xs text-muted-foreground italic truncate'>{species.species.scientific_name}</p>
+									)}
 								</div>
 							</button>
 						</CollapsibleTrigger>

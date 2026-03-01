@@ -119,14 +119,34 @@ export default function EnclosureGrid() {
 		if (!searchValue.length || searchValue.trim() === '') return
 		const val = searchValue.trim().toLowerCase()
 
-		// 1. Filter species by name match
-		const nameMatches = [...(orgSpecies ?? [])].filter((spec) => {
-			if (spec.custom_common_name && spec.custom_common_name.trim().toLowerCase().includes(val)) return true
-			if (spec.species?.scientific_name && spec.species.scientific_name.trim().toLowerCase().includes(val)) return true
-			return false
+		const scoreMatch = (str: string | undefined): number => {
+			if (!str) return -1
+			const s = str.trim().toLowerCase()
+			if (s === val) return 0
+			if (s.startsWith(val)) return 1
+			if (s.includes(val)) return 2
+			return -1
+		}
+
+		const scored = (orgSpecies ?? []).map((spec) => {
+			let score = -1
+			if (sortKey === 'common_name') {
+				score = scoreMatch(spec.custom_common_name)
+			} else if (sortKey === 'scientific_name') {
+				score = scoreMatch(spec.species?.scientific_name)
+			} else {
+				score = Math.min(
+					...[scoreMatch(spec.custom_common_name), scoreMatch(spec.species?.scientific_name)].filter((s) => s >= 0)
+				)
+			}
+			return { spec, score }
 		})
 
-		const results = [...nameMatches]
+		const results = scored
+			.filter(({ score }) => score >= 0)
+			.sort((a, b) => a.score - b.score)
+			.map(({ spec }) => spec)
+
 		setDisplayedSpecies(results)
 		setSearchCount(results.length)
 	}
@@ -155,7 +175,7 @@ export default function EnclosureGrid() {
 
 	return (
 		<div className='bg-background full'>
-			<div className='mx-auto px-2'>
+			<div className='mx-auto'>
 				<div className={`mb-2 flex items-center ${useIsMobile() ? 'flex-col gap-1' : 'flex-row gap-3'}`}>
 					<div>
 						<Badge variant='secondary'>{orgSpecies?.length} species</Badge>
@@ -266,7 +286,7 @@ export default function EnclosureGrid() {
 							style={{ position: 'absolute', visibility: 'hidden', pointerEvents: 'none' }}
 						>
 							<div className='p-2 pb-0 last:pb-2'>
-								<SpeciesRow species={displayedSpecies[0]} onDetailsOpenChange={() => {}} />
+								<SpeciesRow species={displayedSpecies[0]} onDetailsOpenChange={() => {}} sortKey={sortKey} />
 							</div>
 						</div>
 						<div ref={virtuosoRef} className='rounded-lg border bg-card'>
@@ -284,6 +304,7 @@ export default function EnclosureGrid() {
 												setDetailsView('details')
 												setOpenSpeciesId(sp.id)
 											}}
+											sortKey={sortKey}
 										/>
 									</div>
 								)}
