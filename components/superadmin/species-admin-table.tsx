@@ -127,7 +127,7 @@ export function SpeciesAdminTable() {
 									e.stopPropagation()
 									handleSortChange('reset')
 								}}
-								className='flex-shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-foreground cursor-pointer'
+								className='shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-foreground cursor-pointer'
 							>
 								<XIcon className='size-3.5 text-current' />
 							</span>
