@@ -102,66 +102,66 @@ export function SpeciesAdminTable() {
 
 	return (
 		<div className='space-y-3'>
-			{/* Toolbar */}
-			<div className='flex justify-between gap-3 items-center'>
+			{/* Row 1: badge + create button */}
+			<div className='mb-2 flex items-center gap-3'>
 				<Badge variant='secondary'>{allSpecies?.length ?? 0} species</Badge>
-				<div className='flex flex-row items-center gap-3 ml-auto'>
+				<div className='ml-auto'>
 					<CreateSpeciesButton />
-					<Select onValueChange={handleSortChange} value={sortKey || ''} disabled={isLoading}>
-						<SelectTrigger className='w-45'>
-							<SelectValue placeholder='Sort' className='flex-1 min-w-0 truncate' />
-							{isSorted && (
-								<span
-									role='button'
-									tabIndex={-1}
-									onPointerDown={(e) => {
-										e.stopPropagation()
-										e.preventDefault()
-									}}
-									onClick={(e) => {
-										e.stopPropagation()
-										handleSortChange('reset')
-									}}
-									className='flex-shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-foreground cursor-pointer'
-								>
-									<XIcon className='size-3.5 text-current' />
-								</span>
-							)}
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value='common_name'>Common Name</SelectItem>
-							<SelectItem value='scientific_name'>Scientific Name</SelectItem>
-						</SelectContent>
-					</Select>
-					<Button variant='outline' size='icon' onClick={handleToggleDirection} disabled={isLoading || !isSorted}>
-						{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
-					</Button>
-					<InputGroup className='w-40 sm:w-60' onKeyDown={handleKeyDown}>
-						<InputGroupInput
-							placeholder='Search…'
-							value={search}
-							onChange={(e) => handleSearchChange(e.target.value)}
-						/>
-						{search && (
-							<InputGroupAddon align='inline-end' className='pr-1'>
-								<InputGroupButton
-									onClick={handleClearSearch}
-									className='h-6 w-6 text-muted-foreground hover:text-foreground'
-								>
-									<XIcon className='h-3 w-3' />
-								</InputGroupButton>
-							</InputGroupAddon>
+				</div>
+			</div>
+
+			{/* Row 2: sort + search */}
+			<div className='w-full py-2 flex flex-row gap-3'>
+				<Select onValueChange={handleSortChange} value={sortKey || ''} disabled={isLoading}>
+					<SelectTrigger className='w-45'>
+						<SelectValue placeholder='Sort' className='flex-1 min-w-0 truncate' />
+						{isSorted && (
+							<span
+								role='button'
+								tabIndex={-1}
+								onPointerDown={(e) => {
+									e.stopPropagation()
+									e.preventDefault()
+								}}
+								onClick={(e) => {
+									e.stopPropagation()
+									handleSortChange('reset')
+								}}
+								className='flex-shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-foreground cursor-pointer'
+							>
+								<XIcon className='size-3.5 text-current' />
+							</span>
 						)}
-						<InputGroupAddon>
-							<InputGroupButton onClick={handleSearch} disabled={isLoading}>
-								<Search />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value='common_name'>Common Name</SelectItem>
+						<SelectItem value='scientific_name'>Scientific Name</SelectItem>
+					</SelectContent>
+				</Select>
+				<Button variant='outline' size='icon' onClick={handleToggleDirection} disabled={isLoading || !isSorted}>
+					{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
+				</Button>
+				<InputGroup className='w-40 sm:w-60 ml-auto' onKeyDown={handleKeyDown}>
+					<InputGroupInput placeholder='Search…' value={search} onChange={(e) => handleSearchChange(e.target.value)} />
+					{search && (
+						<InputGroupAddon align='inline-end' className='pr-1'>
+							<InputGroupButton
+								onClick={handleClearSearch}
+								className='h-6 w-6 text-muted-foreground hover:text-foreground'
+							>
+								<XIcon className='h-3 w-3' />
 							</InputGroupButton>
 						</InputGroupAddon>
-						<InputGroupAddon className='hidden sm:block' align='inline-end'>
-							{searchCount > 0 ? `${searchCount} Results` : ''}
-						</InputGroupAddon>
-					</InputGroup>
-				</div>
+					)}
+					<InputGroupAddon>
+						<InputGroupButton onClick={handleSearch} disabled={isLoading}>
+							<Search />
+						</InputGroupButton>
+					</InputGroupAddon>
+					<InputGroupAddon className='hidden sm:block' align='inline-end'>
+						{searchCount > 0 ? `${searchCount} Results` : ''}
+					</InputGroupAddon>
+				</InputGroup>
 			</div>
 
 			{/* Table body */}

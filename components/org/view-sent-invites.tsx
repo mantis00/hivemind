@@ -40,10 +40,10 @@ export function ViewSentInvites() {
 
 	if (!isOwnerOrSuperadmin) return null
 
-	const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000
+	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 	const visibleInvites = invites?.filter((invite) => {
 		const expiredAt = new Date(invite.expires_at).getTime()
-		return Date.now() <= expiredAt + TWO_DAYS_MS
+		return Date.now() <= expiredAt + SEVEN_DAYS_MS
 	})
 
 	const handleRetract = (inviteId: UUID) => {

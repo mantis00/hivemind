@@ -34,7 +34,15 @@ export function ViewSentRequests() {
 	const [pendingRequestId, setPendingRequestId] = useState<UUID | null>(null)
 	const { data: userProfile } = useMemberProfiles(user?.id ? [user.id] : [])
 	const isSuperadmin = userProfile?.some((profile) => profile.is_superadmin === true)
+
 	if (isSuperadmin) return null
+
+	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+	const visibleRequests = requests?.filter((request) => {
+		if (request.status === 'pending') return true
+		const lastUpdated = new Date(request.reviewed_at ?? request.created_at).getTime()
+		return Date.now() <= lastUpdated + SEVEN_DAYS_MS
+	})
 
 	const handleRetract = (requestId: UUID) => {
 		if (!user?.id) return
@@ -51,7 +59,7 @@ export function ViewSentRequests() {
 				>
 					<div className='flex items-center gap-3'>
 						<h3 className='text-sm font-medium text-foreground'>Organization Requests</h3>
-						<span className='text-xs text-muted-foreground'>{requests?.length ?? 0}</span>
+						<span className='text-xs text-muted-foreground'>{visibleRequests?.length ?? 0}</span>
 					</div>
 					<ChevronDownIcon className='h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180' />
 				</button>
@@ -61,11 +69,11 @@ export function ViewSentRequests() {
 					<div className='flex justify-center items-center py-4'>
 						<LoaderCircle className='animate-spin' />
 					</div>
-				) : !requests || requests.length === 0 ? (
+				) : !visibleRequests || visibleRequests.length === 0 ? (
 					<p className='py-2 text-sm text-muted-foreground text-center'>No requests submitted yet.</p>
 				) : (
 					<div className='divide-y divide-border'>
-						{requests.map((request) => (
+						{visibleRequests.map((request) => (
 							<div key={request.request_id} className='flex items-center justify-between gap-3 py-3 first:pt-1'>
 								<div className='flex min-w-0 flex-1 flex-col gap-1'>
 									<p className='truncate text-sm font-medium text-foreground'>{request.org_name}</p>
