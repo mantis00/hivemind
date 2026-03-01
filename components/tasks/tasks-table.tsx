@@ -56,8 +56,9 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 }
 
 const MOBILE_COL_WIDTHS: Record<string, number> = {
-	priority: 76,
-	status: 90
+	name: 130,
+	priority: 84,
+	status: 100
 }
 
 function getColumns(
@@ -78,7 +79,7 @@ function getColumns(
 					<ArrowUpDown className='ml-2 h-4 w-4' />
 				</Button>
 			),
-			cell: ({ row }) => <div className='font-medium'>{row.getValue('name')}</div>
+			cell: ({ row }) => <div className='font-medium truncate'>{row.getValue('name')}</div>
 		},
 		{
 			id: 'description',
@@ -473,13 +474,18 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 					</div>
 				) : (
 					<TableVirtuoso
-						style={{ height: tableHeight }}
+						style={{ height: tableHeight, overflowX: 'hidden' }}
 						totalCount={rows.length}
 						components={{
 							Table: ({ style, ...props }) => (
 								<table
 									{...props}
-									style={{ ...style, width: '100%', borderCollapse: 'collapse' }}
+									style={{
+										...style,
+										width: '100%',
+										borderCollapse: 'collapse',
+										...(isMobile ? { tableLayout: 'fixed' } : {})
+									}}
 									className='w-full caption-bottom text-sm'
 								/>
 							),

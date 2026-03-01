@@ -13,7 +13,7 @@ export default async function Page({ params }: { params: Promise<{ orgId: UUID; 
 				<div className='pb-5 flex-row flex items-center justify-between'>
 					<div className='flex-col w-full'>
 						<div className='flex flex-row gap-2 pb-6'>
-							<Calendar className='h-6 w-6' />
+							<Calendar className='h-6 w-6 my-auto' />
 							<EnclosureHeading enclosureId={enclosureId} orgId={orgId} />
 						</div>
 						<p className='text-sm text-muted-foreground pb-6'>View and manage your organization&apos;s dashboard.</p>
