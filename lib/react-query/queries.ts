@@ -39,6 +39,7 @@ export type Invite = {
 	access_lvl: number
 	status: 'pending' | 'accepted' | 'rejected' | 'cancelled'
 	created_at: string
+	updated_at: string
 	expires_at: string
 	orgs?: {
 		name: string
@@ -123,10 +124,6 @@ export type OrgRequest = {
 	created_at: string
 	reviewed_by: string | null
 	reviewed_at: string | null
-	profiles?: {
-		full_name: string
-		email: string
-	}
 }
 
 export type Task = {
@@ -454,7 +451,7 @@ export function useAllOrgRequests() {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('org_requests')
-				.select('*, profiles!org_requests_requester_id_fkey(full_name, email)')
+				.select('*')
 				.order('created_at', { ascending: false })) as { data: OrgRequest[] | null; error: PostgrestError | null }
 
 			if (error) throw error

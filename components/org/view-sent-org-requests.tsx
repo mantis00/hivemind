@@ -3,20 +3,12 @@
 import { Button } from '@/components/ui/button'
 import { XIcon, LoaderCircle, ChevronDownIcon } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { useMyOrgRequests } from '@/lib/react-query/queries'
+import { useMyOrgRequests, useMemberProfiles } from '@/lib/react-query/queries'
 import { useRetractOrgRequest } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { formatDate } from '@/context/format-date'
 import { useState } from 'react'
 import { UUID } from 'crypto'
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-function formatDate(iso: string): string {
-	const d = new Date(iso)
-	const month = MONTHS[d.getUTCMonth()]
-	const day = d.getUTCDate()
-	return `${month} ${day}, ${d.getUTCFullYear()}`
-}
 
 function StatusDot({ status }: { status: string }) {
 	const colorMap: Record<string, string> = {
@@ -36,8 +28,13 @@ function StatusDot({ status }: { status: string }) {
 export function ViewSentRequests() {
 	const { data: user } = useCurrentClientUser()
 	const { data: requests, isLoading } = useMyOrgRequests(user?.id ?? '')
+	const reviewerIds = [...new Set(requests?.map((r) => r.reviewed_by).filter(Boolean) as string[])]
+	const { data: reviewerProfiles } = useMemberProfiles(reviewerIds)
 	const retractMutation = useRetractOrgRequest()
 	const [pendingRequestId, setPendingRequestId] = useState<UUID | null>(null)
+	const { data: userProfile } = useMemberProfiles(user?.id ? [user.id] : [])
+	const isSuperadmin = userProfile?.some((profile) => profile.is_superadmin === true)
+	if (isSuperadmin) return null
 
 	const handleRetract = (requestId: UUID) => {
 		if (!user?.id) return
@@ -80,7 +77,11 @@ export function ViewSentRequests() {
 										{request.reviewed_at && (
 											<>
 												<span className='text-border'>/</span>
-												<span>Reviewed {formatDate(request.reviewed_at)}</span>
+												<span>
+													{request.status === 'approved' ? 'Approved' : 'Rejected'} {formatDate(request.reviewed_at)}
+													{reviewerProfiles?.find((p) => p.id === request.reviewed_by)?.full_name &&
+														` by ${reviewerProfiles.find((p) => p.id === request.reviewed_by)?.full_name}`}
+												</span>
 											</>
 										)}
 									</div>

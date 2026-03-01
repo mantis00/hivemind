@@ -7,6 +7,7 @@ import { LoaderCircle } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import { KickMemberButton } from './kick-member-button'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { formatDate } from '@/context/format-date'
 import { UUID } from 'crypto'
 
 export function MemberRow() {
@@ -56,10 +57,10 @@ export function MemberRow() {
 					<TableCell>{user.email}</TableCell>
 					<TableCell>{getAccessLevelName(getMemberAccessLevel(user.id))}</TableCell>
 					<TableCell>
-						{new Date(orgMembers?.find((member) => member.user_id === user.id)?.created_at || '').toLocaleDateString()}
+						{formatDate(orgMembers?.find((member) => member.user_id === user.id)?.created_at || '')}
 					</TableCell>
 					<TableCell>
-						{isOwnerOrSuperadmin && currentUser?.id !== user.id ? (
+						{isOwnerOrSuperadmin && currentUser?.id !== user.id && !user.is_superadmin ? (
 							<KickMemberButton memberUserId={user.id} />
 						) : (
 							<span className='text-muted-foreground text-sm'>—</span>
