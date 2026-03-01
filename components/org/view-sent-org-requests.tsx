@@ -3,20 +3,12 @@
 import { Button } from '@/components/ui/button'
 import { XIcon, LoaderCircle, ChevronDownIcon } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { useMyOrgRequests } from '@/lib/react-query/queries'
+import { useMyOrgRequests, useMemberProfiles } from '@/lib/react-query/queries'
 import { useRetractOrgRequest } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { formatDate } from '@/context/format-date'
 import { useState } from 'react'
 import { UUID } from 'crypto'
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-function formatDate(iso: string): string {
-	const d = new Date(iso)
-	const month = MONTHS[d.getUTCMonth()]
-	const day = d.getUTCDate()
-	return `${month} ${day}, ${d.getUTCFullYear()}`
-}
 
 function StatusDot({ status }: { status: string }) {
 	const colorMap: Record<string, string> = {
@@ -36,8 +28,21 @@ function StatusDot({ status }: { status: string }) {
 export function ViewSentRequests() {
 	const { data: user } = useCurrentClientUser()
 	const { data: requests, isLoading } = useMyOrgRequests(user?.id ?? '')
+	const reviewerIds = [...new Set(requests?.map((r) => r.reviewed_by).filter(Boolean) as string[])]
+	const { data: reviewerProfiles } = useMemberProfiles(reviewerIds)
 	const retractMutation = useRetractOrgRequest()
 	const [pendingRequestId, setPendingRequestId] = useState<UUID | null>(null)
+	const { data: userProfile } = useMemberProfiles(user?.id ? [user.id] : [])
+	const isSuperadmin = userProfile?.some((profile) => profile.is_superadmin === true)
+
+	if (isSuperadmin) return null
+
+	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+	const visibleRequests = requests?.filter((request) => {
+		if (request.status === 'pending') return true
+		const lastUpdated = new Date(request.reviewed_at ?? request.created_at).getTime()
+		return Date.now() <= lastUpdated + SEVEN_DAYS_MS
+	})
 
 	const handleRetract = (requestId: UUID) => {
 		if (!user?.id) return
@@ -54,7 +59,7 @@ export function ViewSentRequests() {
 				>
 					<div className='flex items-center gap-3'>
 						<h3 className='text-sm font-medium text-foreground'>Organization Requests</h3>
-						<span className='text-xs text-muted-foreground'>{requests?.length ?? 0}</span>
+						<span className='text-xs text-muted-foreground'>{visibleRequests?.length ?? 0}</span>
 					</div>
 					<ChevronDownIcon className='h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180' />
 				</button>
@@ -64,11 +69,11 @@ export function ViewSentRequests() {
 					<div className='flex justify-center items-center py-4'>
 						<LoaderCircle className='animate-spin' />
 					</div>
-				) : !requests || requests.length === 0 ? (
+				) : !visibleRequests || visibleRequests.length === 0 ? (
 					<p className='py-2 text-sm text-muted-foreground text-center'>No requests submitted yet.</p>
 				) : (
 					<div className='divide-y divide-border'>
-						{requests.map((request) => (
+						{visibleRequests.map((request) => (
 							<div key={request.request_id} className='flex items-center justify-between gap-3 py-3 first:pt-1'>
 								<div className='flex min-w-0 flex-1 flex-col gap-1'>
 									<p className='truncate text-sm font-medium text-foreground'>{request.org_name}</p>
@@ -80,7 +85,11 @@ export function ViewSentRequests() {
 										{request.reviewed_at && (
 											<>
 												<span className='text-border'>/</span>
-												<span>Reviewed {formatDate(request.reviewed_at)}</span>
+												<span>
+													{request.status === 'approved' ? 'Approved' : 'Rejected'} {formatDate(request.reviewed_at)}
+													{reviewerProfiles?.find((p) => p.id === request.reviewed_by)?.full_name &&
+														` by ${reviewerProfiles.find((p) => p.id === request.reviewed_by)?.full_name}`}
+												</span>
 											</>
 										)}
 									</div>

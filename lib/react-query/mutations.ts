@@ -718,3 +718,144 @@ export function useUpdateSpecies() {
 		}
 	})
 }
+
+export function useCreateTaskTemplate() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			speciesId,
+			type,
+			description,
+			fields
+		}: {
+			speciesId: UUID
+			type: string
+			description: string
+			fields: {
+				question_key: string
+				label: string
+				type: string
+				required: boolean
+				choices: string[]
+			}[]
+		}) => {
+			const supabase = createClient()
+
+			const { data: template, error: templateError } = await supabase
+				.from('task_templates')
+				.insert({ species_id: speciesId, type, description: description || null })
+				.select()
+				.single()
+
+			if (templateError) throw templateError
+
+			const { error: questionsError } = await supabase.from('question_templates').insert(
+				fields.map((f) => ({
+					task_template_id: template.id,
+					question_key: f.question_key,
+					label: f.label,
+					type: f.type,
+					required: f.required,
+					choices: f.choices.length > 0 ? f.choices : null
+				}))
+			)
+
+			if (questionsError) throw questionsError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			toast.success('Task template created!')
+		}
+	})
+}
+
+export function useUpdateTaskTemplate() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			templateId,
+			speciesId,
+			type,
+			description,
+			fields
+		}: {
+			templateId: UUID
+			speciesId: UUID
+			type: string
+			description: string
+			fields: {
+				question_key: string
+				label: string
+				type: string
+				required: boolean
+				choices: string[]
+			}[]
+		}) => {
+			const supabase = createClient()
+
+			const { error: templateError } = await supabase
+				.from('task_templates')
+				.update({ type, description: description || null })
+				.eq('id', templateId)
+
+			if (templateError) throw templateError
+
+			// Replace all question_templates: delete existing then re-insert
+			const { error: deleteError } = await supabase
+				.from('question_templates')
+				.delete()
+				.eq('task_template_id', templateId)
+
+			if (deleteError) throw deleteError
+
+			const { error: insertError } = await supabase.from('question_templates').insert(
+				fields.map((f) => ({
+					task_template_id: templateId,
+					question_key: f.question_key,
+					label: f.label,
+					type: f.type,
+					required: f.required,
+					choices: f.choices.length > 0 ? f.choices : null
+				}))
+			)
+
+			if (insertError) throw insertError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			toast.success('Template updated!')
+		}
+	})
+}
+
+export function useDeleteTaskTemplate() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ templateId }: { templateId: UUID; speciesId: UUID }) => {
+			const supabase = createClient()
+
+			const { error: deleteQuestionsError } = await supabase
+				.from('question_templates')
+				.delete()
+				.eq('task_template_id', templateId)
+
+			if (deleteQuestionsError) throw deleteQuestionsError
+
+			const { error } = await supabase.from('task_templates').delete().eq('id', templateId)
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			toast.success('Template deleted!')
+		}
+	})
+}
