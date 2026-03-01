@@ -1,21 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDownIcon, LoaderCircle, PlusIcon } from 'lucide-react'
+import { ChevronDownIcon, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
 import { useUpdateTaskTemplate } from '@/lib/react-query/mutations'
 import { DeleteTemplateButton } from '@/components/superadmin/delete-template-button'
 import { useAllTaskTypes } from '@/lib/react-query/queries'
 import type { Species, TaskTemplate } from '@/lib/react-query/queries'
-import { FieldRow, type FieldDef, emptyField, templateToFields, validateFields } from './template-fields'
+import { type FieldDef, emptyField, templateToFields, validateFields } from './template-fields'
+import { TaskTypeSelector, DescriptionField, FieldsEditor } from './task-template-form-parts'
 
 // ─── EditTaskCard ─────────────────────────────────────────────────────────────
 
@@ -147,102 +144,27 @@ export function EditTaskCard({ template, species, allTemplateTypes }: EditTaskCa
 			{/* Expanded edit form */}
 			<CollapsibleContent>
 				<form onSubmit={handleSave} className='border-t px-3 py-3 space-y-4 bg-muted/20'>
-					<div className='space-y-1'>
-						<Label className='text-xs'>
-							Task Type <span className='text-destructive'>*</span>
-						</Label>
-						{showNewTypeInput || availableTypes.length === 0 ? (
-							<div className='flex gap-2'>
-								<Input
-									value={type}
-									onChange={(e) => setType(e.target.value)}
-									className='h-8 text-sm flex-1'
-									placeholder='e.g. feeding, cleaning, inspection'
-									autoFocus
-								/>
-								{availableTypes.length > 0 && (
-									<Button
-										type='button'
-										variant='outline'
-										size='sm'
-										className='shrink-0'
-										onClick={() => {
-											setShowNewTypeInput(false)
-											setType(template.type)
-										}}
-									>
-										Pick existing
-									</Button>
-								)}
-							</div>
-						) : (
-							<Select
-								value={type}
-								onValueChange={(val) => {
-									if (val === '__new__') {
-										setShowNewTypeInput(true)
-										setType('')
-									} else {
-										setType(val)
-									}
-								}}
-							>
-								<SelectTrigger className='h-8 text-sm'>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{availableTypes.map((t) => (
-										<SelectItem key={t} value={t}>
-											{t}
-										</SelectItem>
-									))}
-									<Separator className='my-1' />
-									<SelectItem value='__new__'>+ Create new type…</SelectItem>
-								</SelectContent>
-							</Select>
-						)}
-					</div>
+					<TaskTypeSelector
+						value={type}
+						onChange={setType}
+						availableTypes={availableTypes}
+						showNewTypeInput={showNewTypeInput}
+						onShowNewTypeInput={setShowNewTypeInput}
+						resetValue={template.type}
+					/>
 
-					<div className='space-y-1'>
-						<Label className='text-xs'>
-							Description <span className='text-muted-foreground font-normal'>(optional)</span>
-						</Label>
-						<Textarea
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
-							rows={2}
-							className='text-sm'
-						/>
-					</div>
+					<DescriptionField value={description} onChange={setDescription} />
 
 					<Separator />
 
-					<div className='space-y-2'>
-						<div className='flex items-center justify-between'>
-							<Label className='text-xs font-semibold'>Form Fields</Label>
-							<Badge variant='secondary' className='text-xs'>
-								{fields.length}
-							</Badge>
-						</div>
-						<div className='space-y-2'>
-							{fields.map((field, index) => (
-								<FieldRow
-									key={field._id}
-									field={field}
-									index={index}
-									canDelete={fields.length > 1}
-									onUpdate={(u) => updateField(field._id, u)}
-									onDelete={() => removeField(field._id)}
-									onAddChoice={() => addChoice(field._id)}
-									onRemoveChoice={(ci) => removeChoice(field._id, ci)}
-								/>
-							))}
-						</div>
-						<Button type='button' variant='outline' size='sm' className='w-full' onClick={addField}>
-							<PlusIcon className='h-3.5 w-3.5' />
-							Add Field
-						</Button>
-					</div>
+					<FieldsEditor
+						fields={fields}
+						onAdd={addField}
+						onRemove={removeField}
+						onUpdate={updateField}
+						onAddChoice={addChoice}
+						onRemoveChoice={removeChoice}
+					/>
 
 					{/* Cancel / Save — only when dirty */}
 					{isDirty && (

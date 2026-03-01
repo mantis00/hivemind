@@ -1,19 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { LoaderCircle, PlusIcon } from 'lucide-react'
+import { LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
 import { useCreateTaskTemplate } from '@/lib/react-query/mutations'
 import { useAllTaskTypes } from '@/lib/react-query/queries'
 import type { Species } from '@/lib/react-query/queries'
-import { FieldRow, type FieldDef, emptyField, validateFields } from './template-fields'
+import { type FieldDef, emptyField, validateFields } from './template-fields'
+import { TaskTypeSelector, DescriptionField, FieldsEditor } from './task-template-form-parts'
 
 // ─── CreateTaskCard ───────────────────────────────────────────────────────────
 
@@ -91,105 +87,28 @@ export function CreateTaskCard({ species, usedTypes, onSuccess, onCancel }: Crea
 		<form onSubmit={handleSubmit} className='border-t px-3 py-3 space-y-4 bg-muted/20'>
 			<div className='overflow-y-auto max-h-[58vh] space-y-4 px-1 -mx-1'>
 				{/* Task Type */}
-				<div className='space-y-1'>
-					<Label className='text-xs'>
-						Task Type <span className='text-destructive'>*</span>
-					</Label>
-					{showNewTypeInput || availableTypes.length === 0 ? (
-						<div className='flex gap-2'>
-							<Input
-								placeholder='e.g. feeding, cleaning, inspection'
-								value={taskType}
-								onChange={(e) => setTaskType(e.target.value)}
-								autoFocus
-								className='h-8 text-sm flex-1'
-							/>
-							{availableTypes.length > 0 && (
-								<Button
-									type='button'
-									variant='outline'
-									size='sm'
-									className='shrink-0'
-									onClick={() => {
-										setShowNewTypeInput(false)
-										setTaskType('')
-									}}
-								>
-									Pick existing
-								</Button>
-							)}
-						</div>
-					) : (
-						<Select
-							value={taskType}
-							onValueChange={(val) => {
-								if (val === '__new__') {
-									setShowNewTypeInput(true)
-									setTaskType('')
-								} else {
-									setTaskType(val)
-								}
-							}}
-						>
-							<SelectTrigger className='h-8 text-sm'>
-								<SelectValue placeholder='Select a type...' />
-							</SelectTrigger>
-							<SelectContent>
-								{availableTypes.map((t) => (
-									<SelectItem key={t} value={t}>
-										{t}
-									</SelectItem>
-								))}
-								<Separator className='my-1' />
-								<SelectItem value='__new__'>+ Create new type…</SelectItem>
-							</SelectContent>
-						</Select>
-					)}
-				</div>
+				<TaskTypeSelector
+					value={taskType}
+					onChange={setTaskType}
+					availableTypes={availableTypes}
+					showNewTypeInput={showNewTypeInput}
+					onShowNewTypeInput={setShowNewTypeInput}
+				/>
 
 				{/* Description */}
-				<div className='space-y-1'>
-					<Label className='text-xs'>
-						Description <span className='text-muted-foreground font-normal'>(optional)</span>
-					</Label>
-					<Textarea
-						placeholder='Brief description of what this template is for…'
-						value={description}
-						onChange={(e) => setDescription(e.target.value)}
-						rows={2}
-						className='text-sm'
-					/>
-				</div>
+				<DescriptionField value={description} onChange={setDescription} />
 
 				<Separator />
 
 				{/* Fields */}
-				<div className='space-y-2'>
-					<div className='flex items-center justify-between'>
-						<Label className='text-xs font-semibold'>Form Fields</Label>
-						<Badge variant='secondary' className='text-xs'>
-							{fields.length}
-						</Badge>
-					</div>
-					<div className='space-y-2'>
-						{fields.map((field, index) => (
-							<FieldRow
-								key={field._id}
-								field={field}
-								index={index}
-								canDelete={fields.length > 1}
-								onUpdate={(u) => updateField(field._id, u)}
-								onDelete={() => removeField(field._id)}
-								onAddChoice={() => addChoice(field._id)}
-								onRemoveChoice={(ci) => removeChoice(field._id, ci)}
-							/>
-						))}
-					</div>
-					<Button type='button' variant='outline' size='sm' className='w-full' onClick={addField}>
-						<PlusIcon className='h-3.5 w-3.5' />
-						Add Field
-					</Button>
-				</div>
+				<FieldsEditor
+					fields={fields}
+					onAdd={addField}
+					onRemove={removeField}
+					onUpdate={updateField}
+					onAddChoice={addChoice}
+					onRemoveChoice={removeChoice}
+				/>
 			</div>
 
 			<div className='flex gap-2 justify-end pt-2 border-t'>
