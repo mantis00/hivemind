@@ -930,3 +930,78 @@ export function useCreateTask() {
 		onSuccess: () => {}
 	})
 }
+
+export function useMarkNotificationAsViewed(userId?: string) {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async (notificationId: string) => {
+			if (!userId) throw new Error('User ID required')
+
+			const supabase = createClient()
+
+			const { error } = await supabase
+				.from('notifications')
+				.update({
+					viewed: true,
+					viewed_at: new Date().toISOString()
+				})
+				.eq('id', notificationId)
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			if (!userId) return
+
+			queryClient.invalidateQueries({
+				queryKey: ['notifications', userId]
+			})
+		}
+	})
+}
+
+export function useDeleteNotification(userId?: string) {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async (id: string) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('notifications').delete().eq('id', id)
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: ['notifications', userId]
+			})
+		}
+	})
+}
+
+export function useMarkAllNotificationsAsViewed(userId?: string) {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async () => {
+			if (!userId) throw new Error('No userId provided')
+
+			const supabase = createClient()
+
+			const { error } = await supabase
+				.from('notifications')
+				.update({
+					viewed: true,
+					viewed_at: new Date().toISOString()
+				})
+				.eq('recipient_id', userId)
+				.eq('viewed', false)
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: ['notifications', userId]
+			})
+		}
+	})
+}
