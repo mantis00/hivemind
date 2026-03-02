@@ -3,7 +3,7 @@
 import { useMemo, useState, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Bell, ArrowRight, AtSign, UserPlus, RefreshCw, AlertCircle } from 'lucide-react'
+import { Bell, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -12,15 +12,12 @@ import { Separator } from '@/components/ui/separator'
 import { useNotifications } from '@/lib/react-query/queries'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import type { Notification } from '@/lib/react-query/queries'
-import { useMemberProfiles } from '@/lib/react-query/queries'
-import { createClient } from '@/lib/supabase/client'
-import { useQueryClient } from '@tanstack/react-query'
-import type { NotificationWithProfile } from '@/lib/notifications/useNotificationsWithProfiles'
-import { useNotificationsWithProfiles } from '@/lib/notifications/useNotificationsWithProfiles'
-import { typeIcons, typeColors, typeBadgeColors, typeLabels, NotificationType } from '@/lib/notifications/config'
-import { formatRelativeTime } from '@/lib/notifications/utils'
-import { getInitials } from '@/lib/notifications/utils'
-import { useNotificationMutations } from '@/lib/notifications/useNotificationMutations'
+import type { NotificationWithProfile } from '@/context/useNotificationsWithProfiles'
+import { useNotificationsWithProfiles } from '@/context/useNotificationsWithProfiles'
+import { typeIcons, typeColors, typeBadgeColors, typeLabels, NotificationType } from '@/lib/notificationConfig'
+import { getInitials } from '@/lib/utils'
+import { formatRelativeTime } from '@/lib/utils'
+import { useMarkNotificationAsViewed, useMarkAllNotificationsAsViewed } from '@/lib/react-query/mutations'
 
 // ─── NotificationItem ────────────────────────────────────
 
@@ -95,7 +92,6 @@ export function NotificationsDropdown() {
 	const { data: user } = useCurrentClientUser()
 	const { data } = useNotifications(user?.id ?? '')
 	const notifications: Notification[] = data ?? []
-	const queryClient = useQueryClient()
 
 	const notificationsWithProfiles = useNotificationsWithProfiles(notifications)
 
@@ -110,23 +106,8 @@ export function NotificationsDropdown() {
 
 	const unviewedCount = notificationsWithProfiles.filter((n) => !n.viewed).length
 
-	const { markAsViewed } = useNotificationMutations(user?.id)
-
-	const markAllAsViewed = useCallback(async () => {
-		if (!user?.id) return
-		const unviewedIds = notificationsWithProfiles.filter((n) => !n.viewed).map((n) => n.id as string)
-		if (unviewedIds.length === 0) return
-		const supabase = createClient()
-		const { error } = await supabase
-			.from('notifications')
-			.update({ viewed: true, viewed_at: new Date().toISOString() })
-			.in('id', unviewedIds)
-		if (error) {
-			console.error('Failed to mark all notifications as viewed:', error)
-			return
-		}
-		await queryClient.invalidateQueries({ queryKey: ['notifications', user.id] })
-	}, [user?.id, notificationsWithProfiles, queryClient])
+	const markAsViewedMutation = useMarkNotificationAsViewed(user?.id)
+	const markAllMutation = useMarkAllNotificationsAsViewed(user?.id)
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -145,7 +126,12 @@ export function NotificationsDropdown() {
 				<div className='flex shrink-0 items-center justify-between px-4 py-3'>
 					<h3 className='text-sm font-semibold'>Notifications</h3>
 					{unviewedCount > 0 && (
-						<Button variant='ghost' size='sm' className='text-xs text-muted-foreground' onClick={markAllAsViewed}>
+						<Button
+							variant='ghost'
+							size='sm'
+							className='text-xs text-muted-foreground'
+							onClick={() => markAllMutation.mutate()}
+						>
 							Mark all read
 						</Button>
 					)}
@@ -156,7 +142,11 @@ export function NotificationsDropdown() {
 				<div className='flex-1 overflow-y-auto p-1'>
 					{notificationsWithProfiles.length > 0 ? (
 						notificationsWithProfiles.map((notification) => (
-							<NotificationItem key={notification.id} notification={notification} onView={markAsViewed} />
+							<NotificationItem
+								key={notification.id}
+								notification={notification}
+								onView={(id) => markAsViewedMutation.mutate(id)}
+							/>
 						))
 					) : (
 						<div className='flex flex-col items-center justify-center py-8 text-center'>

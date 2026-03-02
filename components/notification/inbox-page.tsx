@@ -7,10 +7,6 @@ import {
 	Bell,
 	Search,
 	Trash2,
-	AtSign,
-	UserPlus,
-	RefreshCw,
-	AlertCircle,
 	CalendarIcon,
 	ArrowUpDown,
 	ArrowUp,
@@ -47,12 +43,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Notification } from '@/lib/react-query/queries'
 import type { DateRange } from 'react-day-picker'
-import type { NotificationWithProfile } from '@/lib/notifications/useNotificationsWithProfiles'
-import { typeIcons, typeColors, typeBadgeColors, typeLabels } from '@/lib/notifications/config'
-import { formatRelativeTime, getInitials } from '@/lib/notifications/utils'
-import { useNotificationsWithProfiles } from '@/lib/notifications/useNotificationsWithProfiles'
-import { useNotificationMutations } from '@/lib/notifications/useNotificationMutations'
-import type { NotificationType } from '@/lib/notifications/config'
+import type { NotificationWithProfile } from '@/context/useNotificationsWithProfiles'
+import { typeIcons, typeColors, typeBadgeColors, typeLabels } from '@/lib/notificationConfig'
+import { formatRelativeTime, getInitials } from '@/lib/utils'
+import { useNotificationsWithProfiles } from '@/context/useNotificationsWithProfiles'
+import { useDeleteNotification, useMarkNotificationAsViewed } from '@/lib/react-query/mutations'
+import type { NotificationType } from '@/lib/notificationConfig'
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -201,9 +197,9 @@ function InboxNotificationRow({
 
 export function InboxPage() {
 	const { data: user } = useCurrentClientUser()
+	console.log('Current user:', user) // Debug log for current user
 	const { data, isLoading } = useNotifications(user?.id ?? '')
 	const notifications: Notification[] = data ?? []
-	const queryClient = useQueryClient()
 
 	const notificationsWithProfiles = useNotificationsWithProfiles(notifications)
 
@@ -273,47 +269,54 @@ export function InboxPage() {
 		})
 	}, [])
 
-	const { markAsViewed, deleteNotification } = useNotificationMutations(user?.id)
+	const markAsViewedMutation = useMarkNotificationAsViewed(user?.id)
+	const deleteNotificationMutation = useDeleteNotification(user?.id)
 
 	const handleDeleteSingle = useCallback((notification: NotificationWithProfile) => {
 		setDeleteTarget(notification)
 	}, [])
 
-	const confirmDeleteSingle = useCallback(async () => {
-		if (!deleteTarget || !user?.id) return
-		setIsDeleting(true)
-		try {
-			await deleteNotification(deleteTarget.id as string)
-			await queryClient.invalidateQueries({ queryKey: ['notifications', user.id] })
-			setSelectedIds((prev) => {
-				const next = new Set(prev)
-				next.delete(deleteTarget.id as string)
-				return next
-			})
-		} catch (e) {
-			console.error('Failed to delete notification:', e)
-		} finally {
-			setIsDeleting(false)
-			setDeleteTarget(null)
-		}
-	}, [deleteTarget, deleteNotification, queryClient, user?.id])
+	const confirmDeleteSingle = useCallback(() => {
+		if (!deleteTarget) return
 
-	const confirmBulkDelete = useCallback(async () => {
-		if (selectedIds.size === 0 || !user?.id) return
 		setIsDeleting(true)
-		try {
-			const supabase = createClient()
-			const { error } = await supabase.from('notifications').delete().in('id', Array.from(selectedIds))
-			if (error) throw error
-			await queryClient.invalidateQueries({ queryKey: ['notifications', user.id] })
-			setSelectedIds(new Set())
-		} catch (e) {
-			console.error('Failed to bulk delete notifications:', e)
-		} finally {
-			setIsDeleting(false)
-			setBulkDeleteOpen(false)
-		}
-	}, [selectedIds, queryClient, user?.id])
+
+		deleteNotificationMutation.mutate(deleteTarget.id as string, {
+			onSuccess: () => {
+				setSelectedIds((prev) => {
+					const next = new Set(prev)
+					next.delete(deleteTarget.id as string)
+					return next
+				})
+				setDeleteTarget(null)
+				setIsDeleting(false)
+			},
+			onError: (e) => {
+				console.error('Failed to delete notification:', e)
+				setIsDeleting(false)
+			}
+		})
+	}, [deleteTarget, deleteNotificationMutation])
+
+	const confirmBulkDelete = useCallback(() => {
+		if (selectedIds.size === 0) return
+
+		setIsDeleting(true)
+
+		const ids = Array.from(selectedIds)
+
+		Promise.all(ids.map((id) => deleteNotificationMutation.mutateAsync(id)))
+			.then(() => {
+				setSelectedIds(new Set())
+				setBulkDeleteOpen(false)
+			})
+			.catch((e) => {
+				console.error('Bulk delete failed:', e)
+			})
+			.finally(() => {
+				setIsDeleting(false)
+			})
+	}, [selectedIds, deleteNotificationMutation])
 
 	const clearFilters = useCallback(() => {
 		setSearchQuery('')
@@ -426,7 +429,13 @@ export function InboxPage() {
 			<div className='flex-col mx-auto max-w-5xl'>
 				{/* Page header */}
 				<div className='pb-5'>
-					<h1 className='text-2xl font-semibold'>Inbox</h1>
+					<h1 className='text-2xl font-semibold'>
+						{user?.user_metadata?.first_name
+							? `${user.user_metadata.first_name}${
+									user.user_metadata.last_name ? ` ${user.user_metadata.last_name}` : ''
+								}'s Inbox`
+							: 'Inbox'}
+					</h1>
 					<p className='text-sm text-muted-foreground mt-1'>
 						{filteredNotifications.length === notifications.length
 							? `${notifications.length} notification${notifications.length !== 1 ? 's' : ''}`
@@ -663,7 +672,7 @@ export function InboxPage() {
 												isSelected={selectedIds.has(notification.id as string)}
 												onSelect={handleSelect}
 												onDelete={handleDeleteSingle}
-												onView={markAsViewed}
+												onView={(id) => markAsViewedMutation.mutate(id)}
 											/>
 										</div>
 									)}
