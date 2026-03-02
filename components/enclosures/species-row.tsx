@@ -1,6 +1,6 @@
 'use client'
 import { type OrgSpecies, type Enclosure, useOrgEnclosuresForSpecies } from '@/lib/react-query/queries'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -16,10 +16,17 @@ import { UUID } from 'crypto'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 
-export default function SpeciesRow({ species }: { species: OrgSpecies }) {
+export default function SpeciesRow({
+	species,
+	onDetailsOpenChange,
+	sortKey
+}: {
+	species: OrgSpecies
+	onDetailsOpenChange: () => void
+	sortKey: string
+}) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
-	const router = useRouter()
 	const isMobile = useIsMobile()
 
 	const { data: enclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
@@ -110,12 +117,20 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 								)}
 								<div className='flex-1 min-w-0'>
 									<div className='flex items-center gap-2'>
-										<p className='font-medium text-sm truncate'>{species.custom_common_name}</p>
+										{sortKey === 'scientific_name' ? (
+											<p className='font-medium text-sm truncate'>{species.species.scientific_name}</p>
+										) : (
+											<p className='font-medium text-sm truncate'>{species.custom_common_name}</p>
+										)}
 										<Badge variant='outline' className='shrink-0 text-xs'>
 											{enclosures?.length} {enclosures?.length === 1 ? 'enclosure' : 'enclosures'}
 										</Badge>
 									</div>
-									<p className='text-xs text-muted-foreground italic truncate'>{species.species.scientific_name}</p>
+									{sortKey === 'scientific_name' ? (
+										<p className='text-xs text-muted-foreground italic truncate'>{species.custom_common_name}</p>
+									) : (
+										<p className='text-xs text-muted-foreground italic truncate'>{species.species.scientific_name}</p>
+									)}
 								</div>
 							</button>
 						</CollapsibleTrigger>
@@ -124,7 +139,7 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 							className='gap-1.5 h-7 text-xs shrink-0 mr-1'
 							onClick={(e) => {
 								e.stopPropagation()
-								setDetailsOpen(true)
+								onDetailsOpenChange()
 							}}
 						>
 							<EyeIcon className='h-3.5 w-3.5' />

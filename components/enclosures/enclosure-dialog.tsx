@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import CreateEnclosureNote from './create-enclosure-note'
 import DeleteEnclosureButton from './delete-enclosure-button'
+import { EditEnclosureButton } from './edit-enclosure-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 
 export function EnclosureDialog({
@@ -41,6 +42,13 @@ export function EnclosureDialog({
 			trigger={<div></div>}
 		>
 			<div className='overflow-y-auto max-h-[70vh]'>
+				<Button
+					className='flex gap-2 w-full pb-2'
+					onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}
+				>
+					<ClipboardList className='h-4 w-4' />
+					View Tasks
+				</Button>
 				<div className='grid gap-4'>
 					{/* Tank Details */}
 					<div className='grid grid-cols-2 gap-3'>
@@ -88,9 +96,14 @@ export function EnclosureDialog({
 								{enclosureNotes.map((note) => (
 									<div key={note.id} className='rounded-md bg-muted p-3 space-y-1'>
 										<p className='text-sm'>{note.note_text}</p>
-										<p className='text-xs text-muted-foreground'>
-											{note.created_at && format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
-										</p>
+										<div className='flex flex-row'>
+											<p className='text-xs text-muted-foreground'>
+												{note.created_at && format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
+											</p>
+											<p className='ml-auto text-xs text-muted-foreground'>
+												{note.user ? `${note.user?.first_name} ${note.user?.last_name[0]}.` : ' '}
+											</p>
+										</div>
 									</div>
 								))}
 							</div>
@@ -102,13 +115,7 @@ export function EnclosureDialog({
 
 						<CreateEnclosureNote enclosureId={enclosure.id} />
 						<div className='flex flex-col gap-2 pt-1'>
-							<Button
-								className='gap-2 w-full'
-								onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}
-							>
-								<ClipboardList className='h-4 w-4' />
-								View Tasks
-							</Button>
+							<EditEnclosureButton enclosure={enclosure} spec={species} />
 							<DeleteEnclosureButton enclosure_id={enclosure.id} onDeleted={() => onOpenChange(false)} />
 						</div>
 					</div>

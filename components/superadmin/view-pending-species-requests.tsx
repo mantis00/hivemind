@@ -3,8 +3,8 @@
 import { Button } from '@/components/ui/button'
 import { CheckIcon, XIcon, LoaderCircle, ChevronDownIcon } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { useAllOrgRequests, useMemberProfiles } from '@/lib/react-query/queries'
-import { useApproveOrgRequest, useRejectOrgRequest } from '@/lib/react-query/mutations'
+import { useAllOrgRequests, useAllSpeciesRequests, useMemberProfiles } from '@/lib/react-query/queries'
+import { useApproveSpeciesRequest, useRejectSpeciesRequest } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { formatDate } from '@/context/format-date'
 import { useState } from 'react'
@@ -25,11 +25,11 @@ function StatusDot({ status }: { status: string }) {
 	)
 }
 
-export function ViewPendingRequests() {
+export function ViewPendingSpeciesRequests() {
 	const { data: user } = useCurrentClientUser()
-	const { data: requests, isLoading } = useAllOrgRequests()
-	const approveMutation = useApproveOrgRequest()
-	const rejectMutation = useRejectOrgRequest()
+	const { data: requests, isLoading } = useAllSpeciesRequests()
+	const approveMutation = useApproveSpeciesRequest()
+	const rejectMutation = useRejectSpeciesRequest()
 	const [pendingRequestId, setPendingRequestId] = useState<UUID | null>(null)
 
 	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
@@ -63,7 +63,7 @@ export function ViewPendingRequests() {
 					className='group flex w-full items-center justify-between py-3 text-left transition-opacity hover:opacity-70'
 				>
 					<div className='flex items-center gap-3'>
-						<h3 className='text-sm font-medium text-foreground'>Pending Organization Requests</h3>
+						<h3 className='text-sm font-medium text-foreground'>Pending Species Requests</h3>
 						<span className='text-xs text-muted-foreground'>
 							{visibleRequests.length}
 							{pendingRequests.length !== visibleRequests.length && ` (${pendingRequests.length} pending)`}
@@ -82,9 +82,9 @@ export function ViewPendingRequests() {
 				) : (
 					<div className='divide-y divide-border'>
 						{visibleRequests.map((request) => (
-							<div key={request.request_id} className='flex items-center justify-between gap-3 py-3 first:pt-1'>
+							<div key={request.id} className='flex items-center justify-between gap-3 py-3 first:pt-1'>
 								<div className='flex min-w-0 flex-1 flex-col gap-1'>
-									<p className='truncate text-sm font-medium text-foreground'>{request.org_name}</p>
+									<p className='truncate text-sm font-medium text-foreground'>{request.scientific_name}</p>
 									<div className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
 										{(() => {
 											const profile = requesterProfiles?.find((p) => p.id === request.requester_id)
@@ -120,11 +120,11 @@ export function ViewPendingRequests() {
 										<Button
 											size='sm'
 											variant='ghost'
-											onClick={() => handleApprove(request.request_id)}
-											disabled={pendingRequestId === request.request_id}
+											onClick={() => handleApprove(request.id)}
+											disabled={pendingRequestId === request.id}
 											className='h-8 text-xs text-muted-foreground hover:text-foreground'
 										>
-											{pendingRequestId === request.request_id && approveMutation.isPending ? (
+											{pendingRequestId === request.id && approveMutation.isPending ? (
 												<LoaderCircle className='h-3.5 w-3.5 animate-spin' />
 											) : (
 												<>
@@ -136,11 +136,11 @@ export function ViewPendingRequests() {
 										<Button
 											size='sm'
 											variant='ghost'
-											onClick={() => handleReject(request.request_id)}
-											disabled={pendingRequestId === request.request_id}
+											onClick={() => handleReject(request.id)}
+											disabled={pendingRequestId === request.id}
 											className='h-8 text-xs text-muted-foreground hover:text-destructive'
 										>
-											{pendingRequestId === request.request_id && rejectMutation.isPending ? (
+											{pendingRequestId === request.id && rejectMutation.isPending ? (
 												<LoaderCircle className='h-3.5 w-3.5 animate-spin' />
 											) : (
 												<>

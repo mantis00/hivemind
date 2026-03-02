@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { UUID } from 'crypto'
 import { toast } from 'sonner'
+import { Species } from './queries'
+import { PostgrestError } from '@supabase/supabase-js'
 
 export function useCreateOrg() {
 	const queryClient = useQueryClient()
@@ -928,5 +930,266 @@ export function useCreateTask() {
 			// if (error) throw error
 		},
 		onSuccess: () => {}
+	})
+}
+
+export function useRequestSpecies() {
+	return useMutation({
+		mutationFn: async ({
+			scientific_name,
+			common_name,
+			care_instructions,
+			org_id,
+			user_id
+		}: {
+			scientific_name: string
+			common_name: string
+			care_instructions: string
+			org_id: UUID
+			user_id: UUID
+		}) => {
+			const supabase = createClient()
+
+			if (!scientific_name.trim() || !common_name.trim()) {
+				throw new Error('Scientific name and common name are required')
+			}
+
+			const { error } = await supabase
+				.from('species_requests')
+				.insert({
+					scientific_name: scientific_name.trim(),
+					common_name: common_name.trim(),
+					care_instructions: care_instructions.trim(),
+					org_id: org_id,
+					requester_id: user_id
+				})
+				.select()
+				.single()
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			toast.success('Species request sent!')
+		}
+	})
+}
+
+export function useUpdateOrgSpecies() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			org_id,
+			species_id,
+			custom_common_name,
+			custom_care_instructions
+		}: {
+			org_id: UUID
+			species_id: UUID
+			custom_common_name: string
+			custom_care_instructions: string
+		}) => {
+			const supabase = createClient()
+
+			if (!custom_common_name.trim()) {
+				throw new Error('Common name is required')
+			}
+
+			const { error } = await supabase
+				.from('org_species')
+				.update({
+					custom_common_name: custom_common_name.trim(),
+					custom_care_instructions: custom_care_instructions.trim()
+				})
+				.eq('id', species_id)
+				.eq('org_id', org_id)
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orgSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['species'] })
+			toast.success('Species updated!')
+		}
+	})
+}
+
+export function useAddBatchSpeciesToOrg() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			species_ids, // master list species ids
+			org_id // org to add species to
+		}: {
+			species_ids: UUID[]
+			org_id: UUID
+		}) => {
+			const supabase = createClient()
+
+			// Fetch all master species records for the given ids
+			const { data, error: fetchError } = (await supabase.from('species').select('*').in('id', species_ids)) as {
+				data: Species[] | null
+				error: PostgrestError | null
+			}
+			if (fetchError) throw fetchError
+			if (!data || data.length === 0) throw new Error('No species found')
+
+			// Insert one org_species row per species
+			const rows = data.map((s) => ({
+				org_id,
+				master_species_id: s.id,
+				custom_common_name: s.common_name,
+				custom_care_instructions: s.care_instructions
+			}))
+
+			const { error } = await supabase.from('org_species').insert(rows)
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['species'] })
+			toast.success('Species added to organization!')
+		}
+	})
+}
+
+export function useDeleteSpeciesFromOrg() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ species_id, orgId }: { species_id: UUID; orgId: UUID }) => {
+			const supabase = createClient()
+
+			// Get all enclosures for this species in the org
+			const { data: enclosures, error: enclosuresError } = await supabase
+				.from('enclosures')
+				.select('id')
+				.eq('species_id', species_id)
+				.eq('org_id', orgId)
+
+			if (enclosuresError) throw enclosuresError
+
+			const enclosure_ids = enclosures?.map((e) => e.id) || []
+
+			// Delete tasks for all enclosures
+			if (enclosure_ids.length > 0) {
+				const { error: tasksError } = await supabase.from('tasks').delete().in('enclosure_id', enclosure_ids)
+				if (tasksError) throw tasksError
+
+				// Delete tank notes for all enclosures
+				const { error: notesError } = await supabase.from('tank_notes').delete().in('enclosure_id', enclosure_ids)
+				if (notesError) throw notesError
+
+				// Delete all enclosures
+				const { error: deleteError } = await supabase.from('enclosures').delete().in('id', enclosure_ids)
+				if (deleteError) throw deleteError
+			}
+
+			// Delete the species from org
+			const { error: speciesError } = await supabase
+				.from('org_species')
+				.delete()
+				.eq('id', species_id)
+				.eq('org_id', orgId)
+			if (speciesError) throw speciesError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.orgId] })
+			toast.success('Species removed from organization')
+		}
+	})
+}
+
+export function useDeleteBatchSpeciesFromOrg() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ species_ids, orgId }: { species_ids: UUID[]; orgId: UUID }) => {
+			const supabase = createClient()
+
+			// Get all enclosures for these species in the org
+			const { data: enclosures, error: enclosuresError } = await supabase
+				.from('enclosures')
+				.select('id')
+				.in('species_id', species_ids)
+				.eq('org_id', orgId)
+
+			if (enclosuresError) throw enclosuresError
+
+			const enclosure_ids = enclosures?.map((e) => e.id) || []
+
+			if (enclosure_ids.length > 0) {
+				// Delete tasks for all enclosures
+				const { error: tasksError } = await supabase.from('tasks').delete().in('enclosure_id', enclosure_ids)
+				if (tasksError) throw tasksError
+
+				// Delete tank notes for all enclosures
+				const { error: notesError } = await supabase.from('tank_notes').delete().in('enclosure_id', enclosure_ids)
+				if (notesError) throw notesError
+
+				// Delete all enclosures
+				const { error: deleteEnclosuresError } = await supabase.from('enclosures').delete().in('id', enclosure_ids)
+				if (deleteEnclosuresError) throw deleteEnclosuresError
+			}
+
+			// Delete all org_species records
+			const { error: speciesError } = await supabase
+				.from('org_species')
+				.delete()
+				.in('id', species_ids)
+				.eq('org_id', orgId)
+			if (speciesError) throw speciesError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.orgId] })
+			toast.success('All species removed from organization')
+		}
+	})
+}
+
+export function useApproveSpeciesRequest() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requestId, reviewerId }: { requestId: UUID; reviewerId: string }) => {
+			// const supabase = createClient()
+			// const { error } = await supabase.rpc('approve_org_request', {
+			// 	p_request_id: requestId,
+			// 	p_reviewer_id: reviewerId
+			// })
+			// if (error) throw error
+		},
+		onSuccess: () => {
+			// queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+			// queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+			// queryClient.invalidateQueries({ queryKey: ['orgs'] })
+			// queryClient.invalidateQueries({ queryKey: ['orgMembers'] })
+			// queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+		}
+	})
+}
+
+export function useRejectSpeciesRequest() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requestId, reviewerId }: { requestId: UUID; reviewerId: string }) => {
+			// const supabase = createClient()
+			// const { error } = await supabase
+			// 	.from('org_requests')
+			// 	.update({ status: 'rejected', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
+			// 	.eq('request_id', requestId)
+			// 	.eq('status', 'pending')
+			// if (error) throw error
+		},
+		onSuccess: () => {
+			// queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+			// queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+		}
 	})
 }
