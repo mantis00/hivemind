@@ -43,12 +43,13 @@ import { createClient } from '@/lib/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Notification } from '@/lib/react-query/queries'
 import type { DateRange } from 'react-day-picker'
-import type { NotificationWithProfile } from '@/context/useNotificationsWithProfiles'
-import { typeIcons, typeColors, typeBadgeColors, typeLabels } from '@/lib/notificationConfig'
-import { formatRelativeTime, getInitials } from '@/lib/utils'
-import { useNotificationsWithProfiles } from '@/context/useNotificationsWithProfiles'
+import type { NotificationWithProfile } from '@/context/notifications-with-profiles'
+import { typeIcons, typeColors, typeBadgeColors, typeLabels } from '@/context/notification-config'
+import { getInitials } from '@/context/get-initials'
+import { formatRelativeTime } from '@/context/format-date-time'
+import { useNotificationsWithProfiles } from '@/context/notifications-with-profiles'
 import { useDeleteNotification, useMarkNotificationAsViewed } from '@/lib/react-query/mutations'
-import type { NotificationType } from '@/lib/notificationConfig'
+import type { NotificationType } from '@/context/notification-config'
 
 // ─── Types ───────────────────────────────────────────────
 

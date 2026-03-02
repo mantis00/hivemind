@@ -1,5 +1,3 @@
-// lib/notifications/config.ts
-
 import { Bell, AtSign, UserPlus, RefreshCw, AlertCircle } from 'lucide-react'
 
 export type NotificationType = 'mention' | 'invite' | 'update' | 'alert'
