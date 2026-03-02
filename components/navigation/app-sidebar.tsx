@@ -121,7 +121,7 @@ export function AppSidebar() {
 						<SidebarMenu>
 							{items.map((item) => (
 								<SidebarMenuItem key={item.title}>
-									<SidebarMenuButton className='text-xl my-1' asChild tooltip={item.title}>
+									<SidebarMenuButton className='text-xl my-1 font-bold' asChild tooltip={item.title}>
 										<Link href={item.url}>
 											<item.icon className='size-4' />
 											<span>{item.title}</span>

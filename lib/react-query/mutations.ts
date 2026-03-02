@@ -859,3 +859,74 @@ export function useDeleteTaskTemplate() {
 		}
 	})
 }
+
+export function useStartTask() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ task_id, enclosure_id }: { task_id: UUID; enclosure_id: UUID }) => {
+			const supabase = createClient()
+
+			if (!task_id) {
+				throw new Error('Task ID missing!')
+			}
+
+			const { error } = await supabase
+				.from('tasks')
+				.update({ status: 'in_progress', start_time: new Date().toISOString() })
+				.eq('id', task_id)
+				.eq('enclosure_id', enclosure_id)
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+		}
+	})
+}
+
+export function useCompleteTask() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ task_id, enclosure_id }: { task_id: UUID; enclosure_id: UUID; user_id: UUID }) => {
+			const supabase = createClient()
+
+			if (!task_id) {
+				throw new Error('Task ID missing!')
+			}
+
+			const { error } = await supabase
+				.from('tasks')
+				.update({ status: 'completed', completed_time: new Date().toISOString() })
+				.eq('id', task_id)
+				.eq('enclosure_id', enclosure_id)
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+		}
+	})
+}
+
+export function useCreateTask() {
+	return useMutation({
+		mutationFn: async ({ enclosure_id, user_id, org_id }: { enclosure_id: UUID; user_id: UUID; org_id: UUID }) => {
+			const supabase = createClient()
+
+			if (!enclosure_id) {
+				throw new Error('Enclosure ID is missing!')
+			}
+
+			// const { error } = await supabase
+			//  .from('tasks')
+			//  .update({ status: 'completed', completed_time: new Date().toISOString() })
+			//  .eq('id', task_id)
+			//  .eq('enclosure_id', enclosure_id)
+
+			// if (error) throw error
+		},
+		onSuccess: () => {}
+	})
+}
