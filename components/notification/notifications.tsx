@@ -15,55 +15,12 @@ import type { Notification } from '@/lib/react-query/queries'
 import { useMemberProfiles } from '@/lib/react-query/queries'
 import { createClient } from '@/lib/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
-
-// ─── Types ───────────────────────────────────────────────
-
-type NotificationType = 'mention' | 'invite' | 'update' | 'alert'
-
-type NotificationWithProfile = Notification & {
-	senderProfile: { id: string; full_name: string } | null
-}
-
-// ─── Helpers ─────────────────────────────────────────────
-
-function formatRelativeTime(iso: string): string {
-	const date = new Date(iso)
-	const now = new Date()
-	const diffMs = now.getTime() - date.getTime()
-	const diffMin = Math.floor(diffMs / 1000 / 60)
-	const diffHour = Math.floor(diffMin / 60)
-	const diffDay = Math.floor(diffHour / 24)
-
-	if (diffMin < 1) return 'Just now'
-	if (diffMin < 60) return `${diffMin}m ago`
-	if (diffHour < 24) return `${diffHour}h ago`
-	if (diffDay < 7) return `${diffDay}d ago`
-	return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function getInitials(fullName: string | undefined | null): string {
-	if (!fullName) return '?'
-	return fullName
-		.split(' ')
-		.map((w) => w[0])
-		.join('')
-		.toUpperCase()
-		.slice(0, 2)
-}
-
-const typeIcons: Record<NotificationType, React.ElementType> = {
-	mention: AtSign,
-	invite: UserPlus,
-	update: RefreshCw,
-	alert: AlertCircle
-}
-
-const typeColors: Record<NotificationType, string> = {
-	mention: 'text-chart-1',
-	invite: 'text-chart-3',
-	update: 'text-chart-4',
-	alert: 'text-destructive'
-}
+import type { NotificationWithProfile } from '@/lib/notifications/useNotificationsWithProfiles'
+import { useNotificationsWithProfiles } from '@/lib/notifications/useNotificationsWithProfiles'
+import { typeIcons, typeColors, typeBadgeColors, typeLabels, NotificationType } from '@/lib/notifications/config'
+import { formatRelativeTime } from '@/lib/notifications/utils'
+import { getInitials } from '@/lib/notifications/utils'
+import { useNotificationMutations } from '@/lib/notifications/useNotificationMutations'
 
 // ─── NotificationItem ────────────────────────────────────
 
@@ -77,6 +34,7 @@ function NotificationItem({
 	const Icon = typeIcons[notification.type as NotificationType] ?? Bell
 	const senderName = notification.senderProfile?.full_name ?? 'Unknown'
 	const initials = getInitials(notification.senderProfile?.full_name)
+	const isSystem = notification.senderProfile?.id === 'system'
 
 	const handleClick = () => {
 		if (!notification.viewed) {
@@ -139,31 +97,7 @@ export function NotificationsDropdown() {
 	const notifications: Notification[] = data ?? []
 	const queryClient = useQueryClient()
 
-	const involvedUserIds = useMemo(() => {
-		const ids = new Set<string>()
-		notifications.forEach((n) => {
-			if (n.sender_id) ids.add(n.sender_id)
-			if (n.recipient_id) ids.add(n.recipient_id)
-		})
-		return Array.from(ids)
-	}, [notifications])
-
-	const { data: profiles } = useMemberProfiles(involvedUserIds)
-
-	const profileMap = useMemo(() => {
-		const map = new Map<string, { id: string; full_name: string }>()
-		profiles?.forEach((p) => {
-			map.set(p.id, p)
-		})
-		return map
-	}, [profiles])
-
-	const notificationsWithProfiles: NotificationWithProfile[] = useMemo(() => {
-		return notifications.map((n) => ({
-			...n,
-			senderProfile: profileMap.get(n.sender_id) ?? null
-		}))
-	}, [notifications, profileMap])
+	const notificationsWithProfiles = useNotificationsWithProfiles(notifications)
 
 	const pathname = usePathname()
 
@@ -176,22 +110,7 @@ export function NotificationsDropdown() {
 
 	const unviewedCount = notificationsWithProfiles.filter((n) => !n.viewed).length
 
-	const markAsViewed = useCallback(
-		async (notificationId: string) => {
-			if (!user?.id) return
-			const supabase = createClient()
-			const { error } = await supabase
-				.from('notifications')
-				.update({ viewed: true, viewed_at: new Date().toISOString() })
-				.eq('id', notificationId)
-			if (error) {
-				console.error('Failed to mark notification as viewed:', error)
-				return
-			}
-			await queryClient.invalidateQueries({ queryKey: ['notifications', user.id] })
-		},
-		[user?.id, queryClient]
-	)
+	const { markAsViewed } = useNotificationMutations(user?.id)
 
 	const markAllAsViewed = useCallback(async () => {
 		if (!user?.id) return
@@ -215,7 +134,7 @@ export function NotificationsDropdown() {
 				<Button variant='ghost' size='icon' className='relative'>
 					<Bell className='size-5' />
 					{unviewedCount > 0 && (
-						<span className='absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
+						<span className='absolute top-0 right-0 translate-x-1/2 -translate-y-1/3 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
 							{unviewedCount > 9 ? '9+' : unviewedCount}
 						</span>
 					)}

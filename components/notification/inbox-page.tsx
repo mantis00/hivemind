@@ -47,77 +47,22 @@ import { createClient } from '@/lib/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Notification } from '@/lib/react-query/queries'
 import type { DateRange } from 'react-day-picker'
+import type { NotificationWithProfile } from '@/lib/notifications/useNotificationsWithProfiles'
+import { typeIcons, typeColors, typeBadgeColors, typeLabels } from '@/lib/notifications/config'
+import { formatRelativeTime, getInitials } from '@/lib/notifications/utils'
+import { useNotificationsWithProfiles } from '@/lib/notifications/useNotificationsWithProfiles'
+import { useNotificationMutations } from '@/lib/notifications/useNotificationMutations'
+import type { NotificationType } from '@/lib/notifications/config'
 
 // ─── Types ───────────────────────────────────────────────
 
-type NotificationType = 'mention' | 'invite' | 'update' | 'alert'
-
 type SortField = 'created_at' | 'type' | 'sender' | 'title'
 type SortDirection = 'asc' | 'desc'
-
-type NotificationWithProfile = Notification & {
-	senderProfile: { id: string; full_name: string } | null
-}
 
 // ─── Constants ───────────────────────────────────────────
 
 const ROW_HEIGHT = 76
 const MAX_HEIGHT = 680
-
-const typeIcons: Record<NotificationType, React.ElementType> = {
-	mention: AtSign,
-	invite: UserPlus,
-	update: RefreshCw,
-	alert: AlertCircle
-}
-
-const typeColors: Record<NotificationType, string> = {
-	mention: 'text-chart-1',
-	invite: 'text-chart-3',
-	update: 'text-chart-4',
-	alert: 'text-destructive'
-}
-
-const typeBadgeColors: Record<NotificationType, string> = {
-	mention: 'bg-chart-1/10 text-chart-1 border-chart-1/20',
-	invite: 'bg-chart-3/10 text-chart-3 border-chart-3/20',
-	update: 'bg-chart-4/10 text-chart-4 border-chart-4/20',
-	alert: 'bg-destructive/10 text-destructive border-destructive/20'
-}
-
-const typeLabels: Record<NotificationType, string> = {
-	mention: 'Mention',
-	invite: 'Invite',
-	update: 'Update',
-	alert: 'Alert'
-}
-
-// ─── Helpers ─────────────────────────────────────────────
-
-function formatRelativeTime(iso: string): string {
-	const date = new Date(iso)
-	const now = new Date()
-	const diffMs = now.getTime() - date.getTime()
-	const diffMin = Math.floor(diffMs / 1000 / 60)
-	const diffHour = Math.floor(diffMin / 60)
-	const diffDay = Math.floor(diffHour / 24)
-
-	if (diffMin < 1) return 'Just now'
-	if (diffMin < 60) return `${diffMin}m ago`
-	if (diffHour < 24) return `${diffHour}h ago`
-	if (diffDay < 7) return `${diffDay}d ago`
-	return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function getInitials(fullName: string | undefined | null): string {
-	if (!fullName) return '?'
-	return fullName
-		.split(' ')
-		.map((w) => w[0])
-		.join('')
-		.toUpperCase()
-		.slice(0, 2)
-}
 
 // ─── SortableHeader ──────────────────────────────────────
 
@@ -260,30 +205,7 @@ export function InboxPage() {
 	const notifications: Notification[] = data ?? []
 	const queryClient = useQueryClient()
 
-	// Gather sender profiles
-	const involvedUserIds = useMemo(() => {
-		const ids = new Set<string>()
-		notifications.forEach((n) => {
-			if (n.sender_id) ids.add(n.sender_id)
-			if (n.recipient_id) ids.add(n.recipient_id)
-		})
-		return Array.from(ids)
-	}, [notifications])
-
-	const { data: profiles } = useMemberProfiles(involvedUserIds)
-
-	const profileMap = useMemo(() => {
-		const map = new Map<string, { id: string; full_name: string }>()
-		profiles?.forEach((p) => map.set(p.id, p))
-		return map
-	}, [profiles])
-
-	const notificationsWithProfiles: NotificationWithProfile[] = useMemo(() => {
-		return notifications.map((n) => ({
-			...n,
-			senderProfile: profileMap.get(n.sender_id) ?? null
-		}))
-	}, [notifications, profileMap])
+	const notificationsWithProfiles = useNotificationsWithProfiles(notifications)
 
 	// Unique senders for filter dropdown
 	const uniqueSenders = useMemo(() => {
@@ -351,28 +273,7 @@ export function InboxPage() {
 		})
 	}, [])
 
-	const markAsViewed = useCallback(
-		async (notificationId: string) => {
-			if (!user?.id) return
-			const supabase = createClient()
-			const { error } = await supabase
-				.from('notifications')
-				.update({ viewed: true, viewed_at: new Date().toISOString() })
-				.eq('id', notificationId)
-			if (error) {
-				console.error('Failed to mark notification as viewed:', error)
-				return
-			}
-			await queryClient.invalidateQueries({ queryKey: ['notifications', user.id] })
-		},
-		[user?.id, queryClient]
-	)
-
-	const deleteNotification = useCallback(async (id: string) => {
-		const supabase = createClient()
-		const { error } = await supabase.from('notifications').delete().eq('id', id)
-		if (error) throw error
-	}, [])
+	const { markAsViewed, deleteNotification } = useNotificationMutations(user?.id)
 
 	const handleDeleteSingle = useCallback((notification: NotificationWithProfile) => {
 		setDeleteTarget(notification)
