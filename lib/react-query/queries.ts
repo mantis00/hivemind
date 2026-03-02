@@ -149,6 +149,19 @@ export type Task = {
 	time_to_completion: string | null
 }
 
+export type SpeciesRequest = {
+	id: UUID
+	created_at: string
+	requester_id: UUID
+	org_id: UUID
+	scientific_name: string
+	common_name: string
+	reviewer_id?: UUID
+	care_instructions: string
+	status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+	reviewed_at?: string
+}
+
 export function useUserOrgs(userId: string) {
 	return useQuery({
 		queryKey: ['orgs', userId],
@@ -631,12 +644,28 @@ export function useOrgSpecies(org_id: UUID) {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('org_species')
-				.select('*')
+				.select('*, species(scientific_name, picture_url)')
 				.eq('org_id', org_id)
 				.order('custom_common_name', { ascending: true })) as {
 				data: OrgSpecies[] | null
 				error: PostgrestError | null
 			}
+			if (error) throw error
+			return data
+		}
+	})
+}
+
+export function useAllSpeciesRequests() {
+	return useQuery({
+		queryKey: ['allSpeciesRequests'],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('species_requests')
+				.select('*')
+				.order('created_at', { ascending: false })) as { data: SpeciesRequest[] | null; error: PostgrestError | null }
+
 			if (error) throw error
 			return data
 		}

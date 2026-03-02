@@ -13,6 +13,7 @@ import RequestNewSpeciesButton from './request-new-species-button'
 type Item = {
 	key: string
 	label: string
+	scientificLabel?: string
 	selected?: boolean
 }
 
@@ -26,13 +27,15 @@ export default function SpeciesTransferList() {
 	const [rightList, setRightList] = useState<Item[]>([])
 	const [leftSearch, setLeftSearch] = useState('')
 	const [rightSearch, setRightSearch] = useState('')
+	const [showScientific, setShowScientific] = useState(false)
 
 	useEffect(() => {
 		if (species) {
 			setLeftList(
 				species.map((s) => ({
 					key: s.master_species_id,
-					label: s.custom_common_name || s.species?.scientific_name || ''
+					label: s.custom_common_name || s.species?.scientific_name || '',
+					scientificLabel: s.species?.scientific_name || ''
 				}))
 			)
 		}
@@ -44,7 +47,8 @@ export default function SpeciesTransferList() {
 					.filter((s) => !orgSpeciesIds.has(s.id))
 					.map((s) => ({
 						key: s.id,
-						label: s.common_name || s.scientific_name
+						label: s.common_name || s.scientific_name,
+						scientificLabel: s.scientific_name
 					}))
 			)
 		}
@@ -64,6 +68,15 @@ export default function SpeciesTransferList() {
 
 	const toggleSelection = (setList: React.Dispatch<React.SetStateAction<Item[]>>, key: string) => {
 		setList((prev) => prev.map((item) => (item.key === key ? { ...item, selected: !item.selected } : item)))
+	}
+
+	const toggleSelectAll = (list: Item[], setList: React.Dispatch<React.SetStateAction<Item[]>>, search: string) => {
+		const getDisplayLabel = (item: Item) => (showScientific ? (item.scientificLabel ?? item.label) : item.label)
+		const visibleKeys = new Set(
+			list.filter((item) => getDisplayLabel(item).toLowerCase().includes(search.toLowerCase())).map((i) => i.key)
+		)
+		const allSelected = list.filter((i) => visibleKeys.has(i.key)).every((i) => i.selected)
+		setList((prev) => prev.map((item) => (visibleKeys.has(item.key) ? { ...item, selected: !allSelected } : item)))
 	}
 
 	const addMutation = useAddBatchSpeciesToOrg()
@@ -111,7 +124,23 @@ export default function SpeciesTransferList() {
 	return (
 		<>
 			<div className='flex flex-col p-2 gap-2'>
-				<RequestNewSpeciesButton />
+				<div className='flex items-center justify-between'>
+					<div className='flex items-center rounded-md border text-xs overflow-hidden'>
+						<button
+							className={`px-2.5 py-1 transition-colors ${!showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+							onClick={() => setShowScientific(false)}
+						>
+							Common
+						</button>
+						<button
+							className={`px-2.5 py-1 transition-colors ${showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+							onClick={() => setShowScientific(true)}
+						>
+							Scientific
+						</button>
+					</div>
+					<RequestNewSpeciesButton />
+				</div>
 				<div className='flex gap-2'>
 					<div className='w-1/2 shadow-sm bg-background rounded-sm'>
 						<p>Organization List</p>
@@ -132,8 +161,31 @@ export default function SpeciesTransferList() {
 							</Button>
 						</div>
 						<ul className='h-65 border-l border-r border-b rounded-br-sm rounded-bl-sm p-2 overflow-y-scroll'>
+							<li className='flex items-center text-sm hover:bg-muted rounded-sm'>
+								<button
+									className='flex items-start gap-1.5 w-full p-1.5 min-w-0'
+									onClick={() => toggleSelectAll(leftList, setLeftList, leftSearch)}
+								>
+									{leftList
+										.filter((i) =>
+											(showScientific ? (i.scientificLabel ?? i.label) : i.label)
+												.toLowerCase()
+												.includes(leftSearch.toLowerCase())
+										)
+										.every((i) => i.selected) && leftList.length > 0 ? (
+										<SquareCheckIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
+									) : (
+										<SquareIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
+									)}
+									<span className='text-left'>Select All</span>
+								</button>
+							</li>
 							{leftList
-								.filter((item) => item.label.toLowerCase().includes(leftSearch.toLowerCase()))
+								.filter((item) =>
+									(showScientific ? (item.scientificLabel ?? item.label) : item.label)
+										.toLowerCase()
+										.includes(leftSearch.toLowerCase())
+								)
 								.map((item) => (
 									<li className='flex items-center text-sm hover:bg-muted rounded-sm' key={item.key}>
 										<button
@@ -145,7 +197,9 @@ export default function SpeciesTransferList() {
 											) : (
 												<SquareIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
 											)}
-											<span className='break-words text-left'>{item.label}</span>
+											<span className='break-words text-left'>
+												{showScientific ? (item.scientificLabel ?? item.label) : item.label}
+											</span>
 										</button>
 									</li>
 								))}
@@ -171,8 +225,31 @@ export default function SpeciesTransferList() {
 							/>
 						</div>
 						<ul className='h-65 border-l border-r border-b rounded-br-sm rounded-bl-sm p-1.5 overflow-y-scroll'>
+							<li className='flex items-center text-sm hover:bg-muted rounded-sm'>
+								<button
+									className='flex items-start gap-1.5 w-full p-1.5 min-w-0'
+									onClick={() => toggleSelectAll(rightList, setRightList, rightSearch)}
+								>
+									{rightList
+										.filter((i) =>
+											(showScientific ? (i.scientificLabel ?? i.label) : i.label)
+												.toLowerCase()
+												.includes(rightSearch.toLowerCase())
+										)
+										.every((i) => i.selected) && rightList.length > 0 ? (
+										<SquareCheckIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
+									) : (
+										<SquareIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
+									)}
+									<span className='text-left'>Select All</span>
+								</button>
+							</li>
 							{rightList
-								.filter((item) => item.label.toLowerCase().includes(rightSearch.toLowerCase()))
+								.filter((item) =>
+									(showScientific ? (item.scientificLabel ?? item.label) : item.label)
+										.toLowerCase()
+										.includes(rightSearch.toLowerCase())
+								)
 								.map((item) => (
 									<li className='flex items-center text-sm hover:bg-muted rounded-sm' key={item.key}>
 										<button
@@ -184,7 +261,9 @@ export default function SpeciesTransferList() {
 											) : (
 												<SquareIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
 											)}
-											<span className='wrap-break-words text-left'>{item.label}</span>
+											<span className='wrap-break-words text-left'>
+												{showScientific ? (item.scientificLabel ?? item.label) : item.label}
+											</span>
 										</button>
 									</li>
 								))}

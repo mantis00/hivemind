@@ -72,7 +72,7 @@ export default function RequestNewSpeciesButton() {
 			onOpenChange={(isOpen) => setOpen(isOpen)}
 			trigger={
 				<Button variant='secondary' size='default' onClick={() => setOpen(true)}>
-					Request New Species <Send className='w-4 h-4' />
+					Request New <Send className='w-4 h-4' />
 				</Button>
 			}
 		>

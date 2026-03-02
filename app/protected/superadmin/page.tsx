@@ -1,6 +1,7 @@
 import { AllMembersTable } from '@/components/superadmin/all-members-table'
 import { ViewPendingRequests } from '@/components/superadmin/view-pending-org-requests'
 import { SpeciesAdminTable } from '@/components/superadmin/species-admin-table'
+import { ViewPendingSpeciesRequests } from '@/components/superadmin/view-pending-species-requests'
 
 export default async function Page() {
 	return (
@@ -12,8 +13,9 @@ export default async function Page() {
 				<div className='flex flex-col gap-8'>
 					<p className='text-sm text-muted-foreground'>Hub for managing the Hivemind app, orginizations, and users</p>
 					<section className='space-y-3'>
-						<h2 className='text-lg font-semibold'>Organization Requests</h2>
+						<h2 className='text-lg font-semibold'>Requests</h2>
 						<ViewPendingRequests />
+						<ViewPendingSpeciesRequests />
 					</section>
 					<section className='space-y-3'>
 						<h2 className='text-lg font-semibold'>All Members</h2>

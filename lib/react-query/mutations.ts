@@ -961,7 +961,7 @@ export function useRequestSpecies() {
 					common_name: common_name.trim(),
 					care_instructions: care_instructions.trim(),
 					org_id: org_id,
-					user_id: user_id
+					requester_id: user_id
 				})
 				.select()
 				.single()
@@ -1148,6 +1148,48 @@ export function useDeleteBatchSpeciesFromOrg() {
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.orgId] })
 			toast.success('All species removed from organization')
+		}
+	})
+}
+
+export function useApproveSpeciesRequest() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requestId, reviewerId }: { requestId: UUID; reviewerId: string }) => {
+			// const supabase = createClient()
+			// const { error } = await supabase.rpc('approve_org_request', {
+			// 	p_request_id: requestId,
+			// 	p_reviewer_id: reviewerId
+			// })
+			// if (error) throw error
+		},
+		onSuccess: () => {
+			// queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+			// queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+			// queryClient.invalidateQueries({ queryKey: ['orgs'] })
+			// queryClient.invalidateQueries({ queryKey: ['orgMembers'] })
+			// queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+		}
+	})
+}
+
+export function useRejectSpeciesRequest() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ requestId, reviewerId }: { requestId: UUID; reviewerId: string }) => {
+			// const supabase = createClient()
+			// const { error } = await supabase
+			// 	.from('org_requests')
+			// 	.update({ status: 'rejected', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
+			// 	.eq('request_id', requestId)
+			// 	.eq('status', 'pending')
+			// if (error) throw error
+		},
+		onSuccess: () => {
+			// queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+			// queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
 		}
 	})
 }
