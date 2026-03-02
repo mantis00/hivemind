@@ -8,18 +8,9 @@ import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { usePendingInvites } from '@/lib/react-query/queries'
 import { useAcceptInvite, useRejectInvite } from '@/lib/react-query/mutations'
 import getAccessLevelName from '@/context/access-levels'
+import { formatDate } from '@/context/format-date'
 import { useState } from 'react'
 import { UUID } from 'crypto'
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-function formatDate(iso: string, includeYear = true): string {
-	const d = new Date(iso)
-	const month = MONTHS[d.getUTCMonth()]
-	const day = d.getUTCDate()
-	if (!includeYear) return `${month} ${day}`
-	return `${month} ${day}, ${d.getUTCFullYear()}`
-}
 
 export default function PendingInvites() {
 	const { data: user } = useCurrentClientUser()

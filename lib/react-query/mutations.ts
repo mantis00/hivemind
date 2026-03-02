@@ -721,6 +721,218 @@ export function useUpdateSpecies() {
 	})
 }
 
+export function useCreateTaskTemplate() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			speciesId,
+			type,
+			description,
+			fields
+		}: {
+			speciesId: UUID
+			type: string
+			description: string
+			fields: {
+				question_key: string
+				label: string
+				type: string
+				required: boolean
+				choices: string[]
+			}[]
+		}) => {
+			const supabase = createClient()
+
+			const { data: template, error: templateError } = await supabase
+				.from('task_templates')
+				.insert({ species_id: speciesId, type, description: description || null })
+				.select()
+				.single()
+
+			if (templateError) throw templateError
+
+			const { error: questionsError } = await supabase.from('question_templates').insert(
+				fields.map((f) => ({
+					task_template_id: template.id,
+					question_key: f.question_key,
+					label: f.label,
+					type: f.type,
+					required: f.required,
+					choices: f.choices.length > 0 ? f.choices : null
+				}))
+			)
+
+			if (questionsError) throw questionsError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			toast.success('Task template created!')
+		}
+	})
+}
+
+export function useUpdateTaskTemplate() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			templateId,
+			speciesId,
+			type,
+			description,
+			fields
+		}: {
+			templateId: UUID
+			speciesId: UUID
+			type: string
+			description: string
+			fields: {
+				question_key: string
+				label: string
+				type: string
+				required: boolean
+				choices: string[]
+			}[]
+		}) => {
+			const supabase = createClient()
+
+			const { error: templateError } = await supabase
+				.from('task_templates')
+				.update({ type, description: description || null })
+				.eq('id', templateId)
+
+			if (templateError) throw templateError
+
+			// Replace all question_templates: delete existing then re-insert
+			const { error: deleteError } = await supabase
+				.from('question_templates')
+				.delete()
+				.eq('task_template_id', templateId)
+
+			if (deleteError) throw deleteError
+
+			const { error: insertError } = await supabase.from('question_templates').insert(
+				fields.map((f) => ({
+					task_template_id: templateId,
+					question_key: f.question_key,
+					label: f.label,
+					type: f.type,
+					required: f.required,
+					choices: f.choices.length > 0 ? f.choices : null
+				}))
+			)
+
+			if (insertError) throw insertError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			toast.success('Template updated!')
+		}
+	})
+}
+
+export function useDeleteTaskTemplate() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ templateId }: { templateId: UUID; speciesId: UUID }) => {
+			const supabase = createClient()
+
+			const { error: deleteQuestionsError } = await supabase
+				.from('question_templates')
+				.delete()
+				.eq('task_template_id', templateId)
+
+			if (deleteQuestionsError) throw deleteQuestionsError
+
+			const { error } = await supabase.from('task_templates').delete().eq('id', templateId)
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
+			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			toast.success('Template deleted!')
+		}
+	})
+}
+
+export function useStartTask() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ task_id, enclosure_id }: { task_id: UUID; enclosure_id: UUID }) => {
+			const supabase = createClient()
+
+			if (!task_id) {
+				throw new Error('Task ID missing!')
+			}
+
+			const { error } = await supabase
+				.from('tasks')
+				.update({ status: 'in_progress', start_time: new Date().toISOString() })
+				.eq('id', task_id)
+				.eq('enclosure_id', enclosure_id)
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+		}
+	})
+}
+
+export function useCompleteTask() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ task_id, enclosure_id }: { task_id: UUID; enclosure_id: UUID; user_id: UUID }) => {
+			const supabase = createClient()
+
+			if (!task_id) {
+				throw new Error('Task ID missing!')
+			}
+
+			const { error } = await supabase
+				.from('tasks')
+				.update({ status: 'completed', completed_time: new Date().toISOString() })
+				.eq('id', task_id)
+				.eq('enclosure_id', enclosure_id)
+
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+		}
+	})
+}
+
+export function useCreateTask() {
+	return useMutation({
+		mutationFn: async ({ enclosure_id, user_id, org_id }: { enclosure_id: UUID; user_id: UUID; org_id: UUID }) => {
+			const supabase = createClient()
+
+			if (!enclosure_id) {
+				throw new Error('Enclosure ID is missing!')
+			}
+
+			// const { error } = await supabase
+			//  .from('tasks')
+			//  .update({ status: 'completed', completed_time: new Date().toISOString() })
+			//  .eq('id', task_id)
+			//  .eq('enclosure_id', enclosure_id)
+
+			// if (error) throw error
+		},
+		onSuccess: () => {}
+	})
+}
+
 export function useRequestSpecies() {
 	return useMutation({
 		mutationFn: async ({

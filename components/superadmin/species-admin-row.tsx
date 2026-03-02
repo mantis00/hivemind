@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { type Species } from '@/lib/react-query/queries'
+import { type Species, useUsedTaskTypesForSpecies } from '@/lib/react-query/queries'
 import { Card, CardContent } from '@/components/ui/card'
 import { Bug } from 'lucide-react'
 import { EditSpeciesButton } from './edit-species-button'
+import { TaskTemplatesButton } from './task-templates-button'
 
 export function SpeciesAdminRow({ species }: { species: Species }) {
 	const [editOpen, setEditOpen] = useState(false)
+	const { data: usedTypes } = useUsedTaskTypesForSpecies(species.id)
 
 	return (
 		<>
@@ -31,6 +33,9 @@ export function SpeciesAdminRow({ species }: { species: Species }) {
 					<div className='flex-1 min-w-0'>
 						<p className='font-medium text-sm truncate'>{species.common_name}</p>
 						<p className='text-xs text-muted-foreground italic truncate'>{species.scientific_name}</p>
+					</div>
+					<div onClick={(e) => e.stopPropagation()}>
+						<TaskTemplatesButton species={species} usedTypes={usedTypes ?? []} />
 					</div>
 				</CardContent>
 			</Card>

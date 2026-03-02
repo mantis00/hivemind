@@ -11,6 +11,7 @@ import { Button } from '../ui/button'
 import { EnclosureCard } from './enclosure-card'
 import { Virtuoso } from 'react-virtuoso'
 import { EnclosureDialog } from './enclosure-dialog'
+import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { UUID } from 'crypto'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
@@ -35,6 +36,7 @@ export default function SpeciesRow({
 	const [dialogOpen, setDialogOpen] = useState(false)
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
+	const [detailsOpen, setDetailsOpen] = useState(false)
 
 	const batchDeleteMutation = useBatchDeleteEnclosures()
 
@@ -216,6 +218,32 @@ export default function SpeciesRow({
 					onOpenChange={setDialogOpen}
 				/>
 			)}
+
+			<ResponsiveDialogDrawer
+				title={species.custom_common_name}
+				description={species.species.scientific_name}
+				open={detailsOpen}
+				onOpenChange={setDetailsOpen}
+				trigger={<span className='hidden' />}
+			>
+				<div className='flex flex-col gap-4'>
+					{species.species.picture_url ? (
+						<img
+							src={species.species.picture_url}
+							alt={species.custom_common_name}
+							className='rounded-md max-h-48 w-full object-contain mx-auto'
+						/>
+					) : (
+						<div className='rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground'>
+							No image available
+						</div>
+					)}
+					<div className='rounded-md bg-muted p-3'>
+						<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
+						<p className='text-sm leading-relaxed'>{species.custom_care_instructions}</p>
+					</div>
+				</div>
+			</ResponsiveDialogDrawer>
 		</>
 	)
 }
