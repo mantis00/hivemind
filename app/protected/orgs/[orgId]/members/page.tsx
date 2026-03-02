@@ -12,7 +12,7 @@ export default async function Page({ params }: { params: Promise<{ orgId: string
 					<h1 className='text-2xl font-semibold'>Members of org = {orgId}</h1>
 				</div>
 				<div className='flex flex-col gap-4'>
-					<p className='text-sm text-muted-foreground'>Manage your organizationn&apos;s members and roles</p>
+					<p className='text-sm text-muted-foreground'>Manage your organization&apos;s members and roles</p>
 					<InviteMemberButton />
 					<ViewSentInvites />
 					<ViewOrgMembers />
