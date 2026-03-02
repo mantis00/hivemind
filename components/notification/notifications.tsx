@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, ArrowRight, AtSign, UserPlus, RefreshCw, AlertCircle } from 'lucide-react'
@@ -13,6 +13,8 @@ import { useNotifications } from '@/lib/react-query/queries'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import type { Notification } from '@/lib/react-query/queries'
 import { useMemberProfiles } from '@/lib/react-query/queries'
+import { createClient } from '@/lib/supabase/client'
+import { useQueryClient } from '@tanstack/react-query'
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -65,15 +67,28 @@ const typeColors: Record<NotificationType, string> = {
 
 // ─── NotificationItem ────────────────────────────────────
 
-function NotificationItem({ notification }: { notification: NotificationWithProfile }) {
+function NotificationItem({
+	notification,
+	onView
+}: {
+	notification: NotificationWithProfile
+	onView: (id: string) => void
+}) {
 	const Icon = typeIcons[notification.type as NotificationType] ?? Bell
 	const senderName = notification.senderProfile?.full_name ?? 'Unknown'
 	const initials = getInitials(notification.senderProfile?.full_name)
 
+	const handleClick = () => {
+		if (!notification.viewed) {
+			onView(notification.id as string)
+		}
+	}
+
 	const content = (
 		<div
+			onClick={handleClick}
 			className={cn(
-				'flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-accent',
+				'flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-accent cursor-pointer',
 				!notification.viewed && 'bg-accent/50'
 			)}
 		>
@@ -107,7 +122,7 @@ function NotificationItem({ notification }: { notification: NotificationWithProf
 
 	if (notification.href) {
 		return (
-			<Link href={notification.href} className='block'>
+			<Link href={notification.href} className='block' onClick={handleClick}>
 				{content}
 			</Link>
 		)
@@ -120,10 +135,9 @@ function NotificationItem({ notification }: { notification: NotificationWithProf
 
 export function NotificationsDropdown() {
 	const { data: user } = useCurrentClientUser()
-	console.log('Current user:', user) // Debug log
 	const { data } = useNotifications(user?.id ?? '')
-	console.log('Notifications data:', data) // Debug log
 	const notifications: Notification[] = data ?? []
+	const queryClient = useQueryClient()
 
 	const involvedUserIds = useMemo(() => {
 		const ids = new Set<string>()
@@ -135,15 +149,12 @@ export function NotificationsDropdown() {
 	}, [notifications])
 
 	const { data: profiles } = useMemberProfiles(involvedUserIds)
-	console.log('Profiles data:', data) // Debug log
 
 	const profileMap = useMemo(() => {
 		const map = new Map<string, { id: string; full_name: string }>()
-
 		profiles?.forEach((p) => {
 			map.set(p.id, p)
 		})
-
 		return map
 	}, [profiles])
 
@@ -165,6 +176,39 @@ export function NotificationsDropdown() {
 
 	const unviewedCount = notificationsWithProfiles.filter((n) => !n.viewed).length
 
+	const markAsViewed = useCallback(
+		async (notificationId: string) => {
+			if (!user?.id) return
+			const supabase = createClient()
+			const { error } = await supabase
+				.from('notifications')
+				.update({ viewed: true, viewed_at: new Date().toISOString() })
+				.eq('id', notificationId)
+			if (error) {
+				console.error('Failed to mark notification as viewed:', error)
+				return
+			}
+			await queryClient.invalidateQueries({ queryKey: ['notifications', user.id] })
+		},
+		[user?.id, queryClient]
+	)
+
+	const markAllAsViewed = useCallback(async () => {
+		if (!user?.id) return
+		const unviewedIds = notificationsWithProfiles.filter((n) => !n.viewed).map((n) => n.id as string)
+		if (unviewedIds.length === 0) return
+		const supabase = createClient()
+		const { error } = await supabase
+			.from('notifications')
+			.update({ viewed: true, viewed_at: new Date().toISOString() })
+			.in('id', unviewedIds)
+		if (error) {
+			console.error('Failed to mark all notifications as viewed:', error)
+			return
+		}
+		await queryClient.invalidateQueries({ queryKey: ['notifications', user.id] })
+	}, [user?.id, notificationsWithProfiles, queryClient])
+
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
@@ -181,6 +225,11 @@ export function NotificationsDropdown() {
 			<PopoverContent align='end' sideOffset={8} className='flex max-h-120 w-95 flex-col overflow-hidden p-0'>
 				<div className='flex shrink-0 items-center justify-between px-4 py-3'>
 					<h3 className='text-sm font-semibold'>Notifications</h3>
+					{unviewedCount > 0 && (
+						<Button variant='ghost' size='sm' className='text-xs text-muted-foreground' onClick={markAllAsViewed}>
+							Mark all read
+						</Button>
+					)}
 				</div>
 
 				<Separator />
@@ -188,7 +237,7 @@ export function NotificationsDropdown() {
 				<div className='flex-1 overflow-y-auto p-1'>
 					{notificationsWithProfiles.length > 0 ? (
 						notificationsWithProfiles.map((notification) => (
-							<NotificationItem key={notification.id} notification={notification} />
+							<NotificationItem key={notification.id} notification={notification} onView={markAsViewed} />
 						))
 					) : (
 						<div className='flex flex-col items-center justify-center py-8 text-center'>
