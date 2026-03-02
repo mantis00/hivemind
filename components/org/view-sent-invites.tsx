@@ -9,19 +9,10 @@ import { useRetractInvite } from '@/lib/react-query/mutations'
 import getAccessLevelName from '@/context/access-levels'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useIsOwnerOrSuperadmin } from '@/lib/react-query/queries'
+import { formatDate } from '@/context/format-date'
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-function formatDate(iso: string, includeYear = true): string {
-	const d = new Date(iso)
-	const month = MONTHS[d.getUTCMonth()]
-	const day = d.getUTCDate()
-	if (!includeYear) return `${month} ${day}`
-	return `${month} ${day}, ${d.getUTCFullYear()}`
-}
 
 function StatusDot({ status }: { status: string }) {
 	const colorMap: Record<string, string> = {
@@ -49,6 +40,12 @@ export function ViewSentInvites() {
 
 	if (!isOwnerOrSuperadmin) return null
 
+	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+	const visibleInvites = invites?.filter((invite) => {
+		const expiredAt = new Date(invite.expires_at).getTime()
+		return Date.now() <= expiredAt + SEVEN_DAYS_MS
+	})
+
 	const handleRetract = (inviteId: UUID) => {
 		if (!user?.id) return
 		setPendingInviteId(inviteId)
@@ -64,7 +61,7 @@ export function ViewSentInvites() {
 				>
 					<div className='flex items-center gap-3'>
 						<h3 className='text-sm font-medium text-foreground'>Sent Invites</h3>
-						<span className='text-xs text-muted-foreground'>{invites?.length ?? 0}</span>
+						<span className='text-xs text-muted-foreground'>{visibleInvites?.length ?? 0}</span>
 					</div>
 					<ChevronDownIcon className='h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180' />
 				</button>
@@ -74,11 +71,11 @@ export function ViewSentInvites() {
 					<div className='flex justify-center items-center py-4'>
 						<LoaderCircle className='animate-spin' />
 					</div>
-				) : !invites || invites.length === 0 ? (
+				) : !visibleInvites || visibleInvites.length === 0 ? (
 					<p className='py-2 text-sm text-muted-foreground text-center'>No invites sent yet.</p>
 				) : (
 					<div className='divide-y divide-border'>
-						{invites.map((invite) => (
+						{visibleInvites!.map((invite) => (
 							<div key={invite.invite_id} className='flex items-center justify-between gap-3 py-3 first:pt-1'>
 								<div className='flex min-w-0 flex-1 flex-col gap-1'>
 									<div className='flex flex-wrap items-center gap-2'>
@@ -91,7 +88,15 @@ export function ViewSentInvites() {
 										<StatusDot status={invite.status} />
 										<span className='capitalize'>{invite.status}</span>
 										<span className='text-border'>/</span>
-										<span>{formatDate(invite.created_at)}</span>
+										<span>Sent {formatDate(invite.created_at)}</span>{' '}
+										{invite.status !== 'pending' && invite.updated_at && (
+											<>
+												<span className='text-border'>/</span>
+												<span className='capitalize'>
+													{invite.status} {formatDate(invite.updated_at)}
+												</span>
+											</>
+										)}{' '}
 										{invite.status === 'pending' && (
 											<>
 												<span className='text-border'>/</span>
@@ -113,7 +118,7 @@ export function ViewSentInvites() {
 										) : (
 											<>
 												<XIcon className='h-3.5 w-3.5' />
-												<span className='hidden sm:inline'>Revoke</span>
+												<span className='hidden sm:inline'>Cancel</span>
 											</>
 										)}
 									</Button>
