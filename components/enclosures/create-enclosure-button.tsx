@@ -78,7 +78,7 @@ export function CreateEnclosureButton() {
 			open={open}
 			onOpenChange={(isOpen) => setOpen(isOpen)}
 			trigger={
-				<Button onClick={() => setOpen(true)}>
+				<Button onClick={() => setOpen(true)} size='default'>
 					Add Enclosure <PlusIcon className='w-4 h-4' />
 				</Button>
 			}
@@ -180,6 +180,7 @@ export function CreateEnclosureButton() {
 					<Button
 						type='button'
 						variant='outline'
+						size='default'
 						disabled={createEnclosureMutation.isPending}
 						onClick={() => setOpen(false)}
 					>

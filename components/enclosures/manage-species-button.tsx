@@ -19,7 +19,8 @@ export default function ManageSpeciesButton() {
 			onOpenChange={(isOpen) => setOpen(isOpen)}
 			trigger={
 				<Button variant='secondary' size='default' onClick={() => setOpen(true)}>
-					Manage {useIsMobile() ? '' : 'Species'} <Move className='w-4 h-4' />
+					Manage Species
+					<Move className='w-4 h-4' />
 				</Button>
 			}
 		>

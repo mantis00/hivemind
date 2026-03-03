@@ -2,7 +2,15 @@
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ChevronLeftIcon, ChevronRightIcon, SaveAllIcon, SaveIcon, SquareCheckIcon, SquareIcon } from 'lucide-react'
+import {
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	LoaderCircle,
+	SaveAllIcon,
+	SaveIcon,
+	SquareCheckIcon,
+	SquareIcon
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAllSpecies, useOrgSpecies } from '@/lib/react-query/queries'
 import { useAddBatchSpeciesToOrg, useDeleteBatchSpeciesFromOrg } from '@/lib/react-query/mutations'
@@ -20,8 +28,8 @@ type Item = {
 export default function SpeciesTransferList() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
-	const { data: species } = useOrgSpecies(orgId as UUID)
-	const { data: master_species } = useAllSpecies()
+	const { data: species, isLoading: orgSpeciesLoading } = useOrgSpecies(orgId as UUID)
+	const { data: master_species, isLoading: speciesLoading } = useAllSpecies()
 
 	const [leftList, setLeftList] = useState<Item[]>([])
 	const [rightList, setRightList] = useState<Item[]>([])
@@ -119,6 +127,14 @@ export default function SpeciesTransferList() {
 		if (addedMasterIds.length > 0) {
 			addMutation.mutate({ species_ids: addedMasterIds, org_id: orgId })
 		}
+	}
+
+	if (speciesLoading || orgSpeciesLoading) {
+		return (
+			<div className='flex items-center justify-center h-48 w-full'>
+				<LoaderCircle className='h-8 w-8 animate-spin text-muted-foreground' />
+			</div>
+		)
 	}
 
 	return (

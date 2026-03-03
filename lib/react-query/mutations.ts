@@ -1157,19 +1157,16 @@ export function useApproveSpeciesRequest() {
 
 	return useMutation({
 		mutationFn: async ({ requestId, reviewerId }: { requestId: UUID; reviewerId: string }) => {
-			// const supabase = createClient()
-			// const { error } = await supabase.rpc('approve_org_request', {
-			// 	p_request_id: requestId,
-			// 	p_reviewer_id: reviewerId
-			// })
-			// if (error) throw error
+			const supabase = createClient()
+			const { error } = await supabase.rpc('approve_species_request', {
+				p_request_id: requestId,
+				p_reviewer_id: reviewerId
+			})
+			if (error) throw error
 		},
 		onSuccess: () => {
-			// queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
-			// queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
-			// queryClient.invalidateQueries({ queryKey: ['orgs'] })
-			// queryClient.invalidateQueries({ queryKey: ['orgMembers'] })
-			// queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			queryClient.invalidateQueries({ queryKey: ['allSpeciesRequests'] })
+			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
 		}
 	})
 }
@@ -1179,17 +1176,16 @@ export function useRejectSpeciesRequest() {
 
 	return useMutation({
 		mutationFn: async ({ requestId, reviewerId }: { requestId: UUID; reviewerId: string }) => {
-			// const supabase = createClient()
-			// const { error } = await supabase
-			// 	.from('org_requests')
-			// 	.update({ status: 'rejected', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
-			// 	.eq('request_id', requestId)
-			// 	.eq('status', 'pending')
-			// if (error) throw error
+			const supabase = createClient()
+			const { error } = await supabase
+				.from('species_requests')
+				.update({ status: 'rejected', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
+				.eq('id', requestId)
+				.eq('status', 'pending')
+			if (error) throw error
 		},
 		onSuccess: () => {
-			// queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
-			// queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+			queryClient.invalidateQueries({ queryKey: ['allSpeciesRequests'] })
 		}
 	})
 }

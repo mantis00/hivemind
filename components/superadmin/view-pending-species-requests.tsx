@@ -63,7 +63,7 @@ export function ViewPendingSpeciesRequests() {
 					className='group flex w-full items-center justify-between py-3 text-left transition-opacity hover:opacity-70'
 				>
 					<div className='flex items-center gap-3'>
-						<h3 className='text-sm font-medium text-foreground'>Pending Species Requests</h3>
+						<h3 className='text-sm font-medium text-foreground'>Species Requests</h3>
 						<span className='text-xs text-muted-foreground'>
 							{visibleRequests.length}
 							{pendingRequests.length !== visibleRequests.length && ` (${pendingRequests.length} pending)`}

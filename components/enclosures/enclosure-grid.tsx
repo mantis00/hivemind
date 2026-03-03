@@ -1,8 +1,8 @@
 'use client'
 
-import { OrgSpecies, useSpecies, useOrgEnclosureCount } from '@/lib/react-query/queries'
+import { OrgSpecies, useSpecies } from '@/lib/react-query/queries'
 import { ArrowDownIcon, ArrowUpIcon, Bug, Edit, Search, XIcon } from 'lucide-react'
-import { Badge } from '../ui/badge'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
@@ -22,7 +22,6 @@ export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useSpecies(orgId as UUID)
-	const { data: enclosureCount } = useOrgEnclosureCount(orgId as UUID)
 
 	const [searchValue, setSearchValue] = useState('')
 	const [searchCount, setSearchCount] = useState(0)
@@ -176,21 +175,9 @@ export default function EnclosureGrid() {
 	return (
 		<div className='bg-background full'>
 			<div className='mx-auto'>
-				<div className={`mb-2 flex items-center ${useIsMobile() ? 'flex-col gap-1' : 'flex-row gap-3'}`}>
-					<div>
-						<Badge variant='secondary'>{orgSpecies?.length} species</Badge>
-						<Badge variant='secondary' className='gap-1'>
-							{enclosureCount ?? 0} enclosures
-						</Badge>
-					</div>
-					<div className={`flex flex-row ${useIsMobile() ? 'mx-auto' : 'ml-auto'} gap-2`}>
-						<div>
-							<CreateEnclosureButton />
-						</div>
-						<div>
-							<ManageSpeciesButton />
-						</div>
-					</div>
+				<div className={`mb-2 flex items-center flex-row gap-2 ${useIsMobile() ? 'justify-between' : 'justify-end'}`}>
+					<ManageSpeciesButton />
+					<CreateEnclosureButton />
 				</div>
 
 				{/* Sort and Search */}
@@ -291,6 +278,7 @@ export default function EnclosureGrid() {
 						</div>
 						<div ref={virtuosoRef} className='rounded-lg border bg-card'>
 							<Virtuoso
+								className='scrollbar-no-track'
 								style={{ height: `${tableHeight}px`, transition: 'height 0.2s ease-in-out' }}
 								data={displayedSpecies}
 								computeItemKey={(_, sp) => sp.id}
