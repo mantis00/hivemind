@@ -60,7 +60,7 @@ export function MobileAccountMenu() {
 					{(install, isInstalled) =>
 						!isInstalled && (
 							<DropdownMenuItem onClick={install}>
-								<Download className='mr-2 size-4' />
+								<Download className='size-4' />
 								<span>Install App</span>
 							</DropdownMenuItem>
 						)
