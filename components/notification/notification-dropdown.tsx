@@ -1,94 +1,22 @@
 'use client'
 
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, ArrowRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { useNotifications } from '@/lib/react-query/queries'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import type { Notification } from '@/lib/react-query/queries'
-import type { NotificationWithProfile } from '@/context/notifications-with-profiles'
 import { useNotificationsWithProfiles } from '@/context/notifications-with-profiles'
-import { typeIcons, typeColors, typeBadgeColors, typeLabels, NotificationType } from '@/context/notification-config'
-import { getInitials } from '@/context/get-initials'
-import { formatRelativeTime } from '@/context/format-date-time'
 import { useMarkNotificationAsViewed, useMarkAllNotificationsAsViewed } from '@/lib/react-query/mutations'
-
-// ─── NotificationItem ────────────────────────────────────
-
-function NotificationItem({
-	notification,
-	onView
-}: {
-	notification: NotificationWithProfile
-	onView: (id: string) => void
-}) {
-	const Icon = typeIcons[notification.type as NotificationType] ?? Bell
-	const senderName = notification.senderProfile?.full_name ?? 'Unknown'
-	const initials = getInitials(notification.senderProfile?.full_name)
-	const isSystem = notification.senderProfile?.id === 'system'
-
-	const handleClick = () => {
-		if (!notification.viewed) {
-			onView(notification.id as string)
-		}
-	}
-
-	const content = (
-		<div
-			onClick={handleClick}
-			className={cn(
-				'flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-accent cursor-pointer',
-				!notification.viewed && 'bg-accent/50'
-			)}
-		>
-			<div className='relative shrink-0'>
-				<Avatar className='size-8'>
-					<AvatarFallback className='bg-muted text-muted-foreground text-[10px] font-medium'>{initials}</AvatarFallback>
-				</Avatar>
-				<div className='absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-background'>
-					<Icon
-						className={cn('size-3', typeColors[notification.type as NotificationType] ?? 'text-muted-foreground')}
-					/>
-				</div>
-			</div>
-
-			<div className='min-w-0 flex-1'>
-				<div className='flex items-center gap-2'>
-					<span className='truncate text-sm font-medium text-foreground'>{senderName}</span>
-					<span className='shrink-0 text-xs text-muted-foreground'>{formatRelativeTime(notification.created_at)}</span>
-				</div>
-				<p className='mt-0.5 truncate text-sm leading-snug text-muted-foreground'>{notification.title}</p>
-				<p className='mt-0.5 truncate text-xs leading-snug text-muted-foreground/70'>{notification.description}</p>
-			</div>
-
-			{!notification.viewed && (
-				<div className='mt-2 shrink-0'>
-					<div className='size-2 rounded-full bg-primary' />
-				</div>
-			)}
-		</div>
-	)
-
-	if (notification.href) {
-		return (
-			<Link href={notification.href} className='block' onClick={handleClick}>
-				{content}
-			</Link>
-		)
-	}
-
-	return content
-}
+import { NotificationRow } from '@/components/notification/notification-row'
 
 // ─── NotificationsDropdown ───────────────────────────────
 
-export function NotificationsDropdown() {
+export function NotificationDropdown() {
 	const { data: user } = useCurrentClientUser()
 	const { data } = useNotifications(user?.id ?? '')
 	const notifications: Notification[] = data ?? []
@@ -142,10 +70,13 @@ export function NotificationsDropdown() {
 				<div className='flex-1 overflow-y-auto p-1'>
 					{notificationsWithProfiles.length > 0 ? (
 						notificationsWithProfiles.map((notification) => (
-							<NotificationItem
+							<NotificationRow
 								key={notification.id}
 								notification={notification}
-								onView={(id) => markAsViewedMutation.mutate(id)}
+								onView={(id: string) => markAsViewedMutation.mutate(id)}
+								showCheckbox={false}
+								showDelete={false}
+								compact
 							/>
 						))
 					) : (

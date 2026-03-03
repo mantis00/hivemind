@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState, useCallback } from 'react'
-import Link from 'next/link'
 import { Virtuoso } from 'react-virtuoso'
 import {
 	Bell,
@@ -18,27 +17,23 @@ import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useNotifications, useMemberProfiles } from '@/lib/react-query/queries'
+import { useNotifications } from '@/lib/react-query/queries'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import type { Notification } from '@/lib/react-query/queries'
 import type { DateRange } from 'react-day-picker'
 import type { NotificationWithProfile } from '@/context/notifications-with-profiles'
-import { typeIcons, typeColors, typeBadgeColors, typeLabels } from '@/context/notification-config'
-import { getInitials } from '@/context/get-initials'
-import { formatRelativeTime } from '@/context/format-date-time'
+import { typeIcons, typeColors, typeLabels } from '@/context/notification-config'
 import { useNotificationsWithProfiles } from '@/context/notifications-with-profiles'
 import { useDeleteNotification, useMarkNotificationAsViewed } from '@/lib/react-query/mutations'
 import type { NotificationType } from '@/context/notification-config'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
+import { NotificationRow } from '@/components/notification/notification-row'
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -79,107 +74,6 @@ function SortableHeader({
 			{label}
 			<Icon className='size-3' />
 		</button>
-	)
-}
-
-// ─── InboxNotificationRow ────────────────────────────────
-
-function InboxNotificationRow({
-	notification,
-	isSelected,
-	onSelect,
-	onDelete,
-	onView
-}: {
-	notification: NotificationWithProfile
-	isSelected: boolean
-	onSelect: (id: string, checked: boolean) => void
-	onDelete: (notification: NotificationWithProfile) => void
-	onView: (id: string) => void
-}) {
-	const Icon = typeIcons[notification.type as NotificationType] ?? Bell
-	const senderName = notification.senderProfile?.full_name ?? 'Unknown'
-	const initials = getInitials(notification.senderProfile?.full_name)
-	const typeBadge = typeBadgeColors[notification.type as NotificationType]
-	const typeLabel = typeLabels[notification.type as NotificationType] ?? notification.type
-
-	const handleRowClick = () => {
-		if (!notification.viewed) {
-			onView(notification.id as string)
-		}
-	}
-
-	return (
-		<div
-			onClick={handleRowClick}
-			className={cn(
-				'group flex items-center gap-4 rounded-lg px-4 py-3 transition-colors cursor-pointer',
-				!notification.viewed && 'bg-accent/50',
-				isSelected && 'bg-accent',
-				notification.viewed && !isSelected && 'hover:bg-accent/30'
-			)}
-		>
-			<Checkbox
-				checked={isSelected}
-				onCheckedChange={(checked) => onSelect(notification.id as string, !!checked)}
-				onClick={(e) => e.stopPropagation()}
-				aria-label={`Select notification from ${senderName}`}
-			/>
-
-			<div className='relative shrink-0'>
-				<Avatar className='size-9'>
-					<AvatarFallback className='bg-muted text-muted-foreground text-xs font-medium'>{initials}</AvatarFallback>
-				</Avatar>
-				<div className='absolute -bottom-0.5 -right-0.5 flex size-4.5 items-center justify-center rounded-full bg-background border'>
-					<Icon
-						className={cn('size-3', typeColors[notification.type as NotificationType] ?? 'text-muted-foreground')}
-					/>
-				</div>
-			</div>
-
-			<div className='min-w-0 flex-1'>
-				<div className='flex items-center gap-2'>
-					<span className='truncate text-sm font-medium text-foreground'>{senderName}</span>
-					<Badge variant='outline' className={cn('text-[10px] px-1.5 py-0 shrink-0', typeBadge)}>
-						{typeLabel}
-					</Badge>
-					{!notification.viewed && <span className='size-2 shrink-0 rounded-full bg-primary' />}
-				</div>
-				{notification.href ? (
-					<Link href={notification.href} className='hover:underline' onClick={(e) => e.stopPropagation()}>
-						<p className='mt-0.5 truncate text-sm leading-snug text-muted-foreground'>{notification.title}</p>
-					</Link>
-				) : (
-					<p className='mt-0.5 truncate text-sm leading-snug text-muted-foreground'>{notification.title}</p>
-				)}
-				<p className='mt-0.5 truncate text-xs leading-snug text-muted-foreground/70'>{notification.description}</p>
-			</div>
-
-			<div className='flex shrink-0 items-center gap-2'>
-				<span className='text-xs text-muted-foreground whitespace-nowrap'>
-					{formatRelativeTime(notification.created_at)}
-				</span>
-				<TooltipProvider delayDuration={300}>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								variant='ghost'
-								size='icon'
-								className='size-8 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive'
-								onClick={(e) => {
-									e.stopPropagation()
-									onDelete(notification)
-								}}
-								aria-label='Delete notification'
-							>
-								<Trash2 className='size-4' />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>Delete notification</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
-			</div>
-		</div>
 	)
 }
 
@@ -659,12 +553,12 @@ export function InboxPage() {
 									totalListHeightChanged={handleTotalListHeightChanged}
 									itemContent={(_, notification) => (
 										<div className='px-1 pb-0 last:pb-1'>
-											<InboxNotificationRow
+											<NotificationRow
 												notification={notification}
 												isSelected={selectedIds.has(notification.id as string)}
 												onSelect={handleSelect}
 												onDelete={handleDeleteSingle}
-												onView={(id) => markAsViewedMutation.mutate(id)}
+												onView={(id: string) => markAsViewedMutation.mutate(id)}
 											/>
 										</div>
 									)}
