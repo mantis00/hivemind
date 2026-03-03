@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import InstallAppButton from '@/components/pwa/install-app-button'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
-import { MobileAccountMenu } from '@/components/navigation/mobile-account-menu'
+import { MobileActionsMenu } from '@/components/navigation/mobile-actions-menu'
 
 function isOrgRoute(pathname: string | null) {
 	if (!pathname) return false
@@ -50,7 +50,7 @@ export function ProtectedNavActions() {
 
 			{/* Mobile Menu */}
 			<div className='sm:hidden'>
-				<MobileAccountMenu />
+				<MobileActionsMenu />
 			</div>
 		</div>
 	)

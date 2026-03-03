@@ -6,12 +6,11 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { useLogout } from '@/hooks/use-logout'
+import { useLogout } from '@/lib/react-query/auth'
 import { useRouter } from 'next/navigation'
 import { InstallAppAction } from '../pwa/install-app-action'
 
@@ -20,7 +19,7 @@ interface BeforeInstallPromptEvent extends Event {
 	userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
-export function MobileAccountMenu() {
+export function MobileActionsMenu() {
 	const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
 	const [isInstalled, setIsInstalled] = useState(false)
 	const router = useRouter()
@@ -40,7 +39,7 @@ export function MobileAccountMenu() {
 		return () => window.removeEventListener('beforeinstallprompt', handler)
 	}, [])
 
-	const logout = useLogout()
+	const logoutMutation = useLogout()
 
 	return (
 		<DropdownMenu>
@@ -50,8 +49,6 @@ export function MobileAccountMenu() {
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align='end' className='w-48'>
-				<DropdownMenuLabel className='text-foreground font-normal'>My Account</DropdownMenuLabel>
-				<DropdownMenuSeparator />
 				<DropdownMenuItem onClick={() => router.push('/protected/account')}>
 					<User />
 					<span>Account</span>
@@ -72,8 +69,14 @@ export function MobileAccountMenu() {
 					}
 				</InstallAppAction>
 				<DropdownMenuSeparator />
-				<DropdownMenuItem variant='destructive' onClick={logout}>
-					<LogOut />
+				<DropdownMenuItem
+					variant='destructive'
+					onSelect={(e) => {
+						e.preventDefault()
+						logoutMutation.mutate()
+					}}
+				>
+					<LogOut className='size-4' />
 					<span>Log Out</span>
 				</DropdownMenuItem>
 			</DropdownMenuContent>
