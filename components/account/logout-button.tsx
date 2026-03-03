@@ -5,16 +5,13 @@ import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { useState } from 'react'
+import { useLogout } from '@/hooks/use-logout'
 
 export function LogoutButton() {
 	const router = useRouter()
 	const [open, setOpen] = useState(false)
 
-	const logout = async () => {
-		const supabase = createClient()
-		await supabase.auth.signOut()
-		router.replace('/auth/login') // replace, makes it so the cant click browser back button to go back to the previous page
-	}
+	const logout = useLogout()
 
 	return (
 		<ResponsiveDialogDrawer

@@ -25,22 +25,10 @@ import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle
-} from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useNotifications, useMemberProfiles } from '@/lib/react-query/queries'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { createClient } from '@/lib/supabase/client'
-import { useQueryClient } from '@tanstack/react-query'
 import type { Notification } from '@/lib/react-query/queries'
 import type { DateRange } from 'react-day-picker'
 import type { NotificationWithProfile } from '@/context/notifications-with-profiles'
@@ -50,6 +38,7 @@ import { formatRelativeTime } from '@/context/format-date-time'
 import { useNotificationsWithProfiles } from '@/context/notifications-with-profiles'
 import { useDeleteNotification, useMarkNotificationAsViewed } from '@/lib/react-query/mutations'
 import type { NotificationType } from '@/context/notification-config'
+import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -236,6 +225,7 @@ export function InboxPage() {
 	const [deleteTarget, setDeleteTarget] = useState<NotificationWithProfile | null>(null)
 	const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
 	const [isDeleting, setIsDeleting] = useState(false)
+	const [singleDeleteOpen, setSingleDeleteOpen] = useState(false)
 
 	// ─── Virtuoso height state ─────────────────────────
 	const [dynamicHeight, setDynamicHeight] = useState<number>(MAX_HEIGHT)
@@ -275,6 +265,7 @@ export function InboxPage() {
 
 	const handleDeleteSingle = useCallback((notification: NotificationWithProfile) => {
 		setDeleteTarget(notification)
+		setSingleDeleteOpen(true)
 	}, [])
 
 	const confirmDeleteSingle = useCallback(() => {
@@ -704,55 +695,46 @@ export function InboxPage() {
 			</div>
 
 			{/* Single delete confirmation */}
-			<AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Delete notification</AlertDialogTitle>
-						<AlertDialogDescription>
-							Are you sure you want to delete this notification from{' '}
-							<span className='font-medium text-foreground'>{deleteTarget?.senderProfile?.full_name ?? 'Unknown'}</span>
-							? This action cannot be undone.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={confirmDeleteSingle}
-							disabled={isDeleting}
-							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
-						>
-							{isDeleting ? 'Deleting...' : 'Delete'}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			<ResponsiveDialogDrawer
+				title='Delete notification'
+				description={`Are you sure you want to delete this notification from ${
+					deleteTarget?.senderProfile?.full_name ?? 'Unknown'
+				}? This action cannot be undone.`}
+				trigger={<span />} // required by implementation
+				open={singleDeleteOpen}
+				onOpenChange={(open) => {
+					setSingleDeleteOpen(open)
+					if (!open) setDeleteTarget(null)
+				}}
+			>
+				<div className='flex justify-end gap-2'>
+					<Button variant='outline' size='sm' onClick={() => setSingleDeleteOpen(false)} disabled={isDeleting}>
+						Cancel
+					</Button>
 
-			{/* Bulk delete confirmation */}
-			<AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>
-							Delete {selectedIds.size} notification{selectedIds.size !== 1 ? 's' : ''}
-						</AlertDialogTitle>
-						<AlertDialogDescription>
-							Are you sure you want to delete {selectedIds.size} selected notification
-							{selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={confirmBulkDelete}
-							disabled={isDeleting}
-							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
-						>
-							{isDeleting
-								? 'Deleting...'
-								: `Delete ${selectedIds.size} notification${selectedIds.size !== 1 ? 's' : ''}`}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+					<Button variant='destructive' size='sm' onClick={confirmDeleteSingle} disabled={isDeleting}>
+						{isDeleting ? 'Deleting...' : 'Delete'}
+					</Button>
+				</div>
+			</ResponsiveDialogDrawer>
+
+			<ResponsiveDialogDrawer
+				title={`Delete ${selectedIds.size} notification${selectedIds.size !== 1 ? 's' : ''}`}
+				description={`Are you sure you want to delete ${selectedIds.size} selected notification${selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.`}
+				trigger={<span />} // required
+				open={bulkDeleteOpen}
+				onOpenChange={setBulkDeleteOpen}
+			>
+				<div className='flex justify-end gap-2'>
+					<Button variant='outline' size='sm' onClick={() => setBulkDeleteOpen(false)} disabled={isDeleting}>
+						Cancel
+					</Button>
+
+					<Button variant='destructive' size='sm' onClick={confirmBulkDelete} disabled={isDeleting}>
+						{isDeleting ? 'Deleting...' : `Delete ${selectedIds.size} notification${selectedIds.size !== 1 ? 's' : ''}`}
+					</Button>
+				</div>
+			</ResponsiveDialogDrawer>
 		</div>
 	)
 }

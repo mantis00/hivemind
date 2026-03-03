@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import InstallAppButton from '@/components/pwa/install-app-button'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
+import { MobileAccountMenu } from '@/components/navigation/mobile-account-menu'
 
 function isOrgRoute(pathname: string | null) {
 	if (!pathname) return false
@@ -35,13 +36,22 @@ export function ProtectedNavActions() {
 	}
 
 	return (
-		<div className='flex items-center flex-row justify-end gap-2 max-w-full'>
+		<div className='flex items-center justify-end gap-2 max-w-full'>
 			<NotificationsDropdown />
-			<Button variant='default' size='sm' className='w-auto px-4' onClick={() => router.push('/protected/account')}>
-				Account
-			</Button>
-			<LogoutButton />
-			<InstallAppButton />
+
+			{/* Desktop Actions */}
+			<div className='hidden sm:flex items-center gap-2'>
+				<Button variant='default' size='sm' className='w-auto px-4' onClick={() => router.push('/protected/account')}>
+					Account
+				</Button>
+				<LogoutButton />
+				<InstallAppButton />
+			</div>
+
+			{/* Mobile Menu */}
+			<div className='sm:hidden'>
+				<MobileAccountMenu />
+			</div>
 		</div>
 	)
 }
