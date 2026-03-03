@@ -335,7 +335,7 @@ export function InboxPage() {
 						<h2 className='text-lg font-semibold'>Filters</h2>
 						<div className='flex flex-wrap items-end gap-3'>
 							{/* Search */}
-							<div className='relative flex-1 min-w-[200px] max-w-sm'>
+							<div className='relative flex-1 min-w-50 max-w-sm'>
 								<Search className='absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
 								<Input
 									placeholder='Search notifications...'
@@ -347,7 +347,7 @@ export function InboxPage() {
 
 							{/* Type filter */}
 							<Select value={typeFilter} onValueChange={(v) => setTypeFilter(v)}>
-								<SelectTrigger className='w-[140px]'>
+								<SelectTrigger className='w-35'>
 									<SelectValue placeholder='Type' />
 								</SelectTrigger>
 								<SelectContent>
@@ -375,7 +375,7 @@ export function InboxPage() {
 
 							{/* Sender filter */}
 							<Select value={senderFilter} onValueChange={(v) => setSenderFilter(v)}>
-								<SelectTrigger className='w-[160px]'>
+								<SelectTrigger className='w-40'>
 									<SelectValue placeholder='Sender' />
 								</SelectTrigger>
 								<SelectContent>
@@ -390,7 +390,7 @@ export function InboxPage() {
 
 							{/* Read/Unread filter */}
 							<Select value={viewedFilter} onValueChange={(v) => setViewedFilter(v)}>
-								<SelectTrigger className='w-[130px]'>
+								<SelectTrigger className='w-32.5'>
 									<SelectValue placeholder='Status' />
 								</SelectTrigger>
 								<SelectContent>
@@ -405,10 +405,7 @@ export function InboxPage() {
 								<PopoverTrigger asChild>
 									<Button
 										variant='outline'
-										className={cn(
-											'w-[200px] justify-start text-left font-normal',
-											!dateRange && 'text-muted-foreground'
-										)}
+										className={cn('w-50 justify-start text-left font-normal', !dateRange && 'text-muted-foreground')}
 									>
 										<CalendarIcon className='mr-2 size-4' />
 										{dateRange?.from ? (
