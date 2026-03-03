@@ -49,7 +49,7 @@ export function MobileActionsMenu() {
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align='end' className='w-48'>
-				<DropdownMenuItem onClick={() => router.push('/protected/account')}>
+				<DropdownMenuItem className='cursor-pointer' onClick={() => router.push('/protected/account')}>
 					<User />
 					<span>Account</span>
 				</DropdownMenuItem>
@@ -57,6 +57,7 @@ export function MobileActionsMenu() {
 					{(install, isInstalled) =>
 						!isInstalled && (
 							<DropdownMenuItem
+								className='cursor-pointer'
 								onSelect={(e) => {
 									e.preventDefault()
 									install()
@@ -70,6 +71,7 @@ export function MobileActionsMenu() {
 				</InstallAppAction>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
+					className='cursor-pointer'
 					variant='destructive'
 					onSelect={(e) => {
 						e.preventDefault()
