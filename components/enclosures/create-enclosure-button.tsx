@@ -84,7 +84,7 @@ export function CreateEnclosureButton() {
 			}
 		>
 			<form onSubmit={handleSubmit}>
-				<div className='grid py-4'>
+				<div className='grid py-4 px-4'>
 					<div className='grid grid-cols-1 gap-4'>
 						<Label>Enclosure Name</Label>
 						<Input
@@ -176,7 +176,10 @@ export function CreateEnclosureButton() {
 						/>
 					</div>
 				</div>
-				<div className='flex flex-row gap-3 justify-center'>
+				<div className='flex flex-col gap-3 justify-center px-4 pb-2'>
+					<Button type='submit' disabled={createEnclosureMutation.isPending || !user}>
+						{createEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Create Enclosure'}
+					</Button>
 					<Button
 						type='button'
 						variant='outline'
@@ -185,9 +188,6 @@ export function CreateEnclosureButton() {
 						onClick={() => setOpen(false)}
 					>
 						Cancel
-					</Button>
-					<Button type='submit' disabled={createEnclosureMutation.isPending || !user}>
-						{createEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Create Enclosure'}
 					</Button>
 				</div>
 			</form>

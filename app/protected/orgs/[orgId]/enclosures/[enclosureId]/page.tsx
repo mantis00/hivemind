@@ -16,7 +16,7 @@ export default async function Page({ params }: { params: Promise<{ orgId: UUID; 
 							<Calendar className='h-6 w-6 my-auto' />
 							<EnclosureHeading enclosureId={enclosureId} orgId={orgId} />
 						</div>
-						<p className='text-sm text-muted-foreground pb-6'>View and manage your organization&apos;s dashboard.</p>
+						<p className='text-sm text-muted-foreground pb-6'>View and manage your organization&apos;s tasks</p>
 						<TasksDataTable enclosureId={enclosureId} orgId={orgId} />
 					</div>
 				</div>

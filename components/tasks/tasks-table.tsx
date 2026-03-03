@@ -51,7 +51,7 @@ const priorityConfig: Record<string, { color: string }> = {
 
 const statusConfig: Record<string, { label: string; color: string }> = {
 	pending: { label: 'Pending', color: 'bg-gray-100 text-gray-800' },
-	'in-progress': { label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
+	in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
 	completed: { label: 'Completed', color: 'bg-green-100 text-green-800' }
 }
 
@@ -197,7 +197,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	const [priorityFilter, setPriorityFilter] = React.useState<string[]>([])
 	const [statusFilter, setStatusFilter] = React.useState<string[]>([])
 	const TARGET_VISIBLE_ROWS = isMobile ? TARGET_VISIBLE_ROWS_MOBILE : TARGET_VISIBLE_ROWS_DESKTOP
-	const ESTIMATED_ROW_HEIGHT = isMobile ? 73 : 46
+	const ESTIMATED_ROW_HEIGHT = isMobile ? 65 : 73
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
 	const [selectedTask, setSelectedTask] = React.useState<Task | null>(null)
 	const [taskDrawerOpen, setTaskDrawerOpen] = React.useState(false)
@@ -434,7 +434,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='end'>
-							{['pending', 'in-progress', 'completed'].map((status) => (
+							{['pending', 'in_progress', 'completed'].map((status) => (
 								<DropdownMenuCheckboxItem
 									key={status}
 									checked={statusFilter.includes(status)}
