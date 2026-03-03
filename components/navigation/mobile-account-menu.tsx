@@ -59,8 +59,13 @@ export function MobileAccountMenu() {
 				<InstallAppAction>
 					{(install, isInstalled) =>
 						!isInstalled && (
-							<DropdownMenuItem onClick={install}>
-								<Download className='size-4' />
+							<DropdownMenuItem
+								onSelect={(e) => {
+									e.preventDefault()
+									install()
+								}}
+							>
+								<Download className='mr-2 size-4' />
 								<span>Install App</span>
 							</DropdownMenuItem>
 						)
