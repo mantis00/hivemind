@@ -62,7 +62,11 @@ export function NotificationDropdown() {
 				</Button>
 			</PopoverTrigger>
 
-			<PopoverContent align='center' sideOffset={8} className='flex max-h-120 w-95 flex-col overflow-hidden p-0'>
+			<PopoverContent
+				align='center'
+				sideOffset={8}
+				className='flex flex-col overflow-hidden p-0 max-h-[70vh] w-[calc(100vw-1rem)] sm:w-95 mx-2 sm:mx-0'
+			>
 				<div className='flex shrink-0 items-center justify-between px-4 py-3'>
 					<h3 className='text-sm font-semibold'>Unread Notifications</h3>
 					{unviewedCount > 0 && (
