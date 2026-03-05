@@ -1,15 +1,9 @@
+import { DashboardPage } from '@/components/features/dashboard/dashboard-page'
+import { getDashboardData } from '@/lib/dashboard/get-dashboard-data'
+
 export default async function Page({ params }: { params: Promise<{ orgId: string }> }) {
 	const { orgId } = await params
-	return (
-		<div className='space-y-4 w-full justify-center items-center'>
-			<div className='flex-col mx-auto max-w-5xl'>
-				<div className='pb-5'>
-					<h1 className='text-2xl font-semibold'>Dashboard page for org = {orgId}</h1>
-				</div>
-				<div className='flex flex-col gap-4'>
-					<p className='text-sm text-muted-foreground'>View and manage your organization&apos;s dashboard.</p>
-				</div>
-			</div>
-		</div>
-	)
+	const dashboardData = await getDashboardData(orgId)
+
+	return <DashboardPage orgId={orgId} data={dashboardData} />
 }
