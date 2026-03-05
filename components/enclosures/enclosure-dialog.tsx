@@ -6,7 +6,6 @@ import { MapPin, Calendar, Users, ClipboardList, StickyNote, LoaderCircle, Chevr
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { Enclosure, OrgSpecies } from '@/lib/react-query/queries'
 import { useEnclosureNotes } from '@/lib/react-query/queries'
 import { useRouter } from 'next/navigation'
@@ -46,7 +45,7 @@ export function EnclosureDialog({
 		>
 			<div className='overflow-y-auto max-h-[70vh] scrollbar-hide sm:scrollbar-auto'>
 				<Button
-					className='flex gap-2 w-full pb-2'
+					className='flex gap-2 w-full mb-2'
 					onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}
 				>
 					<ClipboardList className='h-4 w-4' />
