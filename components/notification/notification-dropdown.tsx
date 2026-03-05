@@ -32,27 +32,39 @@ export function NotificationDropdown() {
 
 	const [open, setOpen] = useState(false)
 
-	const unviewedCount = notificationsWithProfiles.filter((n) => !n.viewed).length
+	const unreadNotifications = notificationsWithProfiles.filter((n) => !n.viewed)
+	const unviewedCount = unreadNotifications.length
+
+	const [visibleIds, setVisibleIds] = useState<string[]>([])
+	const visibleNotifications = notificationsWithProfiles.filter((n) => visibleIds.includes(n.id))
 
 	const markAsViewedMutation = useMarkNotificationAsViewed(user?.id)
 	const markAllMutation = useMarkAllNotificationsAsViewed(user?.id)
 
+	const handleOpenChange = (isOpen: boolean) => {
+		setOpen(isOpen)
+
+		if (isOpen) {
+			setVisibleIds(unreadNotifications.map((n) => n.id))
+		}
+	}
+
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
+		<Popover open={open} onOpenChange={handleOpenChange}>
 			<PopoverTrigger asChild>
 				<Button variant='ghost' size='icon' className='relative'>
 					<Bell className='size-5' />
 					{unviewedCount > 0 && (
-						<span className='absolute top-0 right-0 translate-x-1/2 -translate-y-1/3 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
+						<span className='absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
 							{unviewedCount > 9 ? '9+' : unviewedCount}
 						</span>
 					)}
 				</Button>
 			</PopoverTrigger>
 
-			<PopoverContent align='end' sideOffset={8} className='flex max-h-120 w-95 flex-col overflow-hidden p-0'>
+			<PopoverContent align='center' sideOffset={8} className='flex max-h-120 w-95 flex-col overflow-hidden p-0'>
 				<div className='flex shrink-0 items-center justify-between px-4 py-3'>
-					<h3 className='text-sm font-semibold'>Notifications</h3>
+					<h3 className='text-sm font-semibold'>Unread Notifications</h3>
 					{unviewedCount > 0 && (
 						<Button
 							variant='ghost'
@@ -68,8 +80,8 @@ export function NotificationDropdown() {
 				<Separator />
 
 				<div className='flex-1 overflow-y-auto p-1'>
-					{notificationsWithProfiles.length > 0 ? (
-						notificationsWithProfiles.map((notification) => (
+					{visibleNotifications.length > 0 ? (
+						visibleNotifications.map((notification) => (
 							<NotificationRow
 								key={notification.id}
 								notification={notification}
@@ -82,7 +94,7 @@ export function NotificationDropdown() {
 					) : (
 						<div className='flex flex-col items-center justify-center py-8 text-center'>
 							<Bell className='mb-2 size-8 text-muted-foreground/40' />
-							<p className='text-sm text-muted-foreground'>No notifications yet</p>
+							<p className='text-sm text-muted-foreground'>No unread notifications</p>
 						</div>
 					)}
 				</div>
