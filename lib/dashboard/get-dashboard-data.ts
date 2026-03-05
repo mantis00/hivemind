@@ -22,6 +22,7 @@ const OPEN_TASK_STATUSES = new Set(['pending', 'in_progress'])
 const CLOSED_TASK_STATUS = 'completed'
 const DEFAULT_TIME_ZONE = 'UTC'
 const ENCLOSURE_FILTER_CHUNK_SIZE = 100
+type DashboardClient = Awaited<ReturnType<typeof createClient>>
 
 function isTaskOpen(task: TaskRow) {
 	if (task.completed_time) {
@@ -178,6 +179,41 @@ function createChunks(values: string[], chunkSize: number) {
 	return chunks
 }
 
+async function getOrgEnclosureSnapshot(supabase: DashboardClient, orgId: string) {
+	// Keep this in lockstep with active org-enclosure query behavior used in react-query hooks.
+	const { count, error: enclosureCountError } = await supabase
+		.from('enclosures')
+		.select('*', { count: 'exact', head: true })
+		.eq('org_id', orgId)
+
+	if (enclosureCountError) {
+		throw createDashboardQueryError('enclosures.count', enclosureCountError, { orgId })
+	}
+
+	const activeEnclosureCount = count ?? 0
+	if (activeEnclosureCount === 0) {
+		return { activeEnclosureCount, enclosureRows: [] as EnclosureRow[] }
+	}
+
+	const { data: enclosureRows, error: enclosuresError } = (await supabase
+		.from('enclosures')
+		.select('id, name')
+		.eq('org_id', orgId)
+		.order('current_count', { ascending: true })) as {
+		data: EnclosureRow[] | null
+		error: PostgrestError | null
+	}
+
+	if (enclosuresError) {
+		throw createDashboardQueryError('enclosures.select', enclosuresError, { orgId })
+	}
+
+	return {
+		activeEnclosureCount,
+		enclosureRows: enclosureRows ?? []
+	}
+}
+
 export async function getDashboardData(orgId: string): Promise<DashboardData> {
 	const supabase = await createClient()
 	const dashboardData = createEmptyDashboardData()
@@ -185,28 +221,11 @@ export async function getDashboardData(orgId: string): Promise<DashboardData> {
 	const serverTimeZone = getServerTimeZone()
 	dashboardData.timeZone = serverTimeZone
 
-	const { count: activeEnclosureCount, error: enclosureCountError } = await supabase
-		.from('enclosures')
-		.select('id', { count: 'exact', head: true })
-		.eq('org_id', orgId)
-
-	if (enclosureCountError) {
-		throw createDashboardQueryError('enclosures.count', enclosureCountError, { orgId })
-	}
-
-	dashboardData.kpis.activeEnclosures = activeEnclosureCount ?? 0
+	const { activeEnclosureCount, enclosureRows } = await getOrgEnclosureSnapshot(supabase, orgId)
+	dashboardData.kpis.activeEnclosures = activeEnclosureCount
 
 	if (dashboardData.kpis.activeEnclosures === 0) {
 		return dashboardData
-	}
-
-	const { data: enclosureRows, error: enclosuresError } = (await supabase
-		.from('enclosures')
-		.select('id, name')
-		.eq('org_id', orgId)) as { data: EnclosureRow[] | null; error: PostgrestError | null }
-
-	if (enclosuresError) {
-		throw createDashboardQueryError('enclosures.select', enclosuresError, { orgId })
 	}
 
 	const enclosureIds = (enclosureRows ?? []).map((enclosure) => enclosure.id)
