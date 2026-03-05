@@ -188,7 +188,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							value={species}
 							onValueChange={(value) => {
 								setSpecies(value ?? '')
-								if (value) setSpeciesQuery(value)
+								setSpeciesQuery(value ?? '')
 							}}
 						>
 							<ComboboxInput
@@ -199,27 +199,25 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 								disabled={editEnclosureMutation.isPending}
 								showClear
 							/>
-							{speciesQuery.trim().length > 0 && (
-								<ComboboxContent>
-									<ComboboxEmpty>No matching species.</ComboboxEmpty>
-									<ComboboxList className='max-h-42 scrollbar-no-track'>
-										<ComboboxCollection>
-											{(spec) => (
-												<ComboboxItem key={spec.id} value={spec.custom_common_name}>
-													{showScientific ? (
-														<span className='flex flex-col'>
-															<span>{spec.species?.scientific_name}</span>
-															<span className='text-xs text-muted-foreground'>{spec.custom_common_name}</span>
-														</span>
-													) : (
-														spec.custom_common_name
-													)}
-												</ComboboxItem>
-											)}
-										</ComboboxCollection>
-									</ComboboxList>
-								</ComboboxContent>
-							)}
+							<ComboboxContent>
+								<ComboboxEmpty>No matching species.</ComboboxEmpty>
+								<ComboboxList className='max-h-42 scrollbar-no-track'>
+									<ComboboxCollection>
+										{(spec) => (
+											<ComboboxItem key={spec.id} value={spec.custom_common_name}>
+												{showScientific ? (
+													<span className='flex flex-col'>
+														<span>{spec.species?.scientific_name}</span>
+														<span className='text-xs text-muted-foreground'>{spec.custom_common_name}</span>
+													</span>
+												) : (
+													spec.custom_common_name
+												)}
+											</ComboboxItem>
+										)}
+									</ComboboxCollection>
+								</ComboboxList>
+							</ComboboxContent>
 						</Combobox>
 						<Label>Enclosure Location</Label>
 						<Combobox
@@ -228,7 +226,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							value={location}
 							onValueChange={(value) => {
 								setLocation(value ?? '')
-								if (value) setLocationQuery(value)
+								setLocationQuery(value ?? '')
 							}}
 						>
 							<ComboboxInput
@@ -239,20 +237,18 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 								disabled={editEnclosureMutation.isPending}
 								showClear
 							/>
-							{locationQuery.trim().length > 0 && (
-								<ComboboxContent>
-									<ComboboxEmpty>No matching locations.</ComboboxEmpty>
-									<ComboboxList className='max-h-42 scrollbar-no-track'>
-										<ComboboxCollection>
-											{(loc) => (
-												<ComboboxItem key={loc.id} value={loc.name}>
-													{loc.name}
-												</ComboboxItem>
-											)}
-										</ComboboxCollection>
-									</ComboboxList>
-								</ComboboxContent>
-							)}
+							<ComboboxContent>
+								<ComboboxEmpty>No matching locations.</ComboboxEmpty>
+								<ComboboxList className='max-h-42 scrollbar-no-track'>
+									<ComboboxCollection>
+										{(loc) => (
+											<ComboboxItem key={loc.id} value={loc.name}>
+												{loc.name}
+											</ComboboxItem>
+										)}
+									</ComboboxCollection>
+								</ComboboxList>
+							</ComboboxContent>
 						</Combobox>
 						<Label>Count</Label>
 						<Input

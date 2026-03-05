@@ -7,7 +7,9 @@ export default async function Page() {
 			<div className='flex-col mx-auto max-w-5xl flex'>
 				<div className='pb-5 flex items-center gap-3'>
 					<h1 className='text-2xl font-semibold'>Enclosures</h1>
-					<EnclosureCounts />
+					<div className='sm:hidden'>
+						<EnclosureCounts />
+					</div>
 				</div>
 				<div className='flex flex-col gap-4'>
 					<p className='text-sm text-muted-foreground'>Manage your organization&apos;s enclosures and details</p>
