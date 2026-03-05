@@ -17,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import ManageSpeciesButton from './manage-species-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { EditSpeciesOrgForm } from './edit-species-org'
+import { EnclosureCounts } from './enclosure-counts'
 
 export default function EnclosureGrid() {
 	const params = useParams()
@@ -175,7 +176,8 @@ export default function EnclosureGrid() {
 
 	return (
 		<div className='bg-background full'>
-			<div className='mx-auto'>
+			<div className='mx-auto items-center'>
+				{!useIsMobile() && <EnclosureCounts />}
 				<div className={`mb-2 flex items-center flex-row gap-2 ${useIsMobile() ? 'justify-between' : 'justify-end'}`}>
 					<ManageSpeciesButton />
 					<CreateEnclosureButton />
