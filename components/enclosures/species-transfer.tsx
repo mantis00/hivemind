@@ -10,6 +10,8 @@ import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import RequestNewSpeciesButton from './request-new-species-button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
+import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { useMemberProfiles } from '@/lib/react-query/queries'
 
 type Item = {
 	key: string
@@ -23,6 +25,10 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 	const orgId = params?.orgId as UUID | undefined
 	const { data: species, isLoading: orgSpeciesLoading } = useOrgSpecies(orgId as UUID)
 	const { data: master_species, isLoading: speciesLoading } = useAllSpecies()
+
+	const { data: user } = useCurrentClientUser()
+	const { data: userProfile } = useMemberProfiles(user?.id ? [user.id] : [])
+	const isSuperadmin = userProfile?.some((profile) => profile.is_superadmin === true)
 
 	const [leftList, setLeftList] = useState<Item[]>([])
 	const [rightList, setRightList] = useState<Item[]>([])
@@ -161,7 +167,7 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 							Scientific
 						</button>
 					</div>
-					<RequestNewSpeciesButton />
+					{!isSuperadmin && <RequestNewSpeciesButton />}
 				</div>
 				<div className='flex gap-2'>
 					<div className='w-1/2 shadow-sm bg-background rounded-sm'>
