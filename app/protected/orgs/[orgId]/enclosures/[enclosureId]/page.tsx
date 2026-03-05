@@ -14,7 +14,6 @@ export default async function Page({ params }: { params: Promise<{ orgId: UUID; 
 						<div className='flex flex-row gap-2 pb-6'>
 							<EnclosureHeading enclosureId={enclosureId} orgId={orgId} />
 						</div>
-						<p className='text-sm text-muted-foreground pb-6'>View and manage your enclosure&apos;s tasks</p>
 						<TasksDataTable enclosureId={enclosureId} orgId={orgId} />
 					</div>
 				</div>

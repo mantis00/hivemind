@@ -361,8 +361,9 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 
 	if (!isMounted || tasksLoading) {
 		return (
-			<div className='flex items-center justify-center h-48 w-full'>
+			<div className='flex flex-col items-center justify-center h-48 w-full gap-2'>
 				<LoaderCircle className='h-8 w-8 animate-spin text-muted-foreground' />
+				<h1 className='text-xl'>Loading Tasks...</h1>
 			</div>
 		)
 	}
