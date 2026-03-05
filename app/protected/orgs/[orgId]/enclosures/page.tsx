@@ -1,13 +1,11 @@
 import EnclosureGrid from '@/components/enclosures/enclosure-grid'
 import { EnclosureCounts } from '@/components/enclosures/enclosure-counts'
-import { Warehouse } from 'lucide-react'
 
 export default async function Page() {
 	return (
 		<div className='space-y-4 w-full justify-center items-center'>
 			<div className='flex-col mx-auto max-w-5xl flex'>
 				<div className='pb-5 flex items-center gap-3'>
-					<Warehouse className='h-7 w-7 text-foreground' />
 					<h1 className='text-2xl font-semibold'>Enclosures</h1>
 					<EnclosureCounts />
 				</div>

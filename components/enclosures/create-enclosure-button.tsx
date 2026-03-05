@@ -5,10 +5,10 @@ import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PlusIcon, LoaderCircle } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useCreateEnclosure } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { OrgSpecies, useOrgLocations, useSpecies } from '@/lib/react-query/queries'
+import { OrgSpecies, useOrgLocations, useOrgSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import {
 	Combobox,
@@ -26,6 +26,7 @@ export function CreateEnclosureButton() {
 	const [name, setName] = useState('')
 	const [species, setSpecies] = useState('')
 	const [speciesQuery, setSpeciesQuery] = useState('')
+	const [showScientific, setShowScientific] = useState(false)
 	const [location, setLocation] = useState('')
 	const [locationQuery, setLocationQuery] = useState('')
 	const [count, setCount] = useState('')
@@ -34,8 +35,42 @@ export function CreateEnclosureButton() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 
-	const { data: orgSpecies } = useSpecies(orgId as UUID)
+	const { data: orgSpecies } = useOrgSpecies(orgId as UUID)
 	const { data: orgLocations } = useOrgLocations(orgId as UUID)
+
+	const scoreMatch = (str: string | undefined, val: string): number => {
+		if (!str) return -1
+		const s = str.trim().toLowerCase()
+		if (s === val) return 0
+		if (s.startsWith(val)) return 1
+		if (s.includes(val)) return 2
+		return -1
+	}
+
+	const filteredSpecies = useMemo(() => {
+		if (!speciesQuery.trim()) return orgSpecies ?? []
+		const val = speciesQuery.trim().toLowerCase()
+		return (orgSpecies ?? [])
+			.map((spec) => {
+				const field = showScientific ? spec.species?.scientific_name : spec.custom_common_name
+				return { spec, score: scoreMatch(field, val) }
+			})
+			.filter(({ score }) => score >= 0)
+			.sort((a, b) => a.score - b.score)
+			.map(({ spec }) => spec)
+	}, [speciesQuery, orgSpecies, showScientific])
+
+	const filteredLocations = useMemo(() => {
+		if (!locationQuery.trim()) return orgLocations ?? []
+		const val = locationQuery.trim().toLowerCase()
+		return (orgLocations ?? [])
+			.map((loc) => {
+				return { loc, score: scoreMatch(loc.name, val) }
+			})
+			.filter(({ score }) => score >= 0)
+			.sort((a, b) => a.score - b.score)
+			.map(({ loc }) => loc)
+	}, [locationQuery, orgLocations])
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -96,9 +131,36 @@ export function CreateEnclosureButton() {
 							required
 							disabled={createEnclosureMutation.isPending}
 						/>
-						<Label>Species</Label>
+						<div className='flex items-center justify-between'>
+							<Label>Species</Label>
+							<div className='flex items-center rounded-md border text-xs overflow-hidden'>
+								<button
+									type='button'
+									className={`px-2.5 py-1 transition-colors ${!showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+									onClick={() => {
+										setShowScientific(false)
+										setSpecies('')
+										setSpeciesQuery('')
+									}}
+								>
+									Common
+								</button>
+								<button
+									type='button'
+									className={`px-2.5 py-1 transition-colors ${showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+									onClick={() => {
+										setShowScientific(true)
+										setSpecies('')
+										setSpeciesQuery('')
+									}}
+								>
+									Scientific
+								</button>
+							</div>
+						</div>
 						<Combobox
-							items={orgSpecies ?? []}
+							items={filteredSpecies}
+							filter={() => true}
 							value={species}
 							onValueChange={(value) => {
 								const nextValue = value ?? ''
@@ -117,11 +179,18 @@ export function CreateEnclosureButton() {
 							{speciesQuery.trim().length > 0 && (
 								<ComboboxContent>
 									<ComboboxEmpty>No matching species.</ComboboxEmpty>
-									<ComboboxList>
+									<ComboboxList className='max-h-42 scrollbar-no-track'>
 										<ComboboxCollection>
 											{(spec: OrgSpecies) => (
 												<ComboboxItem key={spec.id} value={spec.custom_common_name}>
-													{spec.custom_common_name}
+													{showScientific ? (
+														<span className='flex flex-col'>
+															<span>{spec.species?.scientific_name}</span>
+															<span className='text-xs text-muted-foreground'>{spec.custom_common_name}</span>
+														</span>
+													) : (
+														spec.custom_common_name
+													)}
 												</ComboboxItem>
 											)}
 										</ComboboxCollection>
@@ -131,7 +200,8 @@ export function CreateEnclosureButton() {
 						</Combobox>
 						<Label>Enclosure Location</Label>
 						<Combobox
-							items={orgLocations ?? []}
+							items={filteredLocations}
+							filter={() => true}
 							value={location}
 							onValueChange={(value) => {
 								const nextValue = value ?? ''
@@ -150,7 +220,7 @@ export function CreateEnclosureButton() {
 							{locationQuery.trim().length > 0 && (
 								<ComboboxContent>
 									<ComboboxEmpty>No matching locations.</ComboboxEmpty>
-									<ComboboxList>
+									<ComboboxList className='max-h-42 scrollbar-no-track'>
 										<ComboboxCollection>
 											{(loc) => (
 												<ComboboxItem key={loc.id} value={loc.name}>

@@ -10,6 +10,7 @@ import { UUID } from 'crypto'
 import { useParams } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 export default function RequestNewSpeciesButton() {
 	const [open, setOpen] = useState(false)
@@ -49,6 +50,11 @@ export default function RequestNewSpeciesButton() {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
+
+		if (commonName.trim() === '' || scientificName.trim() === '') {
+			toast.info('Must provide common name and scientific name.')
+			return
+		}
 
 		requestSpecies.mutate(
 			{
@@ -101,7 +107,9 @@ export default function RequestNewSpeciesButton() {
 						/>
 					</div>
 					<div className='flex flex-col gap-1.5'>
-						<Label htmlFor='create_care'>Care Instructions</Label>
+						<Label htmlFor='create_care'>
+							Care Instructions <small>(Optional)</small>
+						</Label>
 						<Textarea
 							id='create_care'
 							value={careInstructions}
@@ -113,12 +121,12 @@ export default function RequestNewSpeciesButton() {
 					</div>
 				</div>
 
-				<div className='flex gap-2 justify-end'>
-					<Button type='button' variant='outline' onClick={() => handleOpenChange(false)} disabled={isPending}>
-						Cancel
-					</Button>
+				<div className='flex flex-col gap-2 justify-end'>
 					<Button type='submit' disabled={isPending}>
 						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Send Request'}
+					</Button>
+					<Button type='button' variant='outline' onClick={() => handleOpenChange(false)} disabled={isPending}>
+						Cancel
 					</Button>
 				</div>
 			</form>

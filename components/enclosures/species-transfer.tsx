@@ -2,15 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	LoaderCircle,
-	SaveAllIcon,
-	SaveIcon,
-	SquareCheckIcon,
-	SquareIcon
-} from 'lucide-react'
+import { ChevronLeftIcon, ChevronRightIcon, LoaderCircle, SaveIcon, SquareCheckIcon, SquareIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAllSpecies, useOrgSpecies } from '@/lib/react-query/queries'
 import { useAddBatchSpeciesToOrg, useDeleteBatchSpeciesFromOrg } from '@/lib/react-query/mutations'
@@ -26,7 +18,7 @@ type Item = {
 	selected?: boolean
 }
 
-export default function SpeciesTransferList() {
+export default function SpeciesTransferList({ onClose }: { onClose?: () => void }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const { data: species, isLoading: orgSpeciesLoading } = useOrgSpecies(orgId as UUID)
@@ -96,6 +88,9 @@ export default function SpeciesTransferList() {
 
 	const addMutation = useAddBatchSpeciesToOrg()
 	const deleteMutation = useDeleteBatchSpeciesFromOrg()
+
+	const hasLeftSelected = leftList.some((item) => item.selected)
+	const hasRightSelected = rightList.some((item) => item.selected)
 
 	const handleSave = () => {
 		if (!orgId) return
@@ -182,12 +177,12 @@ export default function SpeciesTransferList() {
 								className='rounded-tl-none rounded-bl-none rounded-br-none border-l-0'
 								onClick={moveToRight}
 								size='icon'
-								variant='outline'
+								variant={hasLeftSelected ? 'default' : 'outline'}
 							>
 								<ChevronRightIcon className='h-4 w-4' />
 							</Button>
 						</div>
-						<ul className='h-65 border-l border-r border-b rounded-br-sm rounded-bl-sm p-2 overflow-y-scroll'>
+						<ul className='h-65 border-l border-r border-b rounded-br-sm rounded-bl-sm p-2 overflow-y-scroll scrollbar-no-track'>
 							<li className='flex items-center text-sm hover:bg-muted rounded-sm'>
 								<button
 									className='flex items-start gap-1.5 w-full p-1.5 min-w-0'
@@ -240,7 +235,7 @@ export default function SpeciesTransferList() {
 								className='rounded-tr-none rounded-br-none rounded-bl-none border-r-0'
 								onClick={moveToLeft}
 								size='icon'
-								variant='outline'
+								variant={hasRightSelected ? 'default' : 'outline'}
 							>
 								<ChevronLeftIcon className='h-4 w-4' />
 							</Button>
@@ -251,7 +246,7 @@ export default function SpeciesTransferList() {
 								onChange={(e) => setRightSearch(e.target.value)}
 							/>
 						</div>
-						<ul className='h-65 border-l border-r border-b rounded-br-sm rounded-bl-sm p-1.5 overflow-y-scroll'>
+						<ul className='h-65 border-l border-r border-b rounded-br-sm rounded-bl-sm p-1.5 overflow-y-scroll scrollbar-no-track'>
 							<li className='flex items-center text-sm hover:bg-muted rounded-sm'>
 								<button
 									className='flex items-start gap-1.5 w-full p-1.5 min-w-0'
@@ -299,15 +294,22 @@ export default function SpeciesTransferList() {
 					<div></div>
 				</div>
 			</div>
-			<Button
-				size='default'
-				variant='secondary'
-				onClick={handleSave}
-				disabled={addMutation.isPending || deleteMutation.isPending}
-			>
-				{addMutation.isPending || deleteMutation.isPending ? 'Saving...' : 'Save'}
-				<SaveIcon className='w-4 h-4' />
-			</Button>
+			<div className='flex flex-col gap-2'>
+				<Button size='default' onClick={handleSave} disabled={addMutation.isPending || deleteMutation.isPending}>
+					{addMutation.isPending || deleteMutation.isPending ? 'Saving...' : 'Save'}
+					<SaveIcon className='w-4 h-4' />
+				</Button>
+				{onClose && (
+					<Button
+						size='default'
+						variant='outline'
+						onClick={onClose}
+						disabled={addMutation.isPending || deleteMutation.isPending}
+					>
+						Cancel
+					</Button>
+				)}
+			</div>
 
 			<ResponsiveDialogDrawer
 				title='Remove Species'

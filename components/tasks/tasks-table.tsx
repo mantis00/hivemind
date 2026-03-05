@@ -19,7 +19,6 @@ import {
 	ChevronRight,
 	LoaderCircle,
 	PlayCircle,
-	PlusIcon,
 	X
 } from 'lucide-react'
 
@@ -170,8 +169,10 @@ function getColumns(
 	return isMobile ? all.filter((col) => col.id !== 'description' && col.id !== 'actions') : all
 }
 
-const TARGET_VISIBLE_ROWS_MOBILE = 15
-const TARGET_VISIBLE_ROWS_DESKTOP = 20
+const MAX_TABLE_HEIGHT_DESKTOP = 680
+const MAX_TABLE_HEIGHT_MOBILE = 560
+const TARGET_VISIBLE_ROWS_DESKTOP = 8
+const TARGET_VISIBLE_ROWS_MOBILE = 7
 
 /** Returns a YYYY-MM-DD string for a date offset from today */
 function getDateStr(dayOffset: number): string {
@@ -196,8 +197,10 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	const [globalFilter, setGlobalFilter] = React.useState('')
 	const [priorityFilter, setPriorityFilter] = React.useState<string[]>([])
 	const [statusFilter, setStatusFilter] = React.useState<string[]>([])
+	const MAX_TABLE_HEIGHT = isMobile ? MAX_TABLE_HEIGHT_MOBILE : MAX_TABLE_HEIGHT_DESKTOP
 	const TARGET_VISIBLE_ROWS = isMobile ? TARGET_VISIBLE_ROWS_MOBILE : TARGET_VISIBLE_ROWS_DESKTOP
-	const ESTIMATED_ROW_HEIGHT = isMobile ? 65 : 73
+	const HEADER_HEIGHT = 49
+	const ESTIMATED_ROW_HEIGHT = isMobile ? 56 : 52
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
 	const [selectedTask, setSelectedTask] = React.useState<Task | null>(null)
 	const [taskDrawerOpen, setTaskDrawerOpen] = React.useState(false)
@@ -226,8 +229,6 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	// Stable order map: task id → position. Only updated when the set of IDs changes,
 	// so status mutations (start/complete) don't reorder rows.
 	const stableOrderRef = React.useRef<Map<string, number>>(new Map())
-	// Last known non-zero row count — prevents tableHeight from flashing to ~49px
-	const stableRowCountRef = React.useRef(0)
 
 	const hasActiveFilters = priorityFilter.length > 0 || statusFilter.length > 0 || globalFilter !== ''
 
@@ -329,10 +330,11 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 
 	const { rows } = table.getRowModel()
 
-	if (rows.length > 0) stableRowCountRef.current = rows.length
-	const displayRowCount = rows.length > 0 ? rows.length : stableRowCountRef.current
-	const tableHeight =
-		Math.ceil((measuredRowHeight ?? ESTIMATED_ROW_HEIGHT) * Math.min(displayRowCount, TARGET_VISIBLE_ROWS)) + 49 // +49 for header row
+	const rowH = measuredRowHeight ?? ESTIMATED_ROW_HEIGHT
+	const tableHeight = Math.min(
+		rows.length * rowH + HEADER_HEIGHT,
+		Math.min(TARGET_VISIBLE_ROWS * rowH + HEADER_HEIGHT, MAX_TABLE_HEIGHT)
+	)
 
 	// Measure a single row's height and refine the table height
 	React.useLayoutEffect(() => {
@@ -345,9 +347,11 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		}
 	})
 
-	// Reset stable order when the day changes (different task set)
+	// Reset stable order + measurement when the day changes (different task set)
 	React.useEffect(() => {
 		stableOrderRef.current = new Map()
+		measuredRef.current = false
+		setMeasuredRowHeight(null)
 	}, [dayOffset])
 
 	// Reset measurement when sort order changes so height recomputes
@@ -476,6 +480,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 					<TableVirtuoso
 						style={{ height: tableHeight, overflowX: 'hidden' }}
 						totalCount={rows.length}
+						className='scrollbar-no-track'
 						components={{
 							Table: ({ style, ...props }) => (
 								<table

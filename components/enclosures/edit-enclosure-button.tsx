@@ -20,6 +20,7 @@ import {
 	ComboboxList
 } from '../ui/combobox'
 import { UUID } from 'crypto'
+import { toast } from 'sonner'
 
 export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure; spec: OrgSpecies }) {
 	const [open, setOpen] = useState(false)
@@ -52,7 +53,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		console.log(species)
 		if (!name || !species || !location) return
 
 		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
@@ -62,6 +62,17 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			console.log('ERROR LOOKING UP SPECIES OR LOCATION')
 			return
 		}
+
+		if (
+			name === enclosure?.name &&
+			species_id.custom_common_name === species &&
+			location_id.name === location &&
+			enclosure.current_count === count
+		) {
+			toast.info('No changes to save.')
+			return
+		}
+
 		editEnclosureMutation.mutate(
 			{
 				orgId: orgId as UUID,
@@ -190,7 +201,10 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 						/>
 					</div>
 				</div>
-				<div className='flex flex-row gap-3 justify-center'>
+				<div className='flex flex-col gap-3 justify-center'>
+					<Button type='submit' disabled={editEnclosureMutation.isPending || !user}>
+						{editEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
+					</Button>
 					<Button
 						type='button'
 						variant='outline'
@@ -198,9 +212,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 						onClick={() => setOpen(false)}
 					>
 						Cancel
-					</Button>
-					<Button type='submit' disabled={editEnclosureMutation.isPending || !user}>
-						{editEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
 					</Button>
 				</div>
 			</form>

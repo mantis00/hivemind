@@ -148,15 +148,22 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 					</div>
 				</div>
 
-				<div className='flex gap-2'>
-					<DeleteSpeciesButton species_id={species.id} onDeleted={() => handleOpenChange(false)} />
-					<div className='flex gap-2 ml-auto'>
-						<Button type='button' variant='outline' onClick={() => handleOpenChange(false)} disabled={isPending}>
+				<div className='flex flex-col gap-2'>
+					<Button type='submit' disabled={isPending}>
+						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
+					</Button>
+
+					<div className='flex gap-2'>
+						<Button
+							type='button'
+							variant='outline'
+							onClick={() => handleOpenChange(false)}
+							disabled={isPending}
+							className='flex-1'
+						>
 							Cancel
 						</Button>
-						<Button type='submit' disabled={isPending}>
-							{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
-						</Button>
+						<DeleteSpeciesButton species_id={species.id} onDeleted={() => handleOpenChange(false)} />
 					</div>
 				</div>
 			</form>

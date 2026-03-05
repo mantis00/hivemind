@@ -13,6 +13,7 @@ export default function ManageSpeciesButton() {
 			description='Select species to include or remove from your organization '
 			open={open}
 			onOpenChange={(isOpen) => setOpen(isOpen)}
+			className='sm:max-w-2xl'
 			trigger={
 				<Button variant='secondary' size='default' onClick={() => setOpen(true)}>
 					Manage Species
@@ -20,15 +21,7 @@ export default function ManageSpeciesButton() {
 				</Button>
 			}
 		>
-			<SpeciesTransferList />
-			<Button
-				size='default'
-				onClick={() => {
-					setOpen(false)
-				}}
-			>
-				Cancel
-			</Button>
+			<SpeciesTransferList onClose={() => setOpen(false)} />
 		</ResponsiveDialogDrawer>
 	)
 }
