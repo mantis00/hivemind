@@ -1,11 +1,7 @@
 import { useState } from 'react'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { Button } from '../ui/button'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { LoaderCircle, Move, PlusIcon, SaveIcon } from 'lucide-react'
-import { Label } from '../ui/label'
-import { Input } from '../ui/input'
-import { Combobox, ComboboxInput } from '../ui/combobox'
+import { Move } from 'lucide-react'
 import SpeciesTransferList from './species-transfer'
 
 export default function ManageSpeciesButton() {

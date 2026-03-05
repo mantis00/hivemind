@@ -1006,8 +1006,8 @@ export function useUpdateOrgSpecies() {
 
 			if (error) throw error
 		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['orgSpecies'] })
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.org_id] })
 			queryClient.invalidateQueries({ queryKey: ['species'] })
 			toast.success('Species updated!')
 		}
@@ -1047,7 +1047,7 @@ export function useAddBatchSpeciesToOrg() {
 			if (error) throw error
 		},
 		onSuccess: (_, variables) => {
-			queryClient.invalidateQueries({ queryKey: ['orgSpecies'] })
+			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.org_id] })
 			queryClient.invalidateQueries({ queryKey: ['species'] })
 			toast.success('Species added to organization!')
 		}
@@ -1147,7 +1147,7 @@ export function useDeleteBatchSpeciesFromOrg() {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.orgId] })
-			toast.success('All species removed from organization')
+			toast.success('Removed species from organization')
 		}
 	})
 }

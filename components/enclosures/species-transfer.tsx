@@ -17,6 +17,7 @@ import { useAddBatchSpeciesToOrg, useDeleteBatchSpeciesFromOrg } from '@/lib/rea
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import RequestNewSpeciesButton from './request-new-species-button'
+import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 
 type Item = {
 	key: string
@@ -36,6 +37,12 @@ export default function SpeciesTransferList() {
 	const [leftSearch, setLeftSearch] = useState('')
 	const [rightSearch, setRightSearch] = useState('')
 	const [showScientific, setShowScientific] = useState(false)
+	const [confirmOpen, setConfirmOpen] = useState(false)
+	const [pendingSave, setPendingSave] = useState<{
+		removedOrgSpeciesIds: UUID[]
+		addedMasterIds: UUID[]
+		removedNames: string
+	} | null>(null)
 
 	useEffect(() => {
 		if (species) {
@@ -115,12 +122,16 @@ export default function SpeciesTransferList() {
 				.filter((s) => removedMasterIds.includes(s.master_species_id))
 				.map((s) => s.custom_common_name || s.species?.scientific_name || '')
 				.join(', ')
-			const confirmed = window.confirm(
-				`Removing ${removedOrgSpeciesIds.length} species (${removedNames}) will permanently delete all associated enclosures, enclosure notes, and tasks. This cannot be undone.\n\nContinue?`
-			)
-			if (!confirmed) return
+			setPendingSave({ removedOrgSpeciesIds, addedMasterIds, removedNames })
+			setConfirmOpen(true)
+			return
 		}
 
+		executeSave(removedOrgSpeciesIds, addedMasterIds)
+	}
+
+	const executeSave = (removedOrgSpeciesIds: UUID[], addedMasterIds: UUID[]) => {
+		if (!orgId) return
 		if (removedOrgSpeciesIds.length > 0) {
 			deleteMutation.mutate({ species_ids: removedOrgSpeciesIds, orgId })
 		}
@@ -297,6 +308,30 @@ export default function SpeciesTransferList() {
 				{addMutation.isPending || deleteMutation.isPending ? 'Saving...' : 'Save'}
 				<SaveIcon className='w-4 h-4' />
 			</Button>
+
+			<ResponsiveDialogDrawer
+				title='Remove Species'
+				description={`Removing ${pendingSave?.removedOrgSpeciesIds.length ?? 0} species (${pendingSave?.removedNames ?? ''}) will permanently delete all associated enclosures, notes, and tasks. This cannot be undone.`}
+				trigger={null}
+				open={confirmOpen}
+				onOpenChange={(open) => {
+					if (!open) setPendingSave(null)
+					setConfirmOpen(open)
+				}}
+			>
+				<Button
+					variant='destructive'
+					disabled={deleteMutation.isPending || addMutation.isPending}
+					onClick={() => {
+						if (!pendingSave) return
+						executeSave(pendingSave.removedOrgSpeciesIds, pendingSave.addedMasterIds)
+						setConfirmOpen(false)
+						setPendingSave(null)
+					}}
+				>
+					{deleteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
+				</Button>
+			</ResponsiveDialogDrawer>
 		</>
 	)
 }

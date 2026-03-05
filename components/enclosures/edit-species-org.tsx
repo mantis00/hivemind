@@ -1,19 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { type OrgSpecies } from '@/lib/react-query/queries'
-import { useUpdateOrgSpecies, useUpdateSpecies, useUpdateSpeciesImage } from '@/lib/react-query/mutations'
+import { useUpdateOrgSpecies } from '@/lib/react-query/mutations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Edit, LoaderCircle } from 'lucide-react'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import { createClient } from '@/lib/supabase/client'
 import { DeleteSpeciesOrgButton } from './delete-species-org'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
-import { User } from '@supabase/supabase-js'
+import { toast } from 'sonner'
 
 interface EditSpeciesDialogProps {
 	species: OrgSpecies
@@ -36,6 +35,10 @@ export function EditSpeciesOrgForm({ species, onDone, onDeleted }: EditSpeciesFo
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
+		if (commonName === species.custom_common_name && careInstructions === species.custom_care_instructions) {
+			toast.info('No changes to save.')
+			return
+		}
 		onDone() // switch view back immediately before async invalidation re-renders the parent
 		updateSpecies.mutate({
 			species_id: species.id,
@@ -70,15 +73,21 @@ export function EditSpeciesOrgForm({ species, onDone, onDeleted }: EditSpeciesFo
 					/>
 				</div>
 			</div>
-			<div className='flex gap-2'>
-				<DeleteSpeciesOrgButton species_id={species.id} onDeleted={onDeleted} />
-				<div className='flex gap-2 ml-auto'>
-					<Button type='button' variant='outline' onClick={onDone} disabled={updateSpecies.isPending}>
+			<div className='flex flex-col gap-2'>
+				<Button type='submit' disabled={updateSpecies.isPending} className='w-full'>
+					{updateSpecies.isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
+				</Button>
+				<div className='flex gap-2'>
+					<Button
+						type='button'
+						variant='outline'
+						onClick={onDone}
+						disabled={updateSpecies.isPending}
+						className='flex-1'
+					>
 						Cancel
 					</Button>
-					<Button type='submit' disabled={updateSpecies.isPending}>
-						{updateSpecies.isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
-					</Button>
+					<DeleteSpeciesOrgButton species_id={species.id} onDeleted={onDeleted} />
 				</div>
 			</div>
 		</form>
@@ -92,20 +101,6 @@ export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpecie
 
 	const params = useParams()
 	const orgId = params?.orgId
-	// const [user, setUser] = useState<User | null>(null)
-
-	// const supabase = createClient()
-
-	// useEffect(() => {
-	// 		const fetchUser = async () => {
-	// 			const {
-	// 				data: { user }
-	// 			} = await supabase.auth.getUser()
-	// 			setUser(user)
-	// 		}
-
-	// 		fetchUser()
-	// 	}, [])
 
 	const resetForm = () => {
 		setCommonName(species.custom_common_name)
@@ -168,15 +163,21 @@ export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpecie
 						/>
 					</div>
 				</div>
-				<div className='flex gap-2'>
-					<DeleteSpeciesOrgButton species_id={species.id} onDeleted={() => handleOpenChange(false)} />
-					<div className='flex gap-2 ml-auto'>
-						<Button type='button' variant='outline' onClick={() => handleOpenChange(false)} disabled={isPending}>
+				<div className='flex flex-col gap-2'>
+					<Button type='submit' disabled={isPending} className='w-full'>
+						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
+					</Button>
+					<div className='flex gap-2'>
+						<Button
+							type='button'
+							variant='outline'
+							onClick={() => handleOpenChange(false)}
+							disabled={isPending}
+							className='flex-1'
+						>
 							Cancel
 						</Button>
-						<Button type='submit' disabled={isPending}>
-							{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
-						</Button>
+						<DeleteSpeciesOrgButton species_id={species.id} onDeleted={() => handleOpenChange(false)} />
 					</div>
 				</div>
 			</form>

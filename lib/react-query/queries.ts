@@ -639,7 +639,7 @@ export function useAllTaskTypes() {
 
 export function useOrgSpecies(org_id: UUID) {
 	return useQuery({
-		queryKey: ['orgSpecies'],
+		queryKey: ['orgSpecies', org_id],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase

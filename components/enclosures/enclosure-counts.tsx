@@ -2,13 +2,13 @@
 
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
-import { useSpecies, useOrgEnclosureCount } from '@/lib/react-query/queries'
+import { useOrgSpecies, useOrgEnclosureCount } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
 
 export function EnclosureCounts() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
-	const { data: orgSpecies } = useSpecies(orgId as UUID)
+	const { data: orgSpecies } = useOrgSpecies(orgId as UUID)
 	const { data: enclosureCount } = useOrgEnclosureCount(orgId as UUID)
 
 	return (

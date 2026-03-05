@@ -1,6 +1,6 @@
 'use client'
 
-import { OrgSpecies, useSpecies } from '@/lib/react-query/queries'
+import { OrgSpecies, useOrgSpecies } from '@/lib/react-query/queries'
 import { ArrowDownIcon, ArrowUpIcon, Bug, Edit, Search, XIcon } from 'lucide-react'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -21,7 +21,7 @@ import { EditSpeciesOrgForm } from './edit-species-org'
 export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
-	const { data: orgSpecies, isLoading } = useSpecies(orgId as UUID)
+	const { data: orgSpecies, isLoading } = useOrgSpecies(orgId as UUID)
 
 	const [searchValue, setSearchValue] = useState('')
 	const [searchCount, setSearchCount] = useState(0)
@@ -134,9 +134,10 @@ export default function EnclosureGrid() {
 			} else if (sortKey === 'scientific_name') {
 				score = scoreMatch(spec.species?.scientific_name)
 			} else {
-				score = Math.min(
-					...[scoreMatch(spec.custom_common_name), scoreMatch(spec.species?.scientific_name)].filter((s) => s >= 0)
+				const scores = [scoreMatch(spec.custom_common_name), scoreMatch(spec.species?.scientific_name)].filter(
+					(s) => s >= 0
 				)
+				score = scores.length > 0 ? Math.min(...scores) : -1
 			}
 			return { spec, score }
 		})
@@ -301,7 +302,16 @@ export default function EnclosureGrid() {
 					</>
 				) : (
 					<div className='rounded-lg border border-dashed p-8 text-center'>
-						<p className='text-muted-foreground text-sm'>No species found matching &ldquo;{searchValue}&rdquo;</p>
+						{searchValue.trim() ? (
+							<p className='text-muted-foreground text-sm'>No species found matching &ldquo;{searchValue}&rdquo;</p>
+						) : (
+							<>
+								<p className='text-muted-foreground text-sm font-medium'>No species yet</p>
+								<p className='text-muted-foreground text-xs mt-1'>
+									Add species to your organization using the Manage Species button above.
+								</p>
+							</>
+						)}
 					</div>
 				)}
 			</div>

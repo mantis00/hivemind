@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { Button } from '../ui/button'
-import { Icon, LoaderCircle, Send } from 'lucide-react'
+import { LoaderCircle, Send } from 'lucide-react'
 import { Label } from '../ui/label'
 import { Input } from '../ui/input'
 import { Textarea } from '../ui/textarea'

@@ -5,7 +5,7 @@ import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Card, CardContent } from '../ui/card'
-import { Bug, ChevronRight, EyeIcon, ListChecks, TrashIcon, X } from 'lucide-react'
+import { Bug, ChevronRight, EyeIcon, ListChecks, LoaderCircle, TrashIcon, X } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { EnclosureCard } from './enclosure-card'
@@ -37,6 +37,7 @@ export default function SpeciesRow({
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
 	const [detailsOpen, setDetailsOpen] = useState(false)
+	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
 	const batchDeleteMutation = useBatchDeleteEnclosures()
 
@@ -64,22 +65,20 @@ export default function SpeciesRow({
 
 	const handleDelete = () => {
 		if (selectedIds.size === 0 || !orgId) return
+		setDeleteConfirmOpen(true)
+	}
 
-		const confirmed = window.confirm(
-			`Are you sure you want to delete ${selectedIds.size} enclosure${selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.`
-		)
-		if (!confirmed) return
-
+	const executeDelete = () => {
 		batchDeleteMutation.mutate(
-			{ ids: Array.from(selectedIds), orgId },
+			{ ids: Array.from(selectedIds), orgId: orgId as UUID },
 			{
 				onSuccess: () => {
 					setSelectedIds(new Set())
 					setSelectMode(false)
+					setDeleteConfirmOpen(false)
 				},
 				onError: (err) => {
 					console.error('Failed to delete enclosures:', err)
-					alert('Failed to delete enclosures')
 				}
 			}
 		)
@@ -243,6 +242,18 @@ export default function SpeciesRow({
 						<p className='text-sm leading-relaxed'>{species.custom_care_instructions}</p>
 					</div>
 				</div>
+			</ResponsiveDialogDrawer>
+
+			<ResponsiveDialogDrawer
+				title='Delete Enclosures'
+				description={`Are you sure you want to delete ${selectedIds.size} enclosure${selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.`}
+				trigger={null}
+				open={deleteConfirmOpen}
+				onOpenChange={setDeleteConfirmOpen}
+			>
+				<Button variant='destructive' disabled={batchDeleteMutation.isPending} onClick={executeDelete}>
+					{batchDeleteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
+				</Button>
 			</ResponsiveDialogDrawer>
 		</>
 	)
