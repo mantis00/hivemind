@@ -104,13 +104,14 @@ export function InboxPage() {
 				})
 				setDeleteTarget(null)
 				setIsDeleting(false)
+				setSingleDeleteOpen(false)
 			},
 			onError: (e) => {
 				console.error('Failed to delete notification:', e)
 				setIsDeleting(false)
 			}
 		})
-	}, [deleteTarget, deleteNotificationMutation])
+	}, [deleteTarget, deleteNotificationMutation, setSingleDeleteOpen])
 
 	const confirmBulkDelete = useCallback(() => {
 		if (selectedIds.size === 0) return
