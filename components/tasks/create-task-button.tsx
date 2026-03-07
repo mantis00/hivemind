@@ -308,12 +308,18 @@ export function CreateTaskButton({ enclosureId, orgId }: CreateTaskButtonProps) 
 				) : (
 					<div className='space-y-3'>
 						<div className='space-y-1'>
-							<Label className='text-sm'>
-								Task Name <span className='text-destructive'>*</span>
-							</Label>
+							<div className='flex items-center justify-between'>
+								<Label className='text-sm'>
+									Task Name <span className='text-destructive'>*</span>
+								</Label>
+								<span className={`text-xs ${customName.length >= 30 ? 'text-destructive' : 'text-muted-foreground'}`}>
+									{customName.length}/30
+								</span>
+							</div>
 							<Input
 								placeholder='e.g. Clean glass, Morning feeding'
 								value={customName}
+								maxLength={30}
 								onChange={(e) => setCustomName(e.target.value)}
 							/>
 						</div>

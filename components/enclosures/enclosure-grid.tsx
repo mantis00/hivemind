@@ -45,7 +45,7 @@ export default function EnclosureGrid() {
 	const [isSorted, setIsSorted] = useState(false)
 	const [sortKey, setSortKey] = useState('')
 
-	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>([])
+	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>(orgSpecies ?? [])
 	const [prevOrgSpecies, setPrevOrgSpecies] = useState(orgSpecies)
 	const [itemHeight, setItemHeight] = useState<number>(114)
 	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)

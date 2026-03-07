@@ -5,6 +5,7 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import { ProtectedSidebar } from '@/components/navigation/protected-sidebar'
 import { ProtectedNavActions } from '@/components/navigation/protected-nav-actions'
 import { ProtectedNavHomeLink } from '@/components/navigation/protected-nav-home-link'
+import { NavProgressBar } from '@/components/navigation/nav-progress-bar'
 import LoginInstallPrompt from '@/components/pwa/login-install-prompt'
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 							{!hasEnvVars && <EnvVarWarning />}
 							<ProtectedNavActions />
 						</div>
+						<NavProgressBar />
 					</nav>
 					<div className='flex-1 flex flex-col gap-2 p-5'>{children}</div>
 

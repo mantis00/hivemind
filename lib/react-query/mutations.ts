@@ -1347,3 +1347,83 @@ export function useRejectSpeciesRequest() {
 		}
 	})
 }
+
+export function useToggleScheduleActive() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ scheduleId, is_active }: { scheduleId: UUID; is_active: boolean }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('enclosure_schedules').update({ is_active }).eq('id', scheduleId)
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success(variables.is_active ? 'Schedule activated!' : 'Schedule paused!')
+		},
+		onError: (err) => {
+			toast.error(err instanceof Error ? err.message : 'Failed to update schedule')
+		}
+	})
+}
+
+export function useDeleteSchedule() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ scheduleId }: { scheduleId: UUID }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('enclosure_schedules').delete().eq('id', scheduleId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success('Schedule deleted!')
+		},
+		onError: (err) => {
+			toast.error(err instanceof Error ? err.message : 'Failed to delete schedule')
+		}
+	})
+}
+
+export function useReassignSchedule() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ scheduleId, memberId }: { scheduleId: UUID; memberId: UUID | null }) => {
+			const supabase = createClient()
+			const { error } = await supabase
+				.from('enclosure_schedules')
+				.update({ assigned_to: memberId })
+				.eq('id', scheduleId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success('Schedule reassigned!')
+		},
+		onError: (err) => {
+			toast.error(err instanceof Error ? err.message : 'Failed to reassign schedule')
+		}
+	})
+}
+
+export function useReassignTask() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ taskId, memberId }: { taskId: UUID; memberId: UUID | null }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('tasks').update({ assigned_to: memberId }).eq('id', taskId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById'] })
+			toast.success('Task reassigned!')
+		},
+		onError: (err) => {
+			toast.error(err instanceof Error ? err.message : 'Failed to reassign task')
+		}
+	})
+}

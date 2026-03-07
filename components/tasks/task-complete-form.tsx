@@ -15,8 +15,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
-import { useTaskById, useTaskTemplateById, useEnclosureById, type QuestionTemplate } from '@/lib/react-query/queries'
+import {
+	useTaskById,
+	useTaskTemplateById,
+	useEnclosureById,
+	useOrgMemberProfiles,
+	type QuestionTemplate
+} from '@/lib/react-query/queries'
 import { useSubmitTaskForm } from '@/lib/react-query/mutations'
+import { ReassignMemberButton } from '@/components/tasks/reassign-member-button'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -31,6 +38,7 @@ interface TaskCompleteFormProps {
 export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFormProps) {
 	const { data: task, isLoading: taskLoading } = useTaskById(taskId)
 	const { data: enclosure } = useEnclosureById(enclosureId, orgId)
+	const { data: members = [] } = useOrgMemberProfiles(orgId)
 	const templateId = task?.template_id as UUID | undefined
 	const { data: template, isLoading: templateLoading } = useTaskTemplateById(templateId as UUID)
 
@@ -92,6 +100,12 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 	const taskName = task.name ?? template?.type ?? 'Task'
 	const taskDesc = task.description ?? template?.description
 	const enclosureName = enclosure?.name ?? enclosureId
+	const assignedMember = task?.assigned_to
+		? members.find((m) => (m.id as string) === (task.assigned_to as string))
+		: null
+	const assignedMemberName = assignedMember
+		? assignedMember.full_name || `${assignedMember.first_name} ${assignedMember.last_name}`.trim()
+		: null
 	const questions = template?.question_templates ?? []
 	const isCompleted = task.status === 'completed'
 
@@ -107,6 +121,12 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 						<MapPinIcon className='h-3.5 w-3.5' />
 						{enclosureName}
 					</span>
+					<ReassignMemberButton
+						taskId={taskId}
+						assignedTo={task.assigned_to}
+						assignedMemberName={assignedMemberName}
+						members={members}
+					/>
 					{task.priority && (
 						<Badge
 							variant='secondary'

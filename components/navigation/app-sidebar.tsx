@@ -25,6 +25,7 @@ import {
 	MoreVertical,
 	LogOut,
 	Box,
+	ClipboardList,
 	FolderHeart,
 	ArrowRightLeft
 } from 'lucide-react'
@@ -184,7 +185,15 @@ export function AppSidebar() {
 													<span>Enclosures</span>
 												</Link>
 											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
+										</SidebarMenuSubItem>{' '}
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild>
+												<Link href={orgId ? `/protected/orgs/${orgId}/tasks` : '/protected/orgs'}>
+													<ClipboardList className='size-4' />
+													<span>Tasks</span>
+												</Link>
+											</SidebarMenuSubButton>
+										</SidebarMenuSubItem>{' '}
 									</SidebarMenuSub>
 								)}
 							</SidebarMenuItem>

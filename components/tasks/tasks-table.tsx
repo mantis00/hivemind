@@ -11,7 +11,17 @@ import {
 	useReactTable
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
-import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Eye, LoaderCircle, X } from 'lucide-react'
+import {
+	ArrowUpDown,
+	CalendarIcon,
+	ChevronDown,
+	ChevronLeft,
+	ChevronRight,
+	Eye,
+	LoaderCircle,
+	User,
+	X
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -21,8 +31,9 @@ import {
 	DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import type { Task } from '@/lib/react-query/queries'
-import { useTasksForEnclosures } from '@/lib/react-query/queries'
+import type { Task, MemberProfile } from '@/lib/react-query/queries'
+import { useTasksForEnclosures, useTasksForEnclosuresInRange, useOrgMemberProfiles } from '@/lib/react-query/queries'
+import { ReassignMemberButton } from './reassign-member-button'
 import { UUID } from 'crypto'
 import getPriorityLevelStatus from '@/context/priority-levels'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -30,6 +41,10 @@ import { useEffect } from 'react'
 import { CreateTaskButton } from './create-task-button'
 import { useRouter } from 'next/navigation'
 import { getDateStr, getDayLabel } from '@/context/task-day'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import type { DateRange } from 'react-day-picker'
+import { format } from 'date-fns'
 
 const priorityConfig: Record<string, { color: string }> = {
 	low: { color: 'bg-blue-100 text-blue-800' },
@@ -49,7 +64,8 @@ const MOBILE_COL_WIDTHS: Record<string, number> = {
 	status: 100
 }
 
-function getColumns(isMobile: boolean, onView: (taskId: UUID) => void): ColumnDef<Task>[] {
+function getColumns(isMobile: boolean, onView: (taskId: UUID) => void, members: MemberProfile[]): ColumnDef<Task>[] {
+	const memberMap = new Map(members.map((m) => [m.id as string, m]))
 	const all: ColumnDef<Task>[] = [
 		{
 			accessorKey: 'name',
@@ -119,6 +135,23 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void): ColumnDe
 			}
 		},
 		{
+			id: 'assigned_to',
+			header: 'Assigned To',
+			cell: ({ row }) => {
+				const task = row.original
+				const member = task.assigned_to ? memberMap.get(task.assigned_to as string) : null
+				const name = member ? member.full_name || `${member.first_name} ${member.last_name}`.trim() : null
+				return (
+					<ReassignMemberButton
+						taskId={task.id as UUID}
+						assignedTo={task.assigned_to}
+						assignedMemberName={name}
+						members={members}
+					/>
+				)
+			}
+		},
+		{
 			id: 'actions',
 			header: '',
 			cell: ({ row }) => {
@@ -127,7 +160,7 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void): ColumnDe
 						<Button
 							variant='ghost'
 							size='icon'
-							className='h-10 w-10 text-muted-foreground hover:text-primary'
+							className='h-8 w-8 text-muted-foreground hover:text-primary bg-muted hover:bg-muted/70'
 							title='View task'
 							onClick={() => onView(row.original.id as UUID)}
 						>
@@ -138,7 +171,9 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void): ColumnDe
 			}
 		}
 	]
-	return isMobile ? all.filter((col) => col.id !== 'description' && col.id !== 'actions') : all
+	return isMobile
+		? all.filter((col) => col.id !== 'description' && col.id !== 'actions' && col.id !== 'assigned_to')
+		: all
 }
 
 const MAX_TABLE_HEIGHT_DESKTOP = 680
@@ -149,6 +184,7 @@ const TARGET_VISIBLE_ROWS_MOBILE = 7
 export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgId: UUID }) {
 	const isMobile = useIsMobile()
 	const router = useRouter()
+	const { data: members = [] } = useOrgMemberProfiles(orgId)
 	const [dayOffset, setDayOffset] = React.useState(0)
 	const [sorting, setSorting] = React.useState<SortingState>([])
 	const [globalFilter, setGlobalFilter] = React.useState('')
@@ -160,6 +196,8 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	const ESTIMATED_ROW_HEIGHT = isMobile ? 72 : 65
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
 	const [isMounted, setIsMounted] = React.useState(false)
+	const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined)
+	const isRangeMode = !!(dateRange?.from && dateRange?.to)
 
 	useEffect(() => {
 		setIsMounted(true)
@@ -179,7 +217,13 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		setGlobalFilter('')
 	}
 
-	const { data: enclosureTasks, isLoading: tasksLoading } = useTasksForEnclosures([enclosureId])
+	const { data: enclosureTasks, isLoading: tasksLoading } = useTasksForEnclosures(isRangeMode ? [] : [enclosureId])
+	const { data: rangeTasks, isLoading: rangeLoading } = useTasksForEnclosuresInRange(
+		isRangeMode ? [enclosureId] : [],
+		dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
+		dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : ''
+	)
+	const activeLoading = isRangeMode ? rangeLoading : tasksLoading
 
 	const handleView = React.useCallback(
 		(taskId: UUID) => {
@@ -188,16 +232,20 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		[router, orgId, enclosureId]
 	)
 
-	const columns = React.useMemo(() => getColumns(isMobile, handleView), [isMobile, handleView])
+	const columns = React.useMemo(() => getColumns(isMobile, handleView, members), [isMobile, handleView, members])
 
 	const filteredData = React.useMemo(() => {
 		const targetDate = getDateStr(dayOffset)
 		const todayDate = getDateStr(0)
+		const source = isRangeMode ? (rangeTasks ?? []) : (enclosureTasks ?? [])
 
-		const tasks = (enclosureTasks || []).filter((task) => {
+		const tasks = source.filter((task) => {
 			const priorityMatch = priorityFilter.length === 0 || (task.priority && priorityFilter.includes(task.priority))
 			const statusMatch = statusFilter.length === 0 || (task.status && statusFilter.includes(task.status))
 			if (!priorityMatch || !statusMatch) return false
+
+			// In range mode, date bounds already applied by Supabase
+			if (isRangeMode) return true
 
 			const toLocalDate = (iso: string) => {
 				const d = new Date(iso)
@@ -232,7 +280,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 			}
 		})
 
-		if (dayOffset === 0) {
+		if (!isRangeMode && dayOffset === 0) {
 			// Sort: non-completed in stable order, completed at the bottom in stable order
 			return [...tasks].sort((a, b) => {
 				const aCompleted = a.status === 'completed' ? 1 : 0
@@ -245,7 +293,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		}
 
 		return tasks
-	}, [enclosureTasks, priorityFilter, statusFilter, dayOffset])
+	}, [enclosureTasks, rangeTasks, priorityFilter, statusFilter, dayOffset, isRangeMode])
 
 	const table = useReactTable({
 		data: filteredData,
@@ -288,47 +336,71 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		setMeasuredRowHeight(null)
 	}, [dayOffset])
 
+	// Reset stable order + measurement when the date range changes
+	React.useEffect(() => {
+		stableOrderRef.current = new Map()
+		measuredRef.current = false
+		setMeasuredRowHeight(null)
+	}, [dateRange])
+
 	// Reset measurement when sort order changes so height recomputes
 	React.useEffect(() => {
 		measuredRef.current = false
 	}, [sorting])
 
-	if (!isMounted || tasksLoading) {
-		return (
-			<div className='flex flex-col items-center justify-center h-48 w-full gap-2'>
-				<LoaderCircle className='h-8 w-8 animate-spin text-muted-foreground' />
-			</div>
-		)
-	}
+	if (!isMounted) return null
 
 	return (
 		<div className='w-full space-y-4'>
-			{/* Day Navigator */}
-			<div className='flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2'>
-				<Button
-					variant='ghost'
-					size='sm'
-					onClick={() => setDayOffset((d) => d - 1)}
-					disabled={dayOffset <= -2}
-					className='gap-1'
-				>
-					<ChevronLeft className='h-4 w-4' />
-					{getDayLabel(dayOffset - 1)}
-				</Button>
-				<div className='text-center'>
-					<p className='text-sm font-semibold'>{getDayLabel(dayOffset)}</p>
-					<p className='text-xs text-muted-foreground'>{getDateStr(dayOffset)}</p>
-					{dayOffset === 0 && (
-						<p className='text-xs text-muted-foreground mt-0.5'>
-							Due today · Overdue · High priority · Completed today
+			{/* Day Navigator / Range Header */}
+			{isRangeMode ? (
+				<div className='flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2'>
+					<div className='flex-1' />
+					<div className='text-center'>
+						<p className='text-sm font-semibold'>
+							{format(dateRange!.from!, 'MMM d, yyyy')} – {format(dateRange!.to!, 'MMM d, yyyy')}
 						</p>
-					)}
+						<p className='text-xs text-muted-foreground'>Custom date range · {rows.length} tasks</p>
+					</div>
+					<div className='flex flex-1 justify-end'>
+						<Button
+							variant='ghost'
+							size='sm'
+							onClick={() => setDateRange(undefined)}
+							className='gap-1 text-muted-foreground'
+						>
+							<X className='h-4 w-4' />
+							Clear range
+						</Button>
+					</div>
 				</div>
-				<Button variant='ghost' size='sm' onClick={() => setDayOffset((d) => d + 1)} className='gap-1'>
-					{getDayLabel(dayOffset + 1)}
-					<ChevronRight className='h-4 w-4' />
-				</Button>
-			</div>
+			) : (
+				<div className='flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2'>
+					<Button
+						variant='ghost'
+						size='sm'
+						onClick={() => setDayOffset((d) => d - 1)}
+						disabled={dayOffset <= -2}
+						className='gap-1'
+					>
+						<ChevronLeft className='h-4 w-4' />
+						{getDayLabel(dayOffset - 1)}
+					</Button>
+					<div className='text-center'>
+						<p className='text-sm font-semibold'>{getDayLabel(dayOffset)}</p>
+						<p className='text-xs text-muted-foreground'>{getDateStr(dayOffset)}</p>
+						{dayOffset === 0 && (
+							<p className='text-xs text-muted-foreground mt-0.5'>
+								Due today · Overdue · High priority · Completed today
+							</p>
+						)}
+					</div>
+					<Button variant='ghost' size='sm' onClick={() => setDayOffset((d) => d + 1)} className='gap-1'>
+						{getDayLabel(dayOffset + 1)}
+						<ChevronRight className='h-4 w-4' />
+					</Button>
+				</div>
+			)}
 
 			{/* Filters */}
 			<div className='flex flex-col gap-4 md:flex-row md:items-center'>
@@ -386,6 +458,24 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 							))}
 						</DropdownMenuContent>
 					</DropdownMenu>
+					<Popover>
+						<PopoverTrigger asChild>
+							<Button variant={isRangeMode ? 'secondary' : 'outline'} className='gap-2'>
+								<CalendarIcon className='h-4 w-4' />
+								{isRangeMode
+									? `${format(dateRange!.from!, 'MMM d')} – ${format(dateRange!.to!, 'MMM d, yyyy')}`
+									: 'Date range'}
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className='w-auto p-0' align='start'>
+							<Calendar
+								mode='range'
+								selected={dateRange}
+								onSelect={(range) => setDateRange(range)}
+								numberOfMonths={2}
+							/>
+						</PopoverContent>
+					</Popover>
 					{hasActiveFilters && (
 						<Button
 							variant='ghost'
@@ -406,9 +496,15 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 
 			{/* Virtuoso Table */}
 			<div className='rounded-lg border border-border/50 bg-card overflow-hidden'>
-				{rows.length === 0 ? (
+				{activeLoading ? (
+					<div className='flex flex-col items-center justify-center h-48 w-full gap-2'>
+						<LoaderCircle className='h-8 w-8 animate-spin text-muted-foreground' />
+					</div>
+				) : rows.length === 0 ? (
 					<div className='flex items-center justify-center h-24 text-muted-foreground text-sm'>
-						No tasks for {getDayLabel(dayOffset).toLowerCase()}.
+						{isRangeMode
+							? `No tasks between ${format(dateRange!.from!, 'MMM d')} and ${format(dateRange!.to!, 'MMM d, yyyy')}.`
+							: `No tasks for ${getDayLabel(dayOffset).toLowerCase()}.`}
 					</div>
 				) : rows.length <= TARGET_VISIBLE_ROWS ? (
 					// Plain table for small row counts — no fixed height, no scrollbar

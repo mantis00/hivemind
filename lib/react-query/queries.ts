@@ -596,6 +596,37 @@ export function useTasksForEnclosures(enclosureIds: UUID[]) {
 	})
 }
 
+export function useTasksForEnclosuresInRange(enclosureIds: UUID[], startDate: string, endDate: string) {
+	return useQuery({
+		queryKey: ['tasksForEnclosuresInRange', enclosureIds, startDate, endDate],
+		queryFn: async () => {
+			const supabase = createClient()
+			const PAGE_SIZE = 1000
+			const allTasks: Task[] = []
+			let from = 0
+
+			while (true) {
+				const { data, error } = (await supabase
+					.from('tasks')
+					.select('*, task_templates(type, description)')
+					.in('enclosure_id', enclosureIds)
+					.gte('due_date', startDate)
+					.lte('due_date', endDate)
+					.order('due_date', { ascending: true })
+					.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
+
+				if (error) throw error
+				allTasks.push(...(data ?? []))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+
+			return allTasks
+		},
+		enabled: enclosureIds.length > 0 && !!startDate && !!endDate
+	})
+}
+
 export function useTaskName(taskId: UUID) {
 	return useQuery({
 		queryKey: ['task', taskId],
@@ -813,5 +844,25 @@ export function useAllSpeciesRequests() {
 			if (error) throw error
 			return data
 		}
+	})
+}
+
+export function useSchedulesForEnclosures(enclosureIds: UUID[]) {
+	return useQuery({
+		queryKey: ['schedulesForEnclosures', enclosureIds],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('enclosure_schedules')
+				.select('*')
+				.in('enclosure_id', enclosureIds)
+				.order('created_at', { ascending: false })) as {
+				data: EnclosureSchedule[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+			return data
+		},
+		enabled: enclosureIds.length > 0
 	})
 }
