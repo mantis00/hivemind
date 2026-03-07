@@ -1,8 +1,9 @@
 import { Bell, AtSign, UserPlus, RefreshCw, AlertCircle } from 'lucide-react'
+import type { ElementType } from 'react'
 
 export type NotificationType = 'mention' | 'invite' | 'update' | 'alert'
 
-export const typeIcons: Record<NotificationType, React.ElementType> = {
+export const typeIcons: Record<NotificationType, ElementType> = {
 	mention: AtSign,
 	invite: UserPlus,
 	update: RefreshCw,
