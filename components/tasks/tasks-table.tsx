@@ -197,7 +197,15 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 			const statusMatch = statusFilter.length === 0 || (task.status && statusFilter.includes(task.status))
 			if (!priorityMatch || !statusMatch) return false
 
-			const dueDateStr = task.due_date ? task.due_date.slice(0, 10) : null
+			const toLocalDate = (iso: string) => {
+				const d = new Date(iso)
+				const year = d.getFullYear()
+				const month = String(d.getMonth() + 1).padStart(2, '0')
+				const day = String(d.getDate()).padStart(2, '0')
+				return `${year}-${month}-${day}`
+			}
+
+			const dueDateStr = task.due_date ? toLocalDate(task.due_date) : null
 
 			if (dayOffset === 0) {
 				// Today: due today + overdue (past due, not completed) + high priority not completed
@@ -206,7 +214,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 				const overdue = dueDateStr !== null && dueDateStr < todayDate && task.status !== 'completed'
 				const urgent = task.priority === 'high' && task.status !== 'completed'
 				const completedToday =
-					task.status === 'completed' && task.completed_time != null && task.completed_time.slice(0, 10) === todayDate
+					task.status === 'completed' && task.completed_time != null && toLocalDate(task.completed_time) === todayDate
 				return dueToday || overdue || urgent || completedToday
 			}
 

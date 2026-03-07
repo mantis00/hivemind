@@ -39,14 +39,12 @@ export function CreateEnclosureButton() {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		console.log(species)
 		if (!name || !species || !location) return
 
 		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
 		const location_id = orgLocations?.find((loc) => loc?.name === location)
 
 		if (!species_id || !location_id) {
-			console.log('ERROR LOOKING UP SPECIES OR LOCATION')
 			return
 		}
 		createEnclosureMutation.mutate(

@@ -52,14 +52,12 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		console.log(species)
 		if (!name || !species || !location) return
 
 		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
 		const location_id = orgLocations?.find((loc) => loc?.name === location)
 
 		if (!species_id || !location_id) {
-			console.log('ERROR LOOKING UP SPECIES OR LOCATION')
 			return
 		}
 		editEnclosureMutation.mutate(
@@ -117,7 +115,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							onValueChange={(value) => {
 								setSpecies(value ?? '')
 								if (value) setSpeciesQuery(value)
-								console.log(species)
 							}}
 						>
 							<ComboboxInput
@@ -150,7 +147,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							onValueChange={(value) => {
 								setLocation(value ?? '')
 								if (value) setLocationQuery(value)
-								console.log(location)
 							}}
 						>
 							<ComboboxInput
