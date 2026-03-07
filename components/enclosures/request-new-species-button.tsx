@@ -64,7 +64,11 @@ export default function RequestNewSpeciesButton() {
 				org_id: orgId as UUID,
 				user_id: user?.id as UUID
 			},
-			{ onSuccess: () => handleOpenChange(false) }
+			{
+				onSuccess: () => {
+					handleOpenChange(false)
+				}
+			}
 		)
 	}
 
@@ -75,7 +79,7 @@ export default function RequestNewSpeciesButton() {
 			title='Request New Species'
 			description='Provide some information about your species'
 			open={open}
-			onOpenChange={(isOpen) => setOpen(isOpen)}
+			onOpenChange={handleOpenChange}
 			trigger={
 				<Button variant='secondary' size='default' onClick={() => setOpen(true)}>
 					Request New <Send className='w-4 h-4' />
