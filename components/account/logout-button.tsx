@@ -1,13 +1,11 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { useRouter } from 'next/navigation'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { useState } from 'react'
 import { useLogout } from '@/lib/react-query/auth'
 
 export function LogoutButton() {
-	const router = useRouter()
 	const [open, setOpen] = useState(false)
 
 	const logoutMutation = useLogout()
