@@ -1,4 +1,5 @@
-// tasks page
+// TODO: Implement this route as a Kanban-style tasks board similar to the original plan.
+// TODO: Dashboard "Upcoming Schedule" should consume the Kanban board's "To Do" section from this page.
 import { TasksDataTable } from '@/components/tasks/tasks-table'
 import { EnclosureHeading } from '@/components/enclosures/enclosure-heading'
 import { UUID } from 'crypto'

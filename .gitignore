@@ -54,3 +54,5 @@ public/sw*
 public/swe-worker*
 
 .vscode.vercel/
+
+.idea/
