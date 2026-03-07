@@ -4,11 +4,10 @@ import { useState } from 'react'
 import { ClipboardListIcon, PlusIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { useTaskTemplatesForSpecies, type Species } from '@/lib/react-query/queries'
 import { EditTaskCard } from './edit-task-card'
-import { CreateTaskCard } from './create-task-card'
+import { CreateTaskTemplateCard } from './create-task-template-card'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,19 +58,20 @@ export function TaskTemplatesButton({ species, usedTypes = [] }: TaskTemplatesBu
 			}
 			open={open}
 			onOpenChange={handleOpenChange}
+			footer={
+				view === 'list' && (
+					<div className='w-full'>
+						<Button type='button' className='w-full' onClick={() => setView('create')}>
+							<PlusIcon className='h-4 w-4' />
+							New Template
+						</Button>
+					</div>
+				)
+			}
 		>
-			{view === 'list' && (
-				<>
-					<Separator />
-					<Button type='button' className='w-full mb-1' onClick={() => setView('create')}>
-						<PlusIcon className='h-4 w-4' />
-						New Template
-					</Button>
-				</>
-			)}
 			{/* ── List view ── */}
 			{view === 'list' && (
-				<div className='flex flex-col gap-3'>
+				<div data-vaul-no-drag className='overflow-y-auto flex-1 min-h-0 space-y-2 pr-1'>
 					{isLoading ? (
 						<div className='space-y-2'>
 							{[...Array(3)].map((_, i) => (
@@ -83,28 +83,28 @@ export function TaskTemplatesButton({ species, usedTypes = [] }: TaskTemplatesBu
 							<p className='text-sm text-muted-foreground'>No templates yet for this species.</p>
 						</div>
 					) : (
-						<div className='overflow-y-auto max-h-[50vh] space-y-2 pr-1'>
-							{templates!.map((template) => (
-								<EditTaskCard
-									key={template.id}
-									template={template}
-									species={species}
-									allTemplateTypes={templates!.map((t) => t.type)}
-								/>
-							))}
-						</div>
+						templates!.map((template) => (
+							<EditTaskCard
+								key={template.id}
+								template={template}
+								species={species}
+								allTemplateTypes={templates!.map((t) => t.type)}
+							/>
+						))
 					)}
 				</div>
 			)}
 
 			{/* ── Create view ── */}
 			{view === 'create' && (
-				<CreateTaskCard
-					species={species}
-					usedTypes={templates?.map((t) => t.type) ?? usedTypes}
-					onSuccess={goToList}
-					onCancel={goToList}
-				/>
+				<div data-vaul-no-drag className='overflow-y-auto flex-1 min-h-0 pr-1'>
+					<CreateTaskTemplateCard
+						species={species}
+						usedTypes={templates?.map((t) => t.type) ?? usedTypes}
+						onSuccess={goToList}
+						onCancel={goToList}
+					/>
+				</div>
 			)}
 		</ResponsiveDialogDrawer>
 	)

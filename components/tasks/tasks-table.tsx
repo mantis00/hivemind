@@ -11,17 +11,7 @@ import {
 	useReactTable
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
-import {
-	ArrowUpDown,
-	CheckCircle2,
-	ChevronDown,
-	ChevronLeft,
-	ChevronRight,
-	LoaderCircle,
-	PlayCircle,
-	PlusIcon,
-	X
-} from 'lucide-react'
+import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Eye, LoaderCircle, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -33,15 +23,13 @@ import {
 import { Input } from '@/components/ui/input'
 import type { Task } from '@/lib/react-query/queries'
 import { useTasksForEnclosures } from '@/lib/react-query/queries'
-import { useCompleteTask, useStartTask } from '@/lib/react-query/mutations'
 import { UUID } from 'crypto'
 import getPriorityLevelStatus from '@/context/priority-levels'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import { createClient } from '@/lib/supabase/client'
-import { User } from '@supabase/supabase-js'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { CreateTaskButton } from './create-task-button'
+import { useRouter } from 'next/navigation'
+import { getDateStr, getDayLabel } from '@/context/task-day'
 
 const priorityConfig: Record<string, { color: string }> = {
 	low: { color: 'bg-blue-100 text-blue-800' },
@@ -61,11 +49,7 @@ const MOBILE_COL_WIDTHS: Record<string, number> = {
 	status: 100
 }
 
-function getColumns(
-	isMobile: boolean,
-	onStart: (taskId: UUID) => void,
-	onComplete: (taskId: UUID) => void
-): ColumnDef<Task>[] {
+function getColumns(isMobile: boolean, onView: (taskId: UUID) => void): ColumnDef<Task>[] {
 	const all: ColumnDef<Task>[] = [
 		{
 			accessorKey: 'name',
@@ -85,9 +69,11 @@ function getColumns(
 			id: 'description',
 			accessorKey: 'description',
 			header: 'Description',
-			cell: ({ row }) => (
-				<div className='max-w-xs truncate text-sm text-muted-foreground'>{row.getValue('description')}</div>
-			)
+			cell: ({ row }) => {
+				const task = row.original
+				const desc = task.description ?? task.task_templates?.description
+				return <div className='max-w-xs truncate text-sm text-muted-foreground'>{desc}</div>
+			}
 		},
 		{
 			accessorKey: 'priority',
@@ -136,32 +122,17 @@ function getColumns(
 			id: 'actions',
 			header: '',
 			cell: ({ row }) => {
-				const status = row.original.status
-				const isCompleted = status === 'completed'
-				const isInProgress = status === 'in_progress'
 				return (
 					<div className='flex items-center gap-1'>
 						<Button
 							variant='ghost'
 							size='icon'
-							className='h-10 w-10 text-muted-foreground hover:text-blue-500'
-							disabled={isCompleted || isInProgress}
-							title='Start task'
-							onClick={() => onStart(row.original.id as UUID)}
+							className='h-10 w-10 text-muted-foreground hover:text-primary'
+							title='View task'
+							onClick={() => onView(row.original.id as UUID)}
 						>
-							<PlayCircle className='h-6 w-6' />
+							<Eye className='h-5 w-5' />
 						</Button>
-						{isInProgress && (
-							<Button
-								variant='ghost'
-								size='icon'
-								className='h-10 w-10 text-muted-foreground hover:text-green-500'
-								title='Mark complete'
-								onClick={() => onComplete(row.original.id as UUID)}
-							>
-								<CheckCircle2 className='h-8 w-8' />
-							</Button>
-						)}
 					</div>
 				)
 			}
@@ -173,24 +144,9 @@ function getColumns(
 const TARGET_VISIBLE_ROWS_MOBILE = 15
 const TARGET_VISIBLE_ROWS_DESKTOP = 20
 
-/** Returns a YYYY-MM-DD string for a date offset from today */
-function getDateStr(dayOffset: number): string {
-	const d = new Date()
-	d.setDate(d.getDate() + dayOffset)
-	return d.toISOString().slice(0, 10)
-}
-
-function getDayLabel(dayOffset: number): string {
-	if (dayOffset === 0) return 'Today'
-	if (dayOffset === -1) return 'Yesterday'
-	if (dayOffset === 1) return 'Tomorrow'
-	const d = new Date()
-	d.setDate(d.getDate() + dayOffset)
-	return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-}
-
 export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgId: UUID }) {
 	const isMobile = useIsMobile()
+	const router = useRouter()
 	const [dayOffset, setDayOffset] = React.useState(0)
 	const [sorting, setSorting] = React.useState<SortingState>([])
 	const [globalFilter, setGlobalFilter] = React.useState('')
@@ -199,26 +155,10 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	const TARGET_VISIBLE_ROWS = isMobile ? TARGET_VISIBLE_ROWS_MOBILE : TARGET_VISIBLE_ROWS_DESKTOP
 	const ESTIMATED_ROW_HEIGHT = isMobile ? 73 : 46
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
-	const [selectedTask, setSelectedTask] = React.useState<Task | null>(null)
-	const [taskDrawerOpen, setTaskDrawerOpen] = React.useState(false)
-	const [user, setUser] = useState<User | null>(null)
 	const [isMounted, setIsMounted] = React.useState(false)
-	const supabase = createClient()
-	const [createTaskOpen, setCreateTaskOpen] = useState(false)
 
 	useEffect(() => {
 		setIsMounted(true)
-	}, [])
-
-	useEffect(() => {
-		const fetchUser = async () => {
-			const {
-				data: { user }
-			} = await supabase.auth.getUser()
-			setUser(user)
-		}
-
-		fetchUser()
 	}, [])
 
 	const rowRef = React.useRef<HTMLTableRowElement | null>(null)
@@ -238,30 +178,15 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	}
 
 	const { data: enclosureTasks, isLoading: tasksLoading } = useTasksForEnclosures([enclosureId])
-	const startTask = useStartTask()
-	const completeTask = useCompleteTask()
 
-	// Holds latest mutation objects so callbacks stay stable across mutation state changes
-	const startTaskRef = React.useRef(startTask)
-	startTaskRef.current = startTask
-	const completeTaskRef = React.useRef(completeTask)
-	completeTaskRef.current = completeTask
-
-	const handleStart = React.useCallback(
-		(taskId: UUID) => startTaskRef.current.mutate({ task_id: taskId, enclosure_id: enclosureId }),
-		[enclosureId]
+	const handleView = React.useCallback(
+		(taskId: UUID) => {
+			router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}/${taskId}`)
+		},
+		[router, orgId, enclosureId]
 	)
 
-	const handleComplete = React.useCallback(
-		(taskId: UUID) =>
-			completeTaskRef.current.mutate({ task_id: taskId, enclosure_id: enclosureId, user_id: user?.id as UUID }),
-		[enclosureId, user?.id]
-	)
-
-	const columns = React.useMemo(
-		() => getColumns(isMobile, handleStart, handleComplete),
-		[isMobile, handleStart, handleComplete]
-	)
+	const columns = React.useMemo(() => getColumns(isMobile, handleView), [isMobile, handleView])
 
 	const filteredData = React.useMemo(() => {
 		const targetDate = getDateStr(dayOffset)
@@ -394,7 +319,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 
 			{/* Filters */}
 			<div className='flex flex-col gap-4 md:flex-row md:items-center'>
-				{isMobile && <CreateTaskButton />}
+				{isMobile && <CreateTaskButton enclosureId={enclosureId} orgId={orgId} />}
 				<Input
 					placeholder='Search tasks...'
 					value={globalFilter}
@@ -460,7 +385,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 					)}
 					{!isMobile && (
 						<div className='ml-auto'>
-							<CreateTaskButton />
+							<CreateTaskButton enclosureId={enclosureId} orgId={orgId} />
 						</div>
 					)}
 				</div>
@@ -503,8 +428,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 										className={`border-b transition-colors hover:bg-muted/50 ${isMobile ? 'cursor-pointer active:bg-muted' : ''}`}
 										onClick={() => {
 											if (isMobile) {
-												setSelectedTask(row.original)
-												setTaskDrawerOpen(true)
+												handleView(row.original.id as UUID)
 											}
 										}}
 									>
@@ -553,66 +477,6 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 
 			{/* Row count */}
 			<div className='text-sm text-muted-foreground'>{rows.length} tasks</div>
-
-			{/* Mobile task detail drawer */}
-			{selectedTask && (
-				<ResponsiveDialogDrawer
-					title={selectedTask.name ?? 'Task'}
-					description={selectedTask.description ?? ''}
-					trigger={null}
-					open={taskDrawerOpen}
-					onOpenChange={(open) => {
-						setTaskDrawerOpen(open)
-						if (!open) setSelectedTask(null)
-					}}
-				>
-					<div className='flex flex-col gap-4 pt-2'>
-						<div className='flex items-center gap-3'>
-							{(() => {
-								const p = selectedTask.priority ?? ''
-								const cfg = priorityConfig[p] || { color: 'bg-gray-100 text-gray-800' }
-								return (
-									<span className={`px-3 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
-										{getPriorityLevelStatus(p) ?? p}
-									</span>
-								)
-							})()}
-							{(() => {
-								const s = selectedTask.status ?? ''
-								const cfg = statusConfig[s] || { label: s, color: 'bg-gray-100 text-gray-800' }
-								return <span className={`px-3 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>{cfg.label}</span>
-							})()}
-						</div>
-						{selectedTask.description && (
-							<div className='rounded-md bg-muted p-3'>
-								<p className='text-xs font-medium text-muted-foreground mb-1'>Description</p>
-								<p className='text-sm leading-relaxed'>{selectedTask.description}</p>
-							</div>
-						)}
-						{selectedTask.due_date && (
-							<p className='text-xs text-muted-foreground'>Due: {selectedTask.due_date.slice(0, 10)}</p>
-						)}
-						<div className='flex gap-2 pt-2'>
-							{selectedTask.status !== 'completed' && selectedTask.status !== 'in_progress' && (
-								<Button
-									className='flex-1 gap-2'
-									onClick={() => {
-										handleStart(selectedTask.id as UUID)
-										setTaskDrawerOpen(false)
-									}}
-								>
-									<PlayCircle className='h-5 w-5' /> Start Task
-								</Button>
-							)}
-							{selectedTask.status === 'in_progress' && (
-								<Button className='flex-1 gap-2' variant='secondary'>
-									<CheckCircle2 className='h-5 w-5' /> Mark Complete
-								</Button>
-							)}
-						</div>
-					</div>
-				</ResponsiveDialogDrawer>
-			)}
 		</div>
 	)
 }
