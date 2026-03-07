@@ -483,7 +483,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 										{...props}
 										ref={index === 0 ? rowRef : undefined}
 										style={style}
-										className={`border-b transition-colors hover:bg-muted/100 cursor-pointer active:bg-muted ${isEven ? 'bg-background' : 'bg-muted/50'}`}
+										className={`border-b transition-colors hover:bg-muted cursor-pointer active:bg-muted ${isEven ? 'bg-background' : 'bg-muted/70'}`}
 										onClick={() => {
 											setSelectedTask(row.original)
 											setTaskDrawerOpen(true)

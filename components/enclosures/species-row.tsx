@@ -20,7 +20,8 @@ export default function SpeciesRow({
 	sortKey,
 	selectMode,
 	selectedIds,
-	onSelectChange
+	onSelectChange,
+	className
 }: {
 	species: OrgSpecies
 	onDetailsOpenChange: () => void
@@ -28,6 +29,7 @@ export default function SpeciesRow({
 	selectMode: boolean
 	selectedIds: Set<UUID>
 	onSelectChange: (enclosureId: UUID, checked: boolean) => void
+	className?: string
 }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
@@ -52,7 +54,7 @@ export default function SpeciesRow({
 	return (
 		<>
 			<Collapsible open={isOpen} onOpenChange={setIsOpen}>
-				<Card className='overflow-hidden py-2'>
+				<Card className={`overflow-hidden py-2 ${className ?? ''}`}>
 					<CardContent className='p-2 flex items-center gap-3 hover:bg-accent/50 transition-colors'>
 						<CollapsibleTrigger asChild>
 							<button className='flex flex-1 min-w-0 items-center gap-3 text-left' type='button'>
@@ -104,7 +106,7 @@ export default function SpeciesRow({
 					</CardContent>
 
 					<CollapsibleContent>
-						<div className='border-t bg-muted/30 p-2'>
+						<div className='border-t bg-muted/50 p-2'>
 							{/* Enclosures Virtuoso list */}
 							{enclosures?.length && enclosures?.length > 0 ? (
 								<div className='rounded-md border bg-background'>
@@ -122,6 +124,7 @@ export default function SpeciesRow({
 													selectable={selectMode}
 													selected={selectedIds.has(enclosure.id)}
 													onSelectChange={(checked) => onSelectChange(enclosure.id, checked)}
+													className={index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}
 												/>
 											</div>
 										)}

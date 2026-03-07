@@ -376,6 +376,7 @@ export default function EnclosureGrid() {
 									selectMode={selectMode}
 									selectedIds={selectedIds}
 									onSelectChange={handleSelectChange}
+									className='bg-background'
 								/>
 							</div>
 						</div>
@@ -399,6 +400,7 @@ export default function EnclosureGrid() {
 											selectMode={selectMode}
 											selectedIds={selectedIds}
 											onSelectChange={handleSelectChange}
+											className={index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}
 										/>
 									</div>
 								)}

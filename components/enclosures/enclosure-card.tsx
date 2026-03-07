@@ -15,7 +15,8 @@ export function EnclosureCard({
 	onClick,
 	selectable = false,
 	selected = false,
-	onSelectChange
+	onSelectChange,
+	className
 }: {
 	enclosure: Enclosure
 	species: OrgSpecies
@@ -23,11 +24,12 @@ export function EnclosureCard({
 	selectable?: boolean
 	selected?: boolean
 	onSelectChange?: (checked: boolean) => void
+	className?: string
 }) {
 	return (
 		<>
 			<Card
-				className={`cursor-pointer transition-colors hover:bg-accent/50 border-l-4 py-2 ${
+				className={`cursor-pointer transition-colors hover:bg-accent/50 border-l-4 py-2 ${className ?? ''} ${
 					selected ? 'border-l-primary bg-accent/30' : 'border-l-primary/20'
 				}`}
 				onClick={() => {
