@@ -187,7 +187,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							value={species}
 							onValueChange={(value) => {
 								setSpecies(value ?? '')
-								if (value) setSpeciesQuery(value)
+								setSpeciesQuery(value ?? '')
 							}}
 						>
 							<ComboboxInput
@@ -225,7 +225,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							value={location}
 							onValueChange={(value) => {
 								setLocation(value ?? '')
-								if (value) setLocationQuery(value)
+								setLocationQuery(value ?? '')
 							}}
 						>
 							<ComboboxInput

@@ -201,11 +201,11 @@ export type TaskTemplate = {
 export type SpeciesRequest = {
 	id: UUID
 	created_at: string
-	requester_id: UUID
+	requester_id: string
 	org_id: UUID
 	scientific_name: string
 	common_name: string
-	reviewer_id?: UUID
+	reviewer_id?: string
 	care_instructions: string
 	status: 'pending' | 'approved' | 'rejected' | 'cancelled'
 	reviewed_at?: string
