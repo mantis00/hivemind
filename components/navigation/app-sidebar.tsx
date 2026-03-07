@@ -110,7 +110,7 @@ export function AppSidebar() {
 		<Sidebar variant='floating' collapsible='icon'>
 			<SidebarContent>
 				<SidebarGroup>
-					<SidebarMenuButton className='mb-2.5 hover:bg-transparent active:bg-transparent' size='lg'>
+					<SidebarMenuButton className='mb-2.5 cursor-default hover:bg-transparent active:bg-transparent' size='lg'>
 						<div className='flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden'>
 							<Image src='/icons/icon-96x96.png' alt='Hivemind logo' width={32} height={32} className='size-8' />
 						</div>
