@@ -947,6 +947,7 @@ export function useMarkNotificationAsViewed(userId?: string) {
 					viewed_at: new Date().toISOString()
 				})
 				.eq('id', notificationId)
+				.eq('recipient_id', userId)
 
 			if (error) throw error
 		},
