@@ -57,7 +57,7 @@ export function ViewPendingSpeciesRequests() {
 	}
 
 	return (
-		<Collapsible defaultOpen>
+		<Collapsible>
 			<CollapsibleTrigger asChild>
 				<button
 					type='button'

@@ -1,6 +1,7 @@
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import { toast } from 'sonner'
 
 // this will fetch from the supabase auth user endpoint
 export function useCurrentClientUser() {
@@ -43,6 +44,27 @@ export function useResestPassword() {
 			const supabase = createClient()
 			const { error } = await supabase.auth.updateUser({ password })
 			if (error) throw error
+		},
+		onSuccess: () => {
+			toast.success('Password updated successfully!')
+		}
+	})
+}
+
+export function useUpdateEmail() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ email }: { email: string }) => {
+			const supabase = createClient()
+			const { error } = await supabase.auth.updateUser({ email: email.trim().toLowerCase() })
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+			queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] })
+			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			toast.success('Confirmation sent — check your inbox to verify the new email.')
 		}
 	})
 }

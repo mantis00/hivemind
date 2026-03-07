@@ -874,6 +874,24 @@ export function useAllSpeciesRequests() {
 	})
 }
 
+export function useCurrentUserProfile() {
+	const { data: user } = useCurrentClientUser()
+	return useQuery({
+		queryKey: ['currentUserProfile', user?.id],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('profiles')
+				.select('id, first_name, last_name, email, full_name, theme_preference, is_superadmin, updated_at')
+				.eq('id', user!.id)
+				.single()
+			if (error) throw error
+			return data as AllProfile
+		},
+		enabled: !!user?.id
+	})
+}
+
 export function useSchedulesForEnclosures(enclosureIds: UUID[]) {
 	return useQuery({
 		queryKey: ['schedulesForEnclosures', enclosureIds],

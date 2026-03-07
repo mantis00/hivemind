@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Calendar, CalendarClock, Clock, LoaderCircle, Power, Repeat } from 'lucide-react'
 import { DeleteScheduleButton } from '@/components/tasks/delete-schedule-button'
 import { ReassignMemberButton } from '@/components/tasks/reassign-member-button'
+import { ViewScheduleTemplateButton } from '@/components/tasks/view-schedule-template-button'
 import { ScheduledTasksFilters, type ScheduleFilters } from '@/components/tasks/scheduled-tasks-filters'
 
 import getPriorityLevelStatus from '@/context/priority-levels'
@@ -58,8 +59,8 @@ const priorityConfig: Record<string, { color: string }> = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CARD_HEIGHT = 120 // approximate px per card
-const MAX_LIST_HEIGHT = 8 * CARD_HEIGHT // ~960px — scrolls after 8 cards
+const CARD_HEIGHT = 84 // approximate px per card
+const MAX_LIST_HEIGHT = 8 * CARD_HEIGHT // ~672px — scrolls after 8 cards
 
 // ─── Truncated Description ───────────────────────────────────────────────────
 
@@ -166,7 +167,8 @@ export function ScheduledTasksTable() {
 	})
 
 	const count = filtered.length
-	const listHeight = isLoading || count === 0 ? 120 : Math.min(count * CARD_HEIGHT, MAX_LIST_HEIGHT)
+	const [actualListHeight, setActualListHeight] = useState(CARD_HEIGHT)
+	const listHeight = isLoading || count === 0 ? 120 : Math.min(actualListHeight, MAX_LIST_HEIGHT)
 
 	const hasActiveFilters = statusFilter.length > 0 || typeFilter.length > 0 || priorityFilter.length > 0
 
@@ -196,7 +198,9 @@ export function ScheduledTasksTable() {
 					<Virtuoso
 						ref={listRef as React.RefObject<null>}
 						style={{ height: listHeight }}
+						className='pr-2'
 						data={filtered}
+						totalListHeightChanged={setActualListHeight}
 						itemContent={(_, schedule) => (
 							<div className='pb-2'>
 								<Card
@@ -204,7 +208,7 @@ export function ScheduledTasksTable() {
 										schedule.is_active ? 'border-l-green-500' : 'border-l-muted-foreground/30'
 									}`}
 								>
-									<CardContent className='px-4 py-3 space-y-1.5'>
+									<CardContent className='px-2 py-1 space-y-1'>
 										{/* ── Row 1: name + description (middle) + active + delete ── */}
 										<div className='flex items-center gap-2 min-w-0'>
 											<p className='font-medium text-sm shrink-0'>
@@ -221,7 +225,7 @@ export function ScheduledTasksTable() {
 														<Button
 															variant='ghost'
 															size='sm'
-															className={`gap-1 h-7 px-2 text-xs font-medium shrink-0 ${
+															className={`gap-1 h-5 px-1.5 text-xs font-medium shrink-0 ${
 																schedule.is_active
 																	? 'text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30'
 																	: 'text-muted-foreground hover:text-foreground'
@@ -243,6 +247,7 @@ export function ScheduledTasksTable() {
 													</TooltipContent>
 												</Tooltip>
 											</TooltipProvider>
+											<ViewScheduleTemplateButton templateId={schedule.template_id} taskName={schedule.task_name} />
 											<DeleteScheduleButton scheduleId={schedule.id as UUID} taskName={schedule.task_name} />
 										</div>
 

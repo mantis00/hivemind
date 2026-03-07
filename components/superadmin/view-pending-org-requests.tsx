@@ -57,7 +57,7 @@ export function ViewPendingRequests() {
 	}
 
 	return (
-		<Collapsible defaultOpen>
+		<Collapsible>
 			<CollapsibleTrigger asChild>
 				<button
 					type='button'

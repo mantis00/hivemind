@@ -23,7 +23,7 @@ import {
 	CircleUserRound,
 	MoreVertical,
 	LogOut,
-	Box,
+	Boxes,
 	ClipboardList,
 	FolderHeart,
 	ArrowRightLeft
@@ -111,7 +111,7 @@ export function AppSidebar() {
 			<SidebarContent>
 				<SidebarGroup>
 					<SidebarMenuButton className='mb-2.5 cursor-default hover:bg-transparent active:bg-transparent' size='lg'>
-						<div className='flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden'>
+						<div className='flex aspect-square size-10 shrink-0 items-center justify-center rounded-lg overflow-hidden [background:radial-gradient(circle,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0.05)_60%,rgba(255,255,255,0)_100%)]'>
 							<Image src='/icons/icon-96x96.png' alt='Hivemind logo' width={32} height={32} className='size-8' />
 						</div>
 						<div className='grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden'>
@@ -190,7 +190,7 @@ export function AppSidebar() {
 													href={orgId ? `/protected/orgs/${orgId}/enclosures` : '/protected/orgs'}
 													onClick={closeMobileOnNav}
 												>
-													<Box className='size-4' />
+													<Boxes className='size-4' />
 													<span>Enclosures</span>
 												</Link>
 											</SidebarMenuSubButton>
@@ -282,7 +282,7 @@ export function AppSidebar() {
 											onClick={closeMobileOnNav}
 										>
 											<Settings className='size-4' />
-											Account settings
+											Account/Preferences
 										</Link>
 									</DropdownMenuItem>
 								</DropdownMenuGroup>

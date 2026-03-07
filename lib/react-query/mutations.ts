@@ -21,7 +21,7 @@ export function useCreateOrg() {
 
 			if (orgError) throw orgError
 
-			// Update the user_org_role table with proper access level
+			// Add creator as Superadmin (3)
 			const { error: relationError } = await supabase.from('user_org_role').insert({
 				user_id: userId,
 				org_id: org.org_id,
@@ -33,10 +33,28 @@ export function useCreateOrg() {
 				await supabase.from('orgs').delete().eq('org_id', org.org_id)
 				throw relationError
 			}
+
+			// Add all other existing superadmins to the org
+			const { data: superadmins } = await supabase
+				.from('profiles')
+				.select('id')
+				.eq('is_superadmin', true)
+				.neq('id', userId)
+
+			if (superadmins && superadmins.length > 0) {
+				await supabase.from('user_org_role').upsert(
+					superadmins.map((s) => ({
+						user_id: s.id,
+						org_id: org.org_id,
+						access_lvl: 3
+					})),
+					{ onConflict: 'user_id,org_id' }
+				)
+			}
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate and refetch user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			toast.success('Organization created!')
 		}
 	})
 }
@@ -58,8 +76,8 @@ export function useDeleteOrg() {
 			if (orgError) throw orgError
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate and refetch user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			toast.success('Organization deleted.')
 		}
 	})
 }
@@ -75,9 +93,9 @@ export function useLeaveOrg() {
 			if (error) throw error
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate org members and user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgMembers', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			toast.success('You have left the organization.')
 		}
 	})
 }
@@ -101,8 +119,21 @@ export function useUpdateProfile() {
 			if (error) throw error
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate profile queries
 			queryClient.invalidateQueries({ queryKey: ['profiles', variables.userId] })
+			queryClient.invalidateQueries({ queryKey: ['currentUserProfile', variables.userId] })
+			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			queryClient.invalidateQueries({ queryKey: ['orgMemberProfiles'] })
+			toast.success('Profile updated!')
+		}
+	})
+}
+
+export function useUpdateThemePreference() {
+	return useMutation({
+		mutationFn: async ({ userId, theme }: { userId: string; theme: string }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('profiles').update({ theme_preference: theme }).eq('id', userId)
+			if (error) throw error
 		}
 	})
 }
@@ -239,11 +270,11 @@ export function useAcceptInvite() {
 			if (updateError) throw updateError
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate invites
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
 			queryClient.invalidateQueries({ queryKey: ['orgMembers'] })
 			queryClient.invalidateQueries({ queryKey: ['profiles'] })
+			toast.success('Invite accepted!')
 		}
 	})
 }
@@ -261,8 +292,8 @@ export function useRejectInvite() {
 			if (error) throw error
 		},
 		onSuccess: () => {
-			// Invalidate invites
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
+			toast.success('Invite declined.')
 		}
 	})
 }
@@ -284,8 +315,8 @@ export function useRetractInvite() {
 			if (error) throw error
 		},
 		onSuccess: () => {
-			// Invalidate org invites
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
+			toast.success('Invite cancelled.')
 		}
 	})
 }
@@ -303,9 +334,9 @@ export function useKickMember() {
 			if (error) throw error
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate org members and user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgMembers', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			toast.success('Member removed.')
 		}
 	})
 }
@@ -325,6 +356,7 @@ export function useCreateLocation() {
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgLocations', variables.orgId] })
+			toast.success('Location created!')
 		}
 	})
 }
@@ -365,9 +397,9 @@ export function useCreateEnclosure() {
 			if (enclosureError) throw enclosureError
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate and refetch enclosures orgs
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			toast.success('Enclosure created!')
 		}
 	})
 }
@@ -392,9 +424,9 @@ export function useDeleteEnclosure() {
 			if (enclosureError) throw enclosureError
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate and refetch user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			toast.success('Enclosure deleted.')
 		}
 	})
 }
@@ -421,6 +453,7 @@ export function useBatchDeleteEnclosures() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			toast.success('Enclosures deleted.')
 		}
 	})
 }
@@ -455,8 +488,8 @@ export function useCreateEnclosureNote() {
 			if (enclosureNoteError) throw enclosureNoteError
 		},
 		onSuccess: (_, variables) => {
-			// Invalidate and refetch enclosures orgs
 			queryClient.invalidateQueries({ queryKey: ['enclosureNotes', variables.enclosureId] })
+			toast.success('Note added!')
 		}
 	})
 }
@@ -495,6 +528,7 @@ export function useUpdateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			toast.success('Enclosure updated!')
 		}
 	})
 }
@@ -512,8 +546,8 @@ export function useSuperadminElavate() {
 			if (error) throw error
 		},
 		onSuccess: () => {
-			// Invalidate and refetch superadmin data
 			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			toast.success('User elevated to superadmin!')
 		}
 	})
 }
@@ -573,6 +607,7 @@ export function useApproveOrgRequest() {
 			queryClient.invalidateQueries({ queryKey: ['orgs'] })
 			queryClient.invalidateQueries({ queryKey: ['orgMembers'] })
 			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			toast.success('Organization request approved!')
 		}
 	})
 }
@@ -595,6 +630,7 @@ export function useRejectOrgRequest() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
 			queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+			toast.success('Organization request rejected.')
 		}
 	})
 }
@@ -617,6 +653,7 @@ export function useRetractOrgRequest() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
 			queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+			toast.success('Request cancelled.')
 		}
 	})
 }
@@ -640,6 +677,7 @@ export function useUpdateSpeciesImage() {
 			queryClient.invalidateQueries({ queryKey: ['singleSpecies', variables.species_id] })
 			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
 			queryClient.invalidateQueries({ queryKey: ['species'] })
+			toast.success('Species image updated!')
 		}
 	})
 }
@@ -979,9 +1017,6 @@ export function useCreateTask() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			toast.success('Task created!')
-		},
-		onError: (err) => {
-			toast.error(err instanceof Error ? err.message : 'Failed to create task')
 		}
 	})
 }
@@ -1042,9 +1077,6 @@ export function useCreateSchedule() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			toast.success('Recurring schedule created!')
-		},
-		onError: (err) => {
-			toast.error(err instanceof Error ? err.message : 'Failed to create schedule')
 		}
 	})
 }
@@ -1084,9 +1116,6 @@ export function useSubmitTaskForm() {
 			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
 			toast.success('Task completed!')
-		},
-		onError: (err) => {
-			toast.error(err instanceof Error ? err.message : 'Failed to complete task')
 		}
 	})
 }
@@ -1360,9 +1389,6 @@ export function useToggleScheduleActive() {
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			toast.success(variables.is_active ? 'Schedule activated!' : 'Schedule paused!')
-		},
-		onError: (err) => {
-			toast.error(err instanceof Error ? err.message : 'Failed to update schedule')
 		}
 	})
 }
@@ -1379,9 +1405,6 @@ export function useDeleteSchedule() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			toast.success('Schedule deleted!')
-		},
-		onError: (err) => {
-			toast.error(err instanceof Error ? err.message : 'Failed to delete schedule')
 		}
 	})
 }
@@ -1401,9 +1424,6 @@ export function useReassignSchedule() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			toast.success('Schedule reassigned!')
-		},
-		onError: (err) => {
-			toast.error(err instanceof Error ? err.message : 'Failed to reassign schedule')
 		}
 	})
 }
@@ -1421,9 +1441,6 @@ export function useReassignTask() {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['taskById'] })
 			toast.success('Task reassigned!')
-		},
-		onError: (err) => {
-			toast.error(err instanceof Error ? err.message : 'Failed to reassign task')
 		}
 	})
 }

@@ -32,7 +32,7 @@ export default function PendingInvites() {
 	}
 
 	return (
-		<Collapsible defaultOpen>
+		<Collapsible>
 			<CollapsibleTrigger asChild>
 				<button
 					type='button'

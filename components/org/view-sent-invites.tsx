@@ -53,8 +53,10 @@ export function ViewSentInvites() {
 		retractMutation.mutate({ inviteId }, { onSettled: () => setPendingInviteId(null) })
 	}
 
+	const pendingInvites = visibleInvites?.filter((i) => i.status === 'pending') ?? []
+
 	return (
-		<Collapsible defaultOpen>
+		<Collapsible>
 			<CollapsibleTrigger asChild>
 				<button
 					type='button'
@@ -62,7 +64,10 @@ export function ViewSentInvites() {
 				>
 					<div className='flex items-center gap-3'>
 						<h3 className='text-sm font-medium text-foreground'>Sent Invites</h3>
-						<span className='text-xs text-muted-foreground'>{visibleInvites?.length ?? 0}</span>
+						<span className='text-xs text-muted-foreground'>
+							{visibleInvites?.length ?? 0}
+							{pendingInvites.length !== (visibleInvites?.length ?? 0) && ` (${pendingInvites.length} pending)`}
+						</span>
 					</div>
 					<ChevronDownIcon className='h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180' />
 				</button>
