@@ -57,9 +57,9 @@ export function NavProgressBar() {
 	}
 
 	// Complete whenever the pathname actually changes (normal navigation)
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(() => {
 		complete()
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [pathname])
 
 	// Intercept link clicks across the whole document

@@ -11,17 +11,7 @@ import {
 	useReactTable
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
-import {
-	ArrowUpDown,
-	CalendarIcon,
-	ChevronDown,
-	ChevronLeft,
-	ChevronRight,
-	Eye,
-	LoaderCircle,
-	User,
-	X
-} from 'lucide-react'
+import { ArrowUpDown, CalendarIcon, ChevronDown, ChevronLeft, ChevronRight, Eye, LoaderCircle, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
