@@ -9,7 +9,7 @@ import { useReassignSchedule, useReassignTask } from '@/lib/react-query/mutation
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Check, LoaderCircle, User, UserX } from 'lucide-react'
+import { Check, CircleUserRound, LoaderCircle, User, UserX } from 'lucide-react'
 
 export function ReassignMemberButton({
 	scheduleId,
@@ -109,7 +109,6 @@ export function ReassignMemberButton({
 					</button>
 					{members.map((member) => {
 						const name = member.full_name || `${member.first_name} ${member.last_name}`.trim()
-						const initials = (member.first_name?.[0] ?? member.full_name?.[0] ?? '?').toUpperCase()
 						const isSelected = selectedId === (member.id as string)
 						return (
 							<button
@@ -120,8 +119,8 @@ export function ReassignMemberButton({
 									isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
 								}`}
 							>
-								<div className='h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-semibold'>
-									{initials}
+								<div className='h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0'>
+									<CircleUserRound className='h-4 w-4 text-muted-foreground' />
 								</div>
 								<div className='flex flex-col min-w-0 flex-1'>
 									<span className={`font-medium truncate ${isSelected ? 'text-primary' : 'text-foreground'}`}>
