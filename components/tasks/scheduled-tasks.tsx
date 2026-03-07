@@ -121,11 +121,6 @@ export function ScheduledTasksTable() {
 	const { data: members } = useOrgMemberProfiles(orgId as UUID)
 	const { data: orgSpecies } = useOrgSpecies(orgId as UUID)
 
-	console.log('Schedules:', schedules) // Debugging log
-	console.log('Enclosures:', enclosures) // Debugging log
-	console.log('Members:', members) // Debugging log
-	console.log('Org Species:', orgSpecies) // Debugging log
-
 	const toggleActive = useToggleScheduleActive()
 	const isLoading = enclosuresLoading || schedulesLoading
 
