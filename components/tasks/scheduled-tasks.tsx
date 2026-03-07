@@ -276,9 +276,9 @@ export function ScheduledTasksTable() {
 												{/* Schedule rule */}
 												<span className='flex items-center gap-1'>
 													{schedule.schedule_type === 'fixed_calendar' ? (
-														<Calendar className='h-3 w-3' />
+														<Calendar className='h-3 w-3 hidden sm:inline-block' />
 													) : (
-														<Repeat className='h-3 w-3' />
+														<Repeat className='h-3 w-3 hidden sm:inline-block' />
 													)}
 													<span className='capitalize'>
 														{formatScheduleRule(schedule.schedule_type, schedule.schedule_rule)}
@@ -290,7 +290,7 @@ export function ScheduledTasksTable() {
 												<span className='text-border'>/</span>
 												{/* Window */}
 												<span className='flex items-center gap-1'>
-													<Clock className='h-3 w-3' />
+													<Clock className='h-3 w-3 hidden sm:inline-block' />
 													<span>{schedule.time_window ?? 'Any'} window</span>
 												</span>
 												{/* End date */}
