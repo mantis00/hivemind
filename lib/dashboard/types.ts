@@ -30,6 +30,11 @@ export type RecentActivityItem = {
 	href: string
 }
 
+export type DashboardWarning = {
+	stage: string
+	message: string
+}
+
 export type DashboardData = {
 	generatedAt: string
 	timeZone: string
@@ -37,4 +42,5 @@ export type DashboardData = {
 	atRiskEnclosures: AtRiskEnclosureSummary[]
 	upcomingSchedule: UpcomingScheduleItem[]
 	recentActivity: RecentActivityItem[]
+	warnings: DashboardWarning[]
 }

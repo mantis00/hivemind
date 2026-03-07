@@ -28,6 +28,7 @@ function formatDateTime(value: string | null, timeZone: string) {
 }
 
 export function UpcomingSchedulePanel({ orgId, items, timeZone }: UpcomingSchedulePanelProps) {
+	// TODO: repurpose this panel to display the Kanban board's "To Do" section instead of recurring schedule rows.
 	return (
 		<Card>
 			<CardHeader>

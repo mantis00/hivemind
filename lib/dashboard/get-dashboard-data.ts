@@ -1,27 +1,40 @@
 import { createClient } from '@/lib/supabase/server'
-import type { DashboardData } from '@/lib/dashboard/types'
+import type { DashboardData, DashboardWarning, RecentActivityItem } from '@/lib/dashboard/types'
 import type { PostgrestError } from '@supabase/supabase-js'
 
 type EnclosureRow = {
 	id: string
 	name: string | null
+	created_at: string | null
 }
 
 type TaskRow = {
 	id: string
 	enclosure_id: string | null
+	created_at: string | null
 	due_date: string | null
 	priority: string | number | null
 	status: string | null
+	name: string | null
+	description: string | null
 	completed_time: string | null
 }
 
 type EnclosureScheduleRow = Record<string, unknown>
+type TankNoteRow = {
+	id: string
+	created_at: string | null
+	enclosure_id: string | null
+	note_text: string | null
+}
 
 const OPEN_TASK_STATUSES = new Set(['pending', 'in_progress'])
 const CLOSED_TASK_STATUS = 'completed'
 const DEFAULT_TIME_ZONE = 'UTC'
 const ENCLOSURE_FILTER_CHUNK_SIZE = 100
+const MAX_RECENT_ACTIVITY_ITEMS = 10
+const MAX_NOTE_ACTIVITY_ITEMS = 6
+const MAX_NOTE_QUERY_ENCLOSURES = 100
 type DashboardClient = Awaited<ReturnType<typeof createClient>>
 
 function isTaskOpen(task: TaskRow) {
@@ -75,7 +88,8 @@ function createEmptyDashboardData(): DashboardData {
 		},
 		atRiskEnclosures: [],
 		upcomingSchedule: [],
-		recentActivity: []
+		recentActivity: [],
+		warnings: []
 	}
 }
 
@@ -169,6 +183,39 @@ function createDashboardQueryError(
 	return new Error(`Dashboard query failed: ${JSON.stringify(errorPayload)}`)
 }
 
+function addWarning(warnings: DashboardWarning[], stage: string, message: string) {
+	warnings.push({ stage, message })
+}
+
+function compareIsoDatesDesc(a: string, b: string) {
+	return new Date(b).getTime() - new Date(a).getTime()
+}
+
+function getTaskTitle(task: TaskRow) {
+	if (task.name && task.name.trim().length > 0) {
+		return task.name.trim()
+	}
+
+	if (task.description && task.description.trim().length > 0) {
+		return task.description.trim()
+	}
+
+	return 'Task'
+}
+
+function toNoteSummary(noteText: string | null) {
+	if (!noteText || noteText.trim().length === 0) {
+		return 'Note added'
+	}
+
+	const trimmed = noteText.trim()
+	if (trimmed.length <= 50) {
+		return `Note: ${trimmed}`
+	}
+
+	return `Note: ${trimmed.slice(0, 47)}...`
+}
+
 function createChunks(values: string[], chunkSize: number) {
 	const chunks: string[][] = []
 
@@ -197,7 +244,7 @@ async function getOrgEnclosureSnapshot(supabase: DashboardClient, orgId: string)
 
 	const { data: enclosureRows, error: enclosuresError } = (await supabase
 		.from('enclosures')
-		.select('id, name')
+		.select('id, name, created_at')
 		.eq('org_id', orgId)
 		.order('current_count', { ascending: true })) as {
 		data: EnclosureRow[] | null
@@ -217,6 +264,7 @@ async function getOrgEnclosureSnapshot(supabase: DashboardClient, orgId: string)
 export async function getDashboardData(orgId: string): Promise<DashboardData> {
 	const supabase = await createClient()
 	const dashboardData = createEmptyDashboardData()
+	const warnings = dashboardData.warnings
 	// TODO: switch this to org-local timezone once org timezone is stored in the database.
 	const serverTimeZone = getServerTimeZone()
 	dashboardData.timeZone = serverTimeZone
@@ -244,19 +292,19 @@ export async function getDashboardData(orgId: string): Promise<DashboardData> {
 		const enclosureChunk = enclosureIdChunks[chunkIndex]
 		const { data: chunkTaskRows, error: tasksError } = (await supabase
 			.from('tasks')
-			.select('id, enclosure_id, due_date, priority, status, completed_time')
+			.select('id, enclosure_id, created_at, due_date, priority, status, name, description, completed_time')
 			.in('enclosure_id', enclosureChunk)) as {
 			data: TaskRow[] | null
 			error: PostgrestError | null
 		}
 
 		if (tasksError) {
-			throw createDashboardQueryError('tasks.select', tasksError, {
-				orgId,
-				enclosureCount: enclosureIds.length,
-				chunkIndex,
-				chunkSize: enclosureChunk.length
-			})
+			addWarning(
+				warnings,
+				'tasks.select',
+				`Task metrics may be incomplete (${tasksError.message ?? 'Unknown query error'}).`
+			)
+			break
 		}
 
 		if (chunkTaskRows) {
@@ -352,15 +400,20 @@ export async function getDashboardData(orgId: string): Promise<DashboardData> {
 			.in('enclosure_id', enclosureChunk)
 
 		if (scheduleError && !isMissingRelationOrColumn(scheduleError)) {
-			throw createDashboardQueryError('enclosure_schedules.select', scheduleError, {
-				orgId,
-				enclosureCount: enclosureIds.length,
-				chunkIndex,
-				chunkSize: enclosureChunk.length
-			})
+			addWarning(
+				warnings,
+				'enclosure_schedules.select',
+				`Upcoming schedule may be incomplete (${scheduleError.message ?? 'Unknown query error'}).`
+			)
+			break
 		}
 
 		if (scheduleError && isMissingRelationOrColumn(scheduleError)) {
+			addWarning(
+				warnings,
+				'enclosure_schedules.schema',
+				'Schedule data unavailable until missing table/columns are added.'
+			)
 			break
 		}
 
@@ -370,7 +423,8 @@ export async function getDashboardData(orgId: string): Promise<DashboardData> {
 	}
 
 	if (scheduleRows.length > 0) {
-		// TODO: replace last_run_at usage with an explicit next_run_at column once backend adds it.
+		// TODO: replace this schedule-based feed with Kanban "To Do" lane data once the Kanban tasks page is implemented.
+		// TODO: dashboard upcoming panel should mirror the Kanban board's current to-do section.
 		dashboardData.upcomingSchedule = scheduleRows
 			.filter((row) => getBooleanField(row, ['is_active', 'active'], true))
 			.map((row, index) => {
@@ -397,6 +451,106 @@ export async function getDashboardData(orgId: string): Promise<DashboardData> {
 			.sort((a, b) => compareNullableIsoDatesAsc(b.lastRunAt, a.lastRunAt))
 			.slice(0, 8)
 	}
+
+	const noteRows: TankNoteRow[] = []
+	if (enclosureIds.length > 0 && enclosureIds.length <= MAX_NOTE_QUERY_ENCLOSURES) {
+		const { data: rawNoteRows, error: noteError } = (await supabase
+			.from('tank_notes')
+			.select('id, created_at, enclosure_id, note_text')
+			.in('enclosure_id', enclosureIds)
+			.order('created_at', { ascending: false })
+			.limit(MAX_NOTE_ACTIVITY_ITEMS)) as {
+			data: TankNoteRow[] | null
+			error: PostgrestError | null
+		}
+
+		if (noteError && !isMissingRelationOrColumn(noteError)) {
+			addWarning(
+				warnings,
+				'tank_notes.select',
+				`Recent notes unavailable (${noteError.message ?? 'Unknown query error'}).`
+			)
+		}
+
+		if (noteError && isMissingRelationOrColumn(noteError)) {
+			addWarning(warnings, 'tank_notes.schema', 'Recent notes unavailable until tank_notes schema is present.')
+		}
+
+		if (!noteError && rawNoteRows) {
+			noteRows.push(...rawNoteRows)
+		}
+	} else if (enclosureIds.length > MAX_NOTE_QUERY_ENCLOSURES) {
+		addWarning(
+			warnings,
+			'tank_notes.select',
+			'Recent notes query skipped for large orgs to reduce database usage (TODO: replace with server-side org activity feed).'
+		)
+	}
+
+	const recentActivityCandidates: RecentActivityItem[] = []
+
+	for (const task of taskRows) {
+		const enclosureName = task.enclosure_id ? (enclosureNameById.get(task.enclosure_id) ?? 'Enclosure') : 'Enclosure'
+		const taskTitle = getTaskTitle(task)
+		const href = task.enclosure_id
+			? `/protected/orgs/${orgId}/enclosures/${task.enclosure_id}`
+			: `/protected/orgs/${orgId}`
+
+		if (isValidDate(task.completed_time)) {
+			// TODO: completion activity should include overdue/urgent state so completion history reflects those task conditions.
+			recentActivityCandidates.push({
+				id: `task-completed-${task.id}`,
+				type: 'task_completed',
+				label: `${taskTitle} completed in ${enclosureName}`,
+				occurredAt: task.completed_time!,
+				href
+			})
+		}
+
+		if (isValidDate(task.created_at)) {
+			recentActivityCandidates.push({
+				id: `task-created-${task.id}`,
+				type: 'task_created',
+				label: `${taskTitle} created for ${enclosureName}`,
+				occurredAt: task.created_at!,
+				href
+			})
+		}
+	}
+
+	for (const enclosure of enclosureRows) {
+		if (!isValidDate(enclosure.created_at)) {
+			continue
+		}
+
+		const enclosureName = enclosure.name ?? enclosure.id
+		recentActivityCandidates.push({
+			id: `enclosure-created-${enclosure.id}`,
+			type: 'enclosure_created',
+			label: `${enclosureName} enclosure created`,
+			occurredAt: enclosure.created_at!,
+			href: `/protected/orgs/${orgId}/enclosures/${enclosure.id}`
+		})
+	}
+
+	for (const note of noteRows) {
+		if (!note.enclosure_id || !isValidDate(note.created_at)) {
+			continue
+		}
+
+		const enclosureName = enclosureNameById.get(note.enclosure_id) ?? note.enclosure_id
+		recentActivityCandidates.push({
+			id: `note-added-${note.id}`,
+			type: 'note_added',
+			label: `${toNoteSummary(note.note_text)} (${enclosureName})`,
+			occurredAt: note.created_at!,
+			href: `/protected/orgs/${orgId}/enclosures/${note.enclosure_id}`
+		})
+	}
+
+	dashboardData.recentActivity = recentActivityCandidates
+		.sort((a, b) => compareIsoDatesDesc(a.occurredAt, b.occurredAt))
+		.slice(0, MAX_RECENT_ACTIVITY_ITEMS)
 
 	dashboardData.generatedAt = now.toISOString()
 
