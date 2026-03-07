@@ -1,7 +1,6 @@
 'use client'
 
 import { DeleteOrgButton } from '@/components/org/delete-org-button'
-import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useIsOwnerOrSuperadmin } from '@/lib/react-query/queries'
 import { UUID } from 'crypto'
 import { useParams } from 'next/navigation'

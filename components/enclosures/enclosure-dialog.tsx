@@ -5,7 +5,6 @@ import { MapPin, Calendar, Users, ClipboardList, StickyNote, LoaderCircle } from
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { Enclosure, OrgSpecies } from '@/lib/react-query/queries'
 import { useEnclosureNotes } from '@/lib/react-query/queries'
 import { useRouter } from 'next/navigation'

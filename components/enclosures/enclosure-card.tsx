@@ -1,9 +1,8 @@
 'use client'
 import { format } from 'date-fns'
-import { useState } from 'react'
 
 import { Calendar, MapPin, Users } from 'lucide-react'
-import { type Enclosure, type OrgSpecies } from '@/lib/react-query/queries'
+import { type Enclosure } from '@/lib/react-query/queries'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '../ui/badge'
@@ -11,14 +10,12 @@ import { Checkbox } from '../ui/checkbox'
 
 export function EnclosureCard({
 	enclosure,
-	species,
 	onClick,
 	selectable = false,
 	selected = false,
 	onSelectChange
 }: {
 	enclosure: Enclosure
-	species: OrgSpecies
 	onClick: () => void
 	selectable?: boolean
 	selected?: boolean

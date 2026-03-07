@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 import { useAllSpecies, type Species } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
@@ -20,15 +20,18 @@ export function SpeciesAdminTable() {
 	const [search, setSearch] = useState('')
 	const [searchCount, setSearchCount] = useState(0)
 	const [displayedSpecies, setDisplayedSpecies] = useState<Species[]>([])
+	const [prevAllSpecies, setPrevAllSpecies] = useState(allSpecies)
 	const [sortKey, setSortKey] = useState<string>('')
 	const [sortUp, setSortUp] = useState(true)
 	const [isSorted, setIsSorted] = useState(false)
 
-	useEffect(() => {
+	// Sync displayedSpecies when query data arrives/changes ("setState during render" pattern)
+	if (prevAllSpecies !== allSpecies) {
+		setPrevAllSpecies(allSpecies)
 		if (allSpecies && search.trim() === '') {
 			setDisplayedSpecies(allSpecies)
 		}
-	}, [allSpecies, search])
+	}
 
 	const applySortToList = (list: Species[], key: string, up: boolean): Species[] => {
 		if (!key) return list

@@ -1,6 +1,7 @@
 'use client'
 import { type OrgSpecies, type Enclosure, useOrgEnclosuresForSpecies } from '@/lib/react-query/queries'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
+import Image from 'next/image'
 import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -19,7 +20,6 @@ import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
-	const router = useRouter()
 	const isMobile = useIsMobile()
 
 	const { data: enclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
@@ -98,9 +98,11 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 									}`}
 								/>
 								{species.species.picture_url ? (
-									<img
+									<Image
 										src={species.species.picture_url}
-										alt={species.custom_common_name}
+										alt={species.custom_common_name ?? ''}
+										width={40}
+										height={40}
 										className='h-10 w-10 rounded-md object-cover shrink-0 border'
 									/>
 								) : (
@@ -175,7 +177,6 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 											<div className='p-1 pb-0 last:pb-2'>
 												<EnclosureCard
 													enclosure={enclosure}
-													species={species}
 													onClick={() => handleEnclosureClick(enclosure)}
 													selectable={selectMode}
 													selected={selectedIds.has(enclosure.id)}
@@ -213,9 +214,11 @@ export default function SpeciesRow({ species }: { species: OrgSpecies }) {
 			>
 				<div className='flex flex-col gap-4'>
 					{species.species.picture_url ? (
-						<img
+						<Image
 							src={species.species.picture_url}
-							alt={species.custom_common_name}
+							alt={species.custom_common_name ?? ''}
+							width={600}
+							height={192}
 							className='rounded-md max-h-48 w-full object-contain mx-auto'
 						/>
 					) : (

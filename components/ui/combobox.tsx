@@ -233,7 +233,7 @@ function ComboboxChip({
 	)
 }
 
-function ComboboxChipsInput({ className, children, ...props }: ComboboxPrimitive.Input.Props) {
+function ComboboxChipsInput({ className, ...props }: Omit<ComboboxPrimitive.Input.Props, 'children'>) {
 	return (
 		<ComboboxPrimitive.Input
 			data-slot='combobox-chip-input'

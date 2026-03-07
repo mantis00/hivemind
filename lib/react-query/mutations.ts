@@ -382,7 +382,7 @@ export function useBatchDeleteEnclosures() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ ids, orgId }: { ids: UUID[]; orgId: UUID }) => {
+		mutationFn: async ({ ids }: { ids: UUID[]; orgId: UUID }) => {
 			const supabase = createClient()
 
 			// Delete tasks for all enclosures
@@ -433,7 +433,7 @@ export function useCreateEnclosureNote() {
 
 			if (enclosureNoteError) throw enclosureNoteError
 		},
-		onSuccess: (data, variables) => {
+		onSuccess: (_, variables) => {
 			// Invalidate and refetch enclosures orgs
 			queryClient.invalidateQueries({ queryKey: ['enclosureNotes', variables.enclosureId] })
 		}
@@ -445,7 +445,6 @@ export function useUpdateEnclosure() {
 
 	return useMutation({
 		mutationFn: async ({
-			orgId,
 			enclosure_id,
 			name,
 			species_id,
@@ -491,7 +490,7 @@ export function useSuperadminElavate() {
 
 			if (error) throw error
 		},
-		onSuccess: (data, variables) => {
+		onSuccess: () => {
 			// Invalidate and refetch superadmin data
 			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
 		}
@@ -779,7 +778,6 @@ export function useUpdateTaskTemplate() {
 	return useMutation({
 		mutationFn: async ({
 			templateId,
-			speciesId,
 			type,
 			description,
 			fields
@@ -957,7 +955,7 @@ export function useCreateTask() {
 			if (error) throw error
 			return data
 		},
-		onSuccess: (_, variables) => {
+		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			toast.success('Task created!')
 		},

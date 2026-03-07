@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { InputGroup, InputGroupAddon, InputGroupButton } from '../ui/input-group'
 import TextareaAutosize from 'react-textarea-autosize'
 import { useCreateEnclosureNote } from '@/lib/react-query/mutations'
@@ -11,14 +11,14 @@ export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID
 	const [noteText, setNoteText] = useState('')
 	const createEnclosureNoteMutation = useCreateEnclosureNote()
 	const [user, setUser] = useState<User | null>(null)
-	const supabase = createClient()
+	const supabaseRef = useRef(createClient())
 	const [loading, setLoading] = useState(false)
 
 	useEffect(() => {
 		const fetchUser = async () => {
 			const {
 				data: { user }
-			} = await supabase.auth.getUser()
+			} = await supabaseRef.current.auth.getUser()
 			setUser(user)
 			setLoading(false)
 		}

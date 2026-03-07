@@ -13,15 +13,17 @@ import getAccessLevelName from '@/context/access-levels'
 // Defined outside the component so the references are stable across renders
 const tableComponents: TableComponents<AllProfile> = {
 	Table: ({ style, ...props }) => <Table style={style} {...props} />,
-	TableHead: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>((props, ref) => (
-		<TableHeader ref={ref} {...props} />
-	)),
-	TableRow: ({ item: _item, ...props }: { item: AllProfile } & React.HTMLAttributes<HTMLTableRowElement>) => (
-		<TableRow {...props} />
+	TableHead: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
+		function TableHeadWrapper(props, ref) {
+			return <TableHeader ref={ref} {...props} />
+		}
 	),
-	TableBody: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>((props, ref) => (
-		<TableBody ref={ref} {...props} />
-	))
+	TableRow: (props: { item: AllProfile } & React.HTMLAttributes<HTMLTableRowElement>) => <TableRow {...props} />,
+	TableBody: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
+		function TableBodyWrapper(props, ref) {
+			return <TableBody ref={ref} {...props} />
+		}
+	)
 }
 
 const HEADER_HEIGHT = 40

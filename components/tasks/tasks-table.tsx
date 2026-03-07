@@ -268,6 +268,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		Math.ceil((measuredRowHeight ?? ESTIMATED_ROW_HEIGHT) * Math.min(displayRowCount, TARGET_VISIBLE_ROWS)) + 49 // +49 for header row
 
 	// Measure a single row's height and refine the table height
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	React.useLayoutEffect(() => {
 		if (rowRef.current && !measuredRef.current) {
 			const rowHeight = rowRef.current.getBoundingClientRect().height

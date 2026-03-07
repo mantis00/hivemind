@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { LogoutButton } from '@/components/account/logout-button'
-import { useEffect, useState } from 'react'
+import { useIsMounted } from '@/hooks/use-is-mounted'
 import InstallAppButton from '@/components/pwa/install-app-button'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
@@ -14,12 +14,8 @@ function isOrgRoute(pathname: string | null) {
 
 export function ProtectedNavActions() {
 	const pathname = usePathname()
-	const [isMounted, setIsMounted] = useState(false)
+	const isMounted = useIsMounted()
 	const router = useRouter()
-
-	useEffect(() => {
-		setIsMounted(true)
-	}, [])
 
 	if (!isMounted) {
 		return null

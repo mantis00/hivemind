@@ -1,10 +1,10 @@
-name: Format Check
+name: Lint Check
 
 on:
   push:
 
 jobs:
-  format:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,5 +20,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Format Check
-        run: npm run format:check
+      - name: Run ESLint
+        run: npm run lint -- --max-warnings=0
