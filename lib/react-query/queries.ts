@@ -96,6 +96,10 @@ export type EnclosureNote = {
 	enclosure_id: UUID
 	user_id: UUID
 	note_text: string
+	user?: {
+		first_name: string
+		last_name: string
+	}
 }
 
 export type AllProfile = {
@@ -192,6 +196,19 @@ export type TaskTemplate = {
 	description: string | null
 	created_at: string
 	question_templates?: QuestionTemplate[]
+}
+
+export type SpeciesRequest = {
+	id: UUID
+	created_at: string
+	requester_id: UUID
+	org_id: UUID
+	scientific_name: string
+	common_name: string
+	reviewer_id?: UUID
+	care_instructions: string
+	status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+	reviewed_at?: string
 }
 
 export function useUserOrgs(userId: string) {
@@ -450,13 +467,26 @@ export function useEnclosureNotes(enclosureId: UUID) {
 		queryKey: ['enclosureNotes', enclosureId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
+			const { data: notes, error } = (await supabase
 				.from('tank_notes')
-				.select('id, user_id, note_text, created_at')
-				.eq('enclosure_id', enclosureId)) as { data: EnclosureNote[] | null; error: PostgrestError | null }
+				.select('id, user_id, note_text, created_at, enclosure_id')
+				.eq('enclosure_id', enclosureId)
+				.order('created_at', { ascending: false })) as { data: EnclosureNote[] | null; error: PostgrestError | null }
 			if (error) throw error
+			if (!notes || notes.length === 0) return notes
 
-			return data
+			const userIds = [...new Set(notes.map((n) => n.user_id).filter(Boolean))]
+			const { data: profiles, error: profilesError } = await supabase
+				.from('profiles')
+				.select('id, first_name, last_name')
+				.in('id', userIds)
+			if (profilesError) throw profilesError
+
+			const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? [])
+			return notes.map((note) => ({
+				...note,
+				user: profileMap.get(note.user_id) ?? undefined
+			})) as EnclosureNote[]
 		},
 		enabled: !!enclosureId
 	})
@@ -748,5 +778,40 @@ export function useTaskTemplateById(templateId: UUID) {
 			return data as TaskTemplate
 		},
 		enabled: !!templateId
+	})
+}
+
+export function useOrgSpecies(org_id: UUID) {
+	return useQuery({
+		queryKey: ['orgSpecies', org_id],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('org_species')
+				.select('*, species(scientific_name, picture_url)')
+				.eq('org_id', org_id)
+				.order('custom_common_name', { ascending: true })) as {
+				data: OrgSpecies[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+			return data
+		}
+	})
+}
+
+export function useAllSpeciesRequests() {
+	return useQuery({
+		queryKey: ['allSpeciesRequests'],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('species_requests')
+				.select('*')
+				.order('created_at', { ascending: false })) as { data: SpeciesRequest[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data
+		}
 	})
 }

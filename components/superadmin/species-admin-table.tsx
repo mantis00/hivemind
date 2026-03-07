@@ -189,7 +189,7 @@ export function SpeciesAdminTable() {
 						data={displayedSpecies}
 						itemContent={(_, species) => (
 							<div className='p-2 pb-0 last:pb-2'>
-								<SpeciesAdminRow species={species} />
+								<SpeciesAdminRow key={species.id} species={species} />
 							</div>
 						)}
 					/>

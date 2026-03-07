@@ -138,12 +138,12 @@ export function CreateSpeciesButton() {
 					</div>
 				</div>
 
-				<div className='flex gap-2 justify-end'>
-					<Button type='button' variant='outline' onClick={() => handleOpenChange(false)} disabled={isPending}>
-						Cancel
-					</Button>
+				<div className='flex flex-col gap-2 justify-end'>
 					<Button type='submit' disabled={isPending}>
 						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Create Species'}
+					</Button>
+					<Button type='button' variant='outline' onClick={() => handleOpenChange(false)} disabled={isPending}>
+						Cancel
 					</Button>
 				</div>
 			</form>

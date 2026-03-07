@@ -39,7 +39,7 @@ const priorityConfig: Record<string, { color: string }> = {
 
 const statusConfig: Record<string, { label: string; color: string }> = {
 	pending: { label: 'Pending', color: 'bg-gray-100 text-gray-800' },
-	'in-progress': { label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
+	in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
 	completed: { label: 'Completed', color: 'bg-green-100 text-green-800' }
 }
 
@@ -141,8 +141,10 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void): ColumnDe
 	return isMobile ? all.filter((col) => col.id !== 'description' && col.id !== 'actions') : all
 }
 
-const TARGET_VISIBLE_ROWS_MOBILE = 15
-const TARGET_VISIBLE_ROWS_DESKTOP = 20
+const MAX_TABLE_HEIGHT_DESKTOP = 680
+const MAX_TABLE_HEIGHT_MOBILE = 560
+const TARGET_VISIBLE_ROWS_DESKTOP = 8
+const TARGET_VISIBLE_ROWS_MOBILE = 7
 
 export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgId: UUID }) {
 	const isMobile = useIsMobile()
@@ -152,8 +154,10 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	const [globalFilter, setGlobalFilter] = React.useState('')
 	const [priorityFilter, setPriorityFilter] = React.useState<string[]>([])
 	const [statusFilter, setStatusFilter] = React.useState<string[]>([])
+	const MAX_TABLE_HEIGHT = isMobile ? MAX_TABLE_HEIGHT_MOBILE : MAX_TABLE_HEIGHT_DESKTOP
 	const TARGET_VISIBLE_ROWS = isMobile ? TARGET_VISIBLE_ROWS_MOBILE : TARGET_VISIBLE_ROWS_DESKTOP
-	const ESTIMATED_ROW_HEIGHT = isMobile ? 73 : 46
+	const HEADER_HEIGHT = 49
+	const ESTIMATED_ROW_HEIGHT = isMobile ? 72 : 65
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
 	const [isMounted, setIsMounted] = React.useState(false)
 
@@ -166,8 +170,6 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	// Stable order map: task id → position. Only updated when the set of IDs changes,
 	// so status mutations (start/complete) don't reorder rows.
 	const stableOrderRef = React.useRef<Map<string, number>>(new Map())
-	// Last known non-zero row count — prevents tableHeight from flashing to ~49px
-	const stableRowCountRef = React.useRef(0)
 
 	const hasActiveFilters = priorityFilter.length > 0 || statusFilter.length > 0 || globalFilter !== ''
 
@@ -262,10 +264,10 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 
 	const { rows } = table.getRowModel()
 
-	if (rows.length > 0) stableRowCountRef.current = rows.length
-	const displayRowCount = rows.length > 0 ? rows.length : stableRowCountRef.current
-	const tableHeight =
-		Math.ceil((measuredRowHeight ?? ESTIMATED_ROW_HEIGHT) * Math.min(displayRowCount, TARGET_VISIBLE_ROWS)) + 49 // +49 for header row
+	const rowH = measuredRowHeight ?? ESTIMATED_ROW_HEIGHT
+	const naturalHeight = rows.length * rowH + HEADER_HEIGHT
+	const cappedHeight = Math.min(TARGET_VISIBLE_ROWS * rowH + HEADER_HEIGHT, MAX_TABLE_HEIGHT)
+	const tableHeight = rows.length <= TARGET_VISIBLE_ROWS ? naturalHeight : cappedHeight
 
 	// Measure a single row's height and refine the table height
 	// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -279,9 +281,11 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		}
 	})
 
-	// Reset stable order when the day changes (different task set)
+	// Reset stable order + measurement when the day changes (different task set)
 	React.useEffect(() => {
 		stableOrderRef.current = new Map()
+		measuredRef.current = false
+		setMeasuredRowHeight(null)
 	}, [dayOffset])
 
 	// Reset measurement when sort order changes so height recomputes
@@ -291,7 +295,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 
 	if (!isMounted || tasksLoading) {
 		return (
-			<div className='flex items-center justify-center h-48 w-full'>
+			<div className='flex flex-col items-center justify-center h-48 w-full gap-2'>
 				<LoaderCircle className='h-8 w-8 animate-spin text-muted-foreground' />
 			</div>
 		)
@@ -368,7 +372,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='end'>
-							{['pending', 'in-progress', 'completed'].map((status) => (
+							{['pending', 'in_progress', 'completed'].map((status) => (
 								<DropdownMenuCheckboxItem
 									key={status}
 									checked={statusFilter.includes(status)}
@@ -406,10 +410,63 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 					<div className='flex items-center justify-center h-24 text-muted-foreground text-sm'>
 						No tasks for {getDayLabel(dayOffset).toLowerCase()}.
 					</div>
+				) : rows.length <= TARGET_VISIBLE_ROWS ? (
+					// Plain table for small row counts — no fixed height, no scrollbar
+					<table
+						style={{ width: '100%', borderCollapse: 'collapse', ...(isMobile ? { tableLayout: 'fixed' } : {}) }}
+						className='w-full caption-bottom text-sm'
+					>
+						<thead className='[&_tr]:border-b'>
+							{table.getHeaderGroups().map((headerGroup) => (
+								<tr key={headerGroup.id} className='border-b bg-card shadow-sm'>
+									{headerGroup.headers.map((header) => (
+										<th
+											key={header.id}
+											style={
+												isMobile && MOBILE_COL_WIDTHS[header.id]
+													? { width: MOBILE_COL_WIDTHS[header.id], minWidth: MOBILE_COL_WIDTHS[header.id] }
+													: undefined
+											}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0`}
+										>
+											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+										</th>
+									))}
+								</tr>
+							))}
+						</thead>
+						<tbody className='[&_tr:last-child]:border-0'>
+							{rows.map((row, index) => (
+								<tr
+									key={row.id}
+									ref={index === 0 ? rowRef : undefined}
+									className={`border-b transition-colors hover:bg-muted/50 ${isMobile ? 'cursor-pointer active:bg-muted' : ''}`}
+									onClick={() => {
+										if (isMobile) handleView(row.original.id as UUID)
+									}}
+								>
+									{row.getVisibleCells().map((cell) => (
+										<td
+											key={cell.id}
+											style={
+												isMobile && MOBILE_COL_WIDTHS[cell.column.id]
+													? { width: MOBILE_COL_WIDTHS[cell.column.id], minWidth: MOBILE_COL_WIDTHS[cell.column.id] }
+													: undefined
+											}
+											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0`}
+										>
+											{flexRender(cell.column.columnDef.cell, cell.getContext())}
+										</td>
+									))}
+								</tr>
+							))}
+						</tbody>
+					</table>
 				) : (
 					<TableVirtuoso
 						style={{ height: tableHeight, overflowX: 'hidden' }}
 						totalCount={rows.length}
+						className='scrollbar-no-track'
 						components={{
 							Table: ({ style, ...props }) => (
 								<table
