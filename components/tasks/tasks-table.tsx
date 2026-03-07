@@ -72,7 +72,7 @@ function getColumns(
 				<Button
 					variant='ghost'
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='h-8 p-0'
+					className='h-8 p-0 font-bold'
 				>
 					Task Name
 					<ArrowUpDown className='ml-2 h-4 w-4' />
@@ -83,7 +83,7 @@ function getColumns(
 		{
 			id: 'description',
 			accessorKey: 'description',
-			header: 'Description',
+			header: () => <span className='font-bold'>Description</span>,
 			cell: ({ row }) => (
 				<div className='max-w-xs truncate text-sm text-muted-foreground'>{row.getValue('description')}</div>
 			)
@@ -94,7 +94,7 @@ function getColumns(
 				<Button
 					variant='ghost'
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='h-8 p-0'
+					className='h-8 p-0 font-bold'
 				>
 					Priority
 					<ArrowUpDown className='ml-2 h-4 w-4' />
@@ -115,7 +115,7 @@ function getColumns(
 				<Button
 					variant='ghost'
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='h-8 p-0'
+					className='h-8 p-0 font-bold'
 				>
 					Status
 					<ArrowUpDown className='ml-2 h-4 w-4' />
@@ -138,31 +138,6 @@ function getColumns(
 				const status = row.original.status
 				const isCompleted = status === 'completed'
 				const isInProgress = status === 'in_progress'
-				return (
-					<div className='flex items-center gap-1'>
-						<Button
-							variant='ghost'
-							size='icon'
-							className='h-10 w-10 text-muted-foreground hover:text-blue-500'
-							disabled={isCompleted || isInProgress}
-							title='Start task'
-							onClick={() => onStart(row.original.id as UUID)}
-						>
-							<PlayCircle className='h-6 w-6' />
-						</Button>
-						{isInProgress && (
-							<Button
-								variant='ghost'
-								size='icon'
-								className='h-10 w-10 text-muted-foreground hover:text-green-500'
-								title='Mark complete'
-								onClick={() => onComplete(row.original.id as UUID)}
-							>
-								<CheckCircle2 className='h-8 w-8' />
-							</Button>
-						)}
-					</div>
-				)
 			}
 		}
 	]
@@ -508,12 +483,10 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 										{...props}
 										ref={index === 0 ? rowRef : undefined}
 										style={style}
-										className={`border-b transition-colors hover:bg-muted/80 ${isEven ? 'bg-background' : 'bg-muted/50'} ${isMobile ? 'cursor-pointer active:bg-muted' : ''}`}
+										className={`border-b transition-colors hover:bg-muted/100 cursor-pointer active:bg-muted ${isEven ? 'bg-background' : 'bg-muted/50'}`}
 										onClick={() => {
-											if (isMobile) {
-												setSelectedTask(row.original)
-												setTaskDrawerOpen(true)
-											}
+											setSelectedTask(row.original)
+											setTaskDrawerOpen(true)
 										}}
 									>
 										{row.getVisibleCells().map((cell) => (
@@ -538,7 +511,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 						}}
 						fixedHeaderContent={() =>
 							table.getHeaderGroups().map((headerGroup) => (
-								<tr key={headerGroup.id} className='border-b bg-card shadow-sm'>
+								<tr key={headerGroup.id} className='border-b bg-muted shadow-sm'>
 									{headerGroup.headers.map((header) => (
 										<th
 											key={header.id}
