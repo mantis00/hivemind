@@ -8,6 +8,7 @@ import { DayButton, DayPicker, getDefaultClassNames } from 'react-day-picker'
 
 import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 function Calendar({
 	className,
@@ -22,6 +23,11 @@ function Calendar({
 	buttonVariant?: React.ComponentProps<typeof Button>['variant']
 }) {
 	const defaultClassNames = getDefaultClassNames()
+	const isMobile = useIsMobile()
+	const dayPickerProps = {
+		...props,
+		mode: isMobile ? 'range' : props.mode
+	} as React.ComponentProps<typeof DayPicker>
 
 	return (
 		<DayPicker
@@ -136,7 +142,7 @@ function Calendar({
 				},
 				...components
 			}}
-			{...props}
+			{...dayPickerProps}
 		/>
 	)
 }
