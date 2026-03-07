@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { useOrgMembers, useMemberProfiles, useIsOwnerOrSuperadmin } from '@/lib/react-query/queries'
 import getAccessLevelName from '@/context/access-levels'
-import { Calendar, CircleUserRound, LoaderCircle, Mail } from 'lucide-react'
+import { Calendar, CircleUserRound, LoaderCircle, Mail, MoreVertical, UserRoundX } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import { KickMemberButton } from './kick-member-button'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
@@ -10,6 +11,8 @@ import { formatDate } from '@/context/format-date'
 import { UUID } from 'crypto'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 export function MemberRow() {
 	const params = useParams()
@@ -19,6 +22,7 @@ export function MemberRow() {
 	const { data: memberProfiles, isLoading: profilesLoading } = useMemberProfiles(userIds)
 	const { data: currentUser } = useCurrentClientUser()
 	const isOwnerOrSuperadmin = useIsOwnerOrSuperadmin(orgId)
+	const [kickOpenId, setKickOpenId] = useState<string | null>(null)
 
 	const isLoading = orgMembersLoading || profilesLoading
 
@@ -79,7 +83,38 @@ export function MemberRow() {
 									<Badge variant='secondary' className='text-xs font-normal'>
 										{getAccessLevelName(accessLevel)}
 									</Badge>
-									{canKick ? <KickMemberButton memberUserId={user.id} /> : null}
+									{/* sm+: inline kick button */}
+									{canKick && (
+										<div className='hidden sm:block'>
+											<KickMemberButton memberUserId={user.id} />
+										</div>
+									)}
+									{/* mobile: 3-dot dropdown */}
+									{canKick && (
+										<div className='sm:hidden'>
+											<DropdownMenu>
+												<DropdownMenuTrigger asChild>
+													<Button variant='ghost' size='icon' className='h-7 w-7'>
+														<MoreVertical className='h-4 w-4' />
+													</Button>
+												</DropdownMenuTrigger>
+												<DropdownMenuContent align='end'>
+													<DropdownMenuItem
+														className='text-destructive focus:text-destructive cursor-pointer'
+														onClick={() => setKickOpenId(user.id)}
+													>
+														<UserRoundX className='h-4 w-4' />
+														Kick Member
+													</DropdownMenuItem>
+												</DropdownMenuContent>
+											</DropdownMenu>
+											<KickMemberButton
+												memberUserId={user.id}
+												open={kickOpenId === user.id}
+												onOpenChange={(o) => !o && setKickOpenId(null)}
+											/>
+										</div>
+									)}
 								</div>
 							</div>
 						</CardContent>
