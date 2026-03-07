@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { Button } from '../ui/button'
 import { LoaderCircle, Send } from 'lucide-react'
@@ -8,8 +8,7 @@ import { Textarea } from '../ui/textarea'
 import { useRequestSpecies } from '@/lib/react-query/mutations'
 import { UUID } from 'crypto'
 import { useParams } from 'next/navigation'
-import { User } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
+import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { toast } from 'sonner'
 
 export default function RequestNewSpeciesButton() {
@@ -23,19 +22,7 @@ export default function RequestNewSpeciesButton() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 
-	const [user, setUser] = useState<User | null>(null)
-	const supabase = createClient()
-
-	useEffect(() => {
-		const fetchUser = async () => {
-			const {
-				data: { user }
-			} = await supabase.auth.getUser()
-			setUser(user)
-		}
-
-		fetchUser()
-	}, [])
+	const { data: user } = useCurrentClientUser()
 
 	const resetForm = () => {
 		setScientificName('')

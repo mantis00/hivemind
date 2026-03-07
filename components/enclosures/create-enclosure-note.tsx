@@ -1,31 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { InputGroup, InputGroupAddon, InputGroupButton } from '../ui/input-group'
 import TextareaAutosize from 'react-textarea-autosize'
 import { useCreateEnclosureNote } from '@/lib/react-query/mutations'
-import { createClient } from '@/lib/supabase/client'
-import { User } from '@supabase/supabase-js'
+import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { LoaderCircle } from 'lucide-react'
 import { UUID } from 'crypto'
 
 export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID }) {
 	const [noteText, setNoteText] = useState('')
 	const createEnclosureNoteMutation = useCreateEnclosureNote()
-	const [user, setUser] = useState<User | null>(null)
-	const supabase = createClient()
+	const { data: user } = useCurrentClientUser()
 	const [loading, setLoading] = useState(false)
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-	useEffect(() => {
-		const fetchUser = async () => {
-			const {
-				data: { user }
-			} = await supabase.auth.getUser()
-			setUser(user)
-			setLoading(false)
-		}
-
-		fetchUser()
-	}, [])
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()

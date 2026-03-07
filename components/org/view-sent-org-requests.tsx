@@ -32,6 +32,7 @@ export function ViewSentRequests() {
 	const { data: reviewerProfiles } = useMemberProfiles(reviewerIds)
 	const retractMutation = useRetractOrgRequest()
 	const [pendingRequestId, setPendingRequestId] = useState<UUID | null>(null)
+	const [now] = useState(() => Date.now())
 	const { data: userProfile } = useMemberProfiles(user?.id ? [user.id] : [])
 	const isSuperadmin = userProfile?.some((profile) => profile.is_superadmin === true)
 
@@ -41,7 +42,7 @@ export function ViewSentRequests() {
 	const visibleRequests = requests?.filter((request) => {
 		if (request.status === 'pending') return true
 		const lastUpdated = new Date(request.reviewed_at ?? request.created_at).getTime()
-		return Date.now() <= lastUpdated + SEVEN_DAYS_MS
+		return now <= lastUpdated + SEVEN_DAYS_MS
 	})
 
 	const handleRetract = (requestId: UUID) => {
