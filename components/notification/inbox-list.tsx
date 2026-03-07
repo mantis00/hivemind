@@ -129,15 +129,7 @@ export function InboxList({
 			{/* Sort header + select all */}
 			<div className='flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-2'>
 				<Checkbox
-					checked={allSelected}
-					ref={(el) => {
-						if (el) {
-							const input = el as unknown as HTMLButtonElement
-							if (someSelected && !allSelected) {
-								input.dataset.state = 'indeterminate'
-							}
-						}
-					}}
+					checked={someSelected && !allSelected ? 'indeterminate' : allSelected}
 					onCheckedChange={(checked) => onSelectAll(!!checked)}
 					aria-label='Select all notifications'
 				/>
