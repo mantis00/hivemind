@@ -1,4 +1,4 @@
-import { MemberRow } from '@/components/org/member-row'
+import { MemberCards } from '@/components/org/member-cards'
 import { ViewSentInvites } from '@/components/org/view-sent-invites'
 import { InviteMemberButton } from '@/components/org/invite-org-button'
 
@@ -13,7 +13,7 @@ export default async function Page() {
 				<div className='flex flex-col gap-4'>
 					<InviteMemberButton />
 					<ViewSentInvites />
-					<MemberRow />
+					<MemberCards />
 				</div>
 			</div>
 		</div>
