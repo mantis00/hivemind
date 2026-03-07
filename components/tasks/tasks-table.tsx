@@ -501,12 +501,14 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 							TableRow: ({ style, ...props }) => {
 								const index = props['data-index'] as number
 								const row = rows[index]
+								const isEven = index % 2 === 0
+
 								return (
 									<tr
 										{...props}
 										ref={index === 0 ? rowRef : undefined}
 										style={style}
-										className={`border-b transition-colors hover:bg-muted/50 ${isMobile ? 'cursor-pointer active:bg-muted' : ''}`}
+										className={`border-b transition-colors hover:bg-muted/80 ${isEven ? 'bg-background' : 'bg-muted/50'} ${isMobile ? 'cursor-pointer active:bg-muted' : ''}`}
 										onClick={() => {
 											if (isMobile) {
 												setSelectedTask(row.original)
