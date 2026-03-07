@@ -1198,7 +1198,7 @@ export function useRejectSpeciesRequest() {
 			const supabase = createClient()
 			const { error } = await supabase
 				.from('species_requests')
-				.update({ status: 'rejected', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
+				.update({ status: 'rejected', reviewer_id: reviewerId, reviewed_at: new Date().toISOString() })
 				.eq('id', requestId)
 				.eq('status', 'pending')
 			if (error) throw error
