@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { User, LogOut, Download, Menu } from 'lucide-react'
 import {
 	DropdownMenu,
@@ -14,31 +13,8 @@ import { useLogout } from '@/lib/react-query/auth'
 import { useRouter } from 'next/navigation'
 import { InstallAppAction } from '../pwa/install-app-action'
 
-interface BeforeInstallPromptEvent extends Event {
-	prompt(): Promise<void>
-	userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
-
 export function MobileActionsMenu() {
-	const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-	const [isInstalled, setIsInstalled] = useState(false)
 	const router = useRouter()
-
-	useEffect(() => {
-		const handler = (e: Event) => {
-			e.preventDefault()
-			setInstallPrompt(e as BeforeInstallPromptEvent)
-		}
-
-		window.addEventListener('beforeinstallprompt', handler)
-
-		if (window.matchMedia('(display-mode: standalone)').matches) {
-			setIsInstalled(true)
-		}
-
-		return () => window.removeEventListener('beforeinstallprompt', handler)
-	}, [])
-
 	const logoutMutation = useLogout()
 
 	return (
