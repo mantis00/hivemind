@@ -676,7 +676,7 @@ export function useTaskTemplatesForOrgSpecies(orgSpeciesId: UUID) {
 				.eq('species_id', orgSpecies.master_species_id)
 				.order('type', { ascending: true })
 			if (error) throw error
-			return (data ?? []) as Pick<TaskTemplate, 'id' | 'type' | 'description' | 'created_at'>[]
+			return (data ?? []) as { id: UUID; type: string; description: string | null; created_at: string }[]
 		},
 		enabled: !!orgSpeciesId
 	})
@@ -693,7 +693,7 @@ export function useOrgMemberProfiles(orgId: UUID) {
 				.eq('org_id', orgId)
 				.order('created_at', { ascending: true })) as {
 				data: { user_id: string; access_lvl: number; profiles: MemberProfile }[] | null
-				error: import('@supabase/supabase-js').PostgrestError | null
+				error: PostgrestError | null
 			}
 			if (error) throw error
 			return (data ?? []).map((row) => row.profiles).filter(Boolean) as MemberProfile[]
@@ -709,7 +709,7 @@ export function useTaskById(taskId: UUID) {
 			const supabase = createClient()
 			const { data, error } = (await supabase.from('tasks').select('*').eq('id', taskId).single()) as {
 				data: Task | null
-				error: import('@supabase/supabase-js').PostgrestError | null
+				error: PostgrestError | null
 			}
 			if (error) throw error
 			return data
@@ -725,7 +725,7 @@ export function useTaskFormAnswers(taskId: UUID) {
 			const supabase = createClient()
 			const { data, error } = (await supabase.from('task_form_data').select('*').eq('task_id', taskId)) as {
 				data: TaskFormData[] | null
-				error: import('@supabase/supabase-js').PostgrestError | null
+				error: PostgrestError | null
 			}
 			if (error) throw error
 			return data ?? []

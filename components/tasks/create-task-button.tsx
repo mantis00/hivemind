@@ -15,7 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 
 import { useCreateTask, useCreateSchedule } from '@/lib/react-query/mutations'
-import { useTaskTemplatesForOrgSpecies, useEnclosureById, useOrgMemberProfiles } from '@/lib/react-query/queries'
+import {
+	useTaskTemplatesForOrgSpecies,
+	useEnclosureById,
+	useOrgMembers,
+	useMemberProfiles
+} from '@/lib/react-query/queries'
 
 import {
 	TaskScheduleSection,
@@ -73,7 +78,9 @@ export function CreateTaskButton({ enclosureId, orgId }: CreateTaskButtonProps) 
 	const { data: enclosure } = useEnclosureById(enclosureId, orgId)
 	const orgSpeciesId = enclosure?.species_id as UUID | undefined
 	const { data: templates } = useTaskTemplatesForOrgSpecies(orgSpeciesId as UUID)
-	const { data: members } = useOrgMemberProfiles(orgId)
+	const { data: orgMembers } = useOrgMembers(orgId)
+	const memberIds = orgMembers?.map((m) => m.user_id) ?? []
+	const { data: members } = useMemberProfiles(memberIds)
 
 	const createTask = useCreateTask()
 	const createSchedule = useCreateSchedule()
