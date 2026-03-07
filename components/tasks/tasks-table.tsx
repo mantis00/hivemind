@@ -586,7 +586,13 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 								</Button>
 							)}
 							{selectedTask.status === 'in_progress' && (
-								<Button className='flex-1 gap-2' variant='secondary'>
+								<Button
+									className='flex-1 gap-2'
+									onClick={() => {
+										handleComplete(selectedTask.id as UUID)
+										setTaskDrawerOpen(false)
+									}}
+								>
 									<CheckCircle2 className='h-5 w-5' /> Mark Complete
 								</Button>
 							)}
