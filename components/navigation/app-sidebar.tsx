@@ -40,18 +40,17 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { EnvVarWarning } from '@/components/env-var-warning'
 import { cn, hasEnvVars } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
 import { useMemo, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useIsMobile } from '@/hooks/use-mobile'
 import Link from 'next/link'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useOrgDetails } from '@/lib/react-query/queries'
 import { UUID } from 'crypto'
+import { useLogout } from '@/lib/react-query/auth'
 
 export function AppSidebar() {
 	const pathname = usePathname()
-	const router = useRouter()
 	const isMobile = useIsMobile()
 	const { state, toggleSidebar } = useSidebar()
 	const { data: currentUser } = useCurrentClientUser()
@@ -95,11 +94,7 @@ export function AppSidebar() {
 		setCaretakingMenuOpen((open) => !open)
 	}
 
-	const handleLogout = async () => {
-		const supabase = createClient()
-		await supabase.auth.signOut()
-		router.replace('/auth/login') // replace, makes it so the cant click browser back button to go back to the previous page
-	}
+	const logoutMutation = useLogout()
 
 	return (
 		<Sidebar variant='floating' collapsible='icon'>
@@ -263,7 +258,14 @@ export function AppSidebar() {
 									</DropdownMenuItem>
 								</DropdownMenuGroup>
 								<DropdownMenuSeparator />
-								<DropdownMenuItem onSelect={handleLogout} className='cursor-pointer'>
+								<DropdownMenuItem
+									variant='destructive'
+									onSelect={(e) => {
+										e.preventDefault()
+										logoutMutation.mutate()
+									}}
+									className='cursor-pointer'
+								>
 									<LogOut className='size-4' />
 									Log out
 								</DropdownMenuItem>

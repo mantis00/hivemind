@@ -149,6 +149,20 @@ export type Task = {
 	time_to_completion: string | null
 }
 
+export type Notification = {
+	id: UUID
+	created_at: string
+	recipient_id: string
+	sender_id: string
+	org_id: UUID
+	type: string
+	title: string
+	description: string
+	href: string
+	viewed: boolean
+	viewed_at: string | null
+}
+
 export type SpeciesRequest = {
 	id: UUID
 	created_at: string
@@ -440,6 +454,24 @@ export function useEnclosureNotes(enclosureId: UUID) {
 			})) as EnclosureNote[]
 		},
 		enabled: !!enclosureId
+	})
+}
+
+export function useNotifications(recipientId: string) {
+	return useQuery({
+		queryKey: ['notifications', recipientId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('notifications')
+				.select('*')
+				.eq('recipient_id', recipientId)
+				.order('created_at', { ascending: false })) as { data: Notification[] | null; error: PostgrestError | null }
+			if (error) throw error
+
+			return data
+		},
+		enabled: !!recipientId
 	})
 }
 

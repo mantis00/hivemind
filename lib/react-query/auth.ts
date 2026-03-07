@@ -1,6 +1,26 @@
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import { useRouter } from 'next/navigation'
+export function useLogout() {
+	const router = useRouter()
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async () => {
+			const supabase = createClient()
+			const { error } = await supabase.auth.signOut()
+			if (error) throw error
+		},
+		onSuccess: async () => {
+			// Clear all cached queries
+			await queryClient.clear()
+
+			// Redirect
+			router.replace('/auth/login')
+		}
+	})
+}
 
 // this will fetch from the supabase auth user endpoint
 export function useCurrentClientUser() {
