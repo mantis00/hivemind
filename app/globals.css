@@ -209,3 +209,37 @@
 	--sidebar-border: hsl(240 3.7% 15.9%);
 	--sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
+
+@utility scrollbar-hide {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+@utility scrollbar-auto {
+	-ms-overflow-style: auto;
+	scrollbar-width: auto;
+	&::-webkit-scrollbar {
+		display: revert;
+	}
+}
+
+@utility scrollbar-no-track {
+	scrollbar-width: thin;
+	scrollbar-color: hsl(var(--border)) transparent;
+	&::-webkit-scrollbar {
+		width: 4px;
+	}
+	&::-webkit-scrollbar-track {
+		background: transparent;
+		border: none;
+		box-shadow: none;
+	}
+	&::-webkit-scrollbar-thumb {
+		background-color: hsl(var(--border));
+		border-radius: 9999px;
+		border: none;
+	}
+}
