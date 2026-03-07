@@ -25,6 +25,7 @@ import { ReassignMemberButton } from '@/components/tasks/reassign-member-button'
 import { ScheduledTasksFilters, type ScheduleFilters } from '@/components/tasks/scheduled-tasks-filters'
 
 import getPriorityLevelStatus from '@/context/priority-levels'
+import { convertSegmentPathToStaticExportFilename } from 'next/dist/shared/lib/segment-cache/segment-value-encoding'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -120,6 +121,11 @@ export function ScheduledTasksTable() {
 	const { data: schedules, isLoading: schedulesLoading } = useSchedulesForEnclosures(enclosureIds)
 	const { data: members } = useOrgMemberProfiles(orgId as UUID)
 	const { data: orgSpecies } = useOrgSpecies(orgId as UUID)
+
+	console.log('Schedules:', schedules) // Debugging log
+	console.log('Enclosures:', enclosures) // Debugging log
+	console.log('Members:', members) // Debugging log
+	console.log('Org Species:', orgSpecies) // Debugging log
 
 	const toggleActive = useToggleScheduleActive()
 	const isLoading = enclosuresLoading || schedulesLoading

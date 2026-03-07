@@ -354,14 +354,25 @@ export function useOrgEnclosures(orgId: UUID) {
 		queryKey: ['orgEnclosures', orgId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
-				.from('enclosures')
-				.select('*, locations(name, description)')
-				.eq('org_id', orgId)
-				.order('current_count', { ascending: true })) as { data: Enclosure[] | null; error: PostgrestError | null }
+			const PAGE_SIZE = 1000
+			const allEnclosures: Enclosure[] = []
+			let from = 0
 
-			if (error) throw error
-			return data
+			while (true) {
+				const { data, error } = (await supabase
+					.from('enclosures')
+					.select('*, locations(name, description)')
+					.eq('org_id', orgId)
+					.order('current_count', { ascending: true })
+					.range(from, from + PAGE_SIZE - 1)) as { data: Enclosure[] | null; error: PostgrestError | null }
+
+				if (error) throw error
+				allEnclosures.push(...(data ?? []))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+
+			return allEnclosures
 		},
 		enabled: !!orgId
 	})
@@ -582,15 +593,20 @@ export function useTasksForEnclosures(enclosureIds: UUID[]) {
 		queryKey: ['tasksForEnclosures', enclosureIds],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
-				.from('tasks')
-				.select('*, task_templates(type, description)')
-				.in('enclosure_id', enclosureIds)) as {
-				data: Task[] | null
-				error: PostgrestError | null
+			const CHUNK_SIZE = 200
+			const chunks: UUID[][] = []
+			for (let i = 0; i < enclosureIds.length; i += CHUNK_SIZE) {
+				chunks.push(enclosureIds.slice(i, i + CHUNK_SIZE))
 			}
-			if (error) throw error
-			return data
+			const results = await Promise.all(
+				chunks.map((chunk) =>
+					supabase.from('tasks').select('*, task_templates(type, description)').in('enclosure_id', chunk)
+				)
+			)
+			for (const { error } of results) {
+				if (error) throw error
+			}
+			return results.flatMap((r) => r.data ?? []) as Task[]
 		},
 		enabled: enclosureIds.length > 0
 	})
@@ -601,27 +617,38 @@ export function useTasksForEnclosuresInRange(enclosureIds: UUID[], startDate: st
 		queryKey: ['tasksForEnclosuresInRange', enclosureIds, startDate, endDate],
 		queryFn: async () => {
 			const supabase = createClient()
+			const CHUNK_SIZE = 200
 			const PAGE_SIZE = 1000
-			const allTasks: Task[] = []
-			let from = 0
 
-			while (true) {
-				const { data, error } = (await supabase
-					.from('tasks')
-					.select('*, task_templates(type, description)')
-					.in('enclosure_id', enclosureIds)
-					.gte('due_date', startDate)
-					.lte('due_date', endDate)
-					.order('due_date', { ascending: true })
-					.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
-
-				if (error) throw error
-				allTasks.push(...(data ?? []))
-				if ((data?.length ?? 0) < PAGE_SIZE) break
-				from += PAGE_SIZE
+			const chunks: UUID[][] = []
+			for (let i = 0; i < enclosureIds.length; i += CHUNK_SIZE) {
+				chunks.push(enclosureIds.slice(i, i + CHUNK_SIZE))
 			}
 
-			return allTasks
+			const chunkResults = await Promise.all(
+				chunks.map(async (chunk) => {
+					const tasks: Task[] = []
+					let from = 0
+					while (true) {
+						const { data, error } = (await supabase
+							.from('tasks')
+							.select('*, task_templates(type, description)')
+							.in('enclosure_id', chunk)
+							.gte('due_date', startDate)
+							.lte('due_date', endDate)
+							.order('due_date', { ascending: true })
+							.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
+
+						if (error) throw error
+						tasks.push(...(data ?? []))
+						if ((data?.length ?? 0) < PAGE_SIZE) break
+						from += PAGE_SIZE
+					}
+					return tasks
+				})
+			)
+
+			return chunkResults.flat()
 		},
 		enabled: enclosureIds.length > 0 && !!startDate && !!endDate
 	})
@@ -852,16 +879,24 @@ export function useSchedulesForEnclosures(enclosureIds: UUID[]) {
 		queryKey: ['schedulesForEnclosures', enclosureIds],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
-				.from('enclosure_schedules')
-				.select('*')
-				.in('enclosure_id', enclosureIds)
-				.order('created_at', { ascending: false })) as {
-				data: EnclosureSchedule[] | null
-				error: PostgrestError | null
+			const CHUNK_SIZE = 200
+			const chunks: UUID[][] = []
+			for (let i = 0; i < enclosureIds.length; i += CHUNK_SIZE) {
+				chunks.push(enclosureIds.slice(i, i + CHUNK_SIZE))
 			}
-			if (error) throw error
-			return data
+			const results = await Promise.all(
+				chunks.map((chunk) =>
+					supabase
+						.from('enclosure_schedules')
+						.select('*')
+						.in('enclosure_id', chunk)
+						.order('created_at', { ascending: false })
+				)
+			)
+			for (const { error } of results) {
+				if (error) throw error
+			}
+			return results.flatMap((r) => r.data ?? []) as EnclosureSchedule[]
 		},
 		enabled: enclosureIds.length > 0
 	})
