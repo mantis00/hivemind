@@ -1,7 +1,20 @@
 'use client'
 
 import { OrgSpecies, useOrgSpecies } from '@/lib/react-query/queries'
-import { ArrowDownIcon, ArrowUpIcon, Bug, Edit, Search, XIcon } from 'lucide-react'
+import {
+	ArrowDownIcon,
+	ArrowUpIcon,
+	Bug,
+	Edit,
+	ListChecks,
+	LoaderCircle,
+	MoreHorizontal,
+	Move,
+	PlusIcon,
+	Search,
+	TrashIcon,
+	XIcon
+} from 'lucide-react'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Virtuoso } from 'react-virtuoso'
@@ -16,8 +29,10 @@ import { UUID } from 'crypto'
 import { useIsMobile } from '@/hooks/use-mobile'
 import ManageSpeciesButton from './manage-species-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu'
 import { EditSpeciesOrgForm } from './edit-species-org'
 import { EnclosureCounts } from './enclosure-counts'
+import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 
 export default function EnclosureGrid() {
 	const params = useParams()
@@ -35,6 +50,40 @@ export default function EnclosureGrid() {
 	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
 	const [openSpeciesId, setOpenSpeciesId] = useState<UUID | null>(null)
 	const [detailsView, setDetailsView] = useState<'details' | 'edit'>('details')
+
+	const [selectMode, setSelectMode] = useState(false)
+	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
+	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+	const [manageOpen, setManageOpen] = useState(false)
+	const [createOpen, setCreateOpen] = useState(false)
+	const batchDeleteMutation = useBatchDeleteEnclosures()
+
+	const handleSelectChange = (enclosureId: UUID, checked: boolean) => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev)
+			if (checked) next.add(enclosureId)
+			else next.delete(enclosureId)
+			return next
+		})
+	}
+
+	const toggleSelectMode = () => {
+		setSelectMode((prev) => !prev)
+		if (selectMode) setSelectedIds(new Set())
+	}
+
+	const executeDelete = () => {
+		batchDeleteMutation.mutate(
+			{ ids: Array.from(selectedIds), orgId: orgId as UUID },
+			{
+				onSuccess: () => {
+					setSelectedIds(new Set())
+					setSelectMode(false)
+					setDeleteConfirmOpen(false)
+				}
+			}
+		)
+	}
 	const openSpecies = useMemo(
 		() => displayedSpecies.find((s) => s.id === openSpeciesId) ?? null,
 		[displayedSpecies, openSpeciesId]
@@ -175,12 +224,56 @@ export default function EnclosureGrid() {
 	const tableHeight = dynamicTableHeight || initialTableHeight
 
 	return (
-		<div className='bg-background full'>
-			<div className='mx-auto items-center'>
+		<>
+			<div className='mx-auto items-center w-full'>
 				{!useIsMobile() && <EnclosureCounts />}
-				<div className={`mb-2 flex items-center flex-row gap-2 ${useIsMobile() ? 'justify-between' : 'justify-end'}`}>
-					<ManageSpeciesButton />
-					<CreateEnclosureButton />
+				<div className='mb-2 flex items-center flex-row gap-2 justify-end'>
+					{selectMode && (
+						<div className='flex items-center gap-2 mr-auto'>
+							<Button variant='ghost' size='sm' className='gap-1.5 text-xs' onClick={toggleSelectMode}>
+								<XIcon className='h-3.5 w-3.5' />
+								Cancel
+							</Button>
+							{selectedIds.size > 0 && (
+								<>
+									<span className='text-xs text-muted-foreground'>{selectedIds.size} selected</span>
+									<Button
+										size='sm'
+										variant='destructive'
+										className='gap-1.5 text-xs'
+										onClick={() => setDeleteConfirmOpen(true)}
+										disabled={batchDeleteMutation.isPending}
+									>
+										<TrashIcon className='h-3.5 w-3.5' />
+										Delete
+									</Button>
+								</>
+							)}
+						</div>
+					)}
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant='outline' size='sm'>
+								<MoreHorizontal className='h-4 w-4' />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align='end'>
+							<DropdownMenuItem onSelect={() => setManageOpen(true)}>
+								<Move className='h-4 w-4' />
+								Manage Species
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => setCreateOpen(true)}>
+								<PlusIcon className='h-4 w-4' />
+								Add Enclosure
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={toggleSelectMode}>
+								<ListChecks className='h-4 w-4' />
+								Select
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+					<ManageSpeciesButton open={manageOpen} onOpenChange={setManageOpen} />
+					<CreateEnclosureButton open={createOpen} onOpenChange={setCreateOpen} />
 				</div>
 
 				{/* Sort and Search */}
@@ -200,7 +293,7 @@ export default function EnclosureGrid() {
 										e.stopPropagation()
 										handleSortChange('sort')
 									}}
-									className='flex-shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-foreground cursor-pointer'
+									className='shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-foreground cursor-pointer'
 								>
 									<XIcon className='size-3.5 text-current' />
 								</span>
@@ -276,7 +369,14 @@ export default function EnclosureGrid() {
 							style={{ position: 'absolute', visibility: 'hidden', pointerEvents: 'none' }}
 						>
 							<div className='p-2 pb-0 last:pb-2'>
-								<SpeciesRow species={displayedSpecies[0]} onDetailsOpenChange={() => {}} sortKey={sortKey} />
+								<SpeciesRow
+									species={displayedSpecies[0]}
+									onDetailsOpenChange={() => {}}
+									sortKey={sortKey}
+									selectMode={selectMode}
+									selectedIds={selectedIds}
+									onSelectChange={handleSelectChange}
+								/>
 							</div>
 						</div>
 						<div ref={virtuosoRef} className='rounded-lg border bg-card'>
@@ -296,6 +396,9 @@ export default function EnclosureGrid() {
 												setOpenSpeciesId(sp.id)
 											}}
 											sortKey={sortKey}
+											selectMode={selectMode}
+											selectedIds={selectedIds}
+											onSelectChange={handleSelectChange}
 										/>
 									</div>
 								)}
@@ -368,6 +471,27 @@ export default function EnclosureGrid() {
 					)}
 				</ResponsiveDialogDrawer>
 			)}
-		</div>
+
+			<ResponsiveDialogDrawer
+				title='Delete Enclosures'
+				description={`Are you sure you want to delete ${selectedIds.size} enclosure${selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.`}
+				trigger={null}
+				open={deleteConfirmOpen}
+				onOpenChange={setDeleteConfirmOpen}
+			>
+				<div className='flex flex-col gap-3 px-4 pb-4'>
+					<Button variant='destructive' disabled={batchDeleteMutation.isPending} onClick={executeDelete}>
+						{batchDeleteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm Delete'}
+					</Button>
+					<Button
+						variant='outline'
+						onClick={() => setDeleteConfirmOpen(false)}
+						disabled={batchDeleteMutation.isPending}
+					>
+						Cancel
+					</Button>
+				</div>
+			</ResponsiveDialogDrawer>
+		</>
 	)
 }

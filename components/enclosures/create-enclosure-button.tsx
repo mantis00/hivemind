@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PlusIcon, LoaderCircle } from 'lucide-react'
 import { useState, useMemo } from 'react'
-import { useCreateEnclosure } from '@/lib/react-query/mutations'
+import { useCreateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { OrgSpecies, useOrgLocations, useOrgSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
@@ -21,8 +21,17 @@ import {
 } from '../ui/combobox'
 import { UUID } from 'crypto'
 
-export function CreateEnclosureButton() {
-	const [open, setOpen] = useState(false)
+export function CreateEnclosureButton({
+	open: propsOpen,
+	onOpenChange: propsOnOpenChange
+}: {
+	open?: boolean
+	onOpenChange?: (open: boolean) => void
+} = {}) {
+	const controlled = propsOpen !== undefined
+	const [localOpen, setLocalOpen] = useState(false)
+	const open = controlled ? propsOpen! : localOpen
+	const setOpen = controlled ? (val: boolean) => propsOnOpenChange?.(val) : setLocalOpen
 	const [name, setName] = useState('')
 	const [species, setSpecies] = useState('')
 	const [speciesQuery, setSpeciesQuery] = useState('')
@@ -32,8 +41,11 @@ export function CreateEnclosureButton() {
 	const [count, setCount] = useState('')
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
+	const createLocationMutation = useCreateLocation()
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
+
+	const [createLocation, setCreateLocation] = useState(false)
 
 	const { data: orgSpecies } = useOrgSpecies(orgId as UUID)
 	const { data: orgLocations } = useOrgLocations(orgId as UUID)
@@ -72,24 +84,35 @@ export function CreateEnclosureButton() {
 			.map(({ loc }) => loc)
 	}, [locationQuery, orgLocations])
 
+	const isPending = createEnclosureMutation.isPending || createLocationMutation.isPending
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		console.log(species)
 		if (!name || !species || !location) return
 
 		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
-		const location_id = orgLocations?.find((loc) => loc?.name === location)
+		if (!species_id) return
 
-		if (!species_id || !location_id) {
-			console.log('ERROR LOOKING UP SPECIES OR LOCATION')
-			return
+		let resolvedLocationId: UUID
+
+		if (createLocation) {
+			const newLoc = await createLocationMutation.mutateAsync({
+				orgId: orgId as UUID,
+				name: location
+			})
+			resolvedLocationId = newLoc.id as UUID
+		} else {
+			const existing = orgLocations?.find((loc) => loc?.name === location)
+			if (!existing) return
+			resolvedLocationId = existing.id as UUID
 		}
+
 		createEnclosureMutation.mutate(
 			{
 				orgId: orgId as UUID,
-				species_id: species_id?.id as UUID,
+				species_id: species_id.id as UUID,
 				name: name,
-				location: location_id?.id as UUID,
+				location: resolvedLocationId,
 				current_count: count ? parseInt(count, 10) : 0
 			},
 			{
@@ -98,6 +121,7 @@ export function CreateEnclosureButton() {
 					setName('')
 					setSpecies('')
 					setSpeciesQuery('')
+					setCreateLocation(false)
 					setLocation('')
 					setLocationQuery('')
 					setCount('')
@@ -113,9 +137,11 @@ export function CreateEnclosureButton() {
 			open={open}
 			onOpenChange={(isOpen) => setOpen(isOpen)}
 			trigger={
-				<Button onClick={() => setOpen(true)} size='default'>
-					Add Enclosure <PlusIcon className='w-4 h-4' />
-				</Button>
+				controlled ? null : (
+					<Button onClick={() => setOpen(true)} size='default'>
+						Add Enclosure <PlusIcon className='w-4 h-4' />
+					</Button>
+				)
 			}
 		>
 			<form onSubmit={handleSubmit}>
@@ -129,14 +155,14 @@ export function CreateEnclosureButton() {
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							required
-							disabled={createEnclosureMutation.isPending}
+							disabled={isPending}
 						/>
 						<div className='flex items-center justify-between'>
 							<Label>Species</Label>
-							<div className='flex items-center rounded-md border text-xs overflow-hidden'>
+							<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>
 								<button
 									type='button'
-									className={`px-2.5 py-1 transition-colors ${!showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+									className={`w-full text-center px-2.5 py-1 transition-colors ${!showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
 									onClick={() => {
 										setShowScientific(false)
 										setSpecies('')
@@ -147,7 +173,7 @@ export function CreateEnclosureButton() {
 								</button>
 								<button
 									type='button'
-									className={`px-2.5 py-1 transition-colors ${showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+									className={`w-full text-center px-2.5 py-1 transition-colors ${showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
 									onClick={() => {
 										setShowScientific(true)
 										setSpecies('')
@@ -172,7 +198,7 @@ export function CreateEnclosureButton() {
 								placeholder='Search species...'
 								value={speciesQuery}
 								onChange={(event) => setSpeciesQuery(event.target.value)}
-								disabled={createEnclosureMutation.isPending}
+								disabled={isPending}
 								showClear
 							/>
 							<ComboboxContent>
@@ -195,37 +221,73 @@ export function CreateEnclosureButton() {
 								</ComboboxList>
 							</ComboboxContent>
 						</Combobox>
-						<Label>Enclosure Location</Label>
-						<Combobox
-							items={filteredLocations}
-							filter={() => true}
-							value={location}
-							onValueChange={(value) => {
-								setLocation(value ?? '')
-								setLocationQuery(value ?? '')
-							}}
-						>
-							<ComboboxInput
+						<div className='flex items-center justify-between'>
+							<Label>Enclosure Location</Label>
+							<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>
+								<button
+									type='button'
+									className={`w-full text-center px-2.5 py-1 transition-colors ${!createLocation ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+									onClick={() => {
+										setCreateLocation(false)
+										setLocation('')
+										setLocationQuery('')
+									}}
+								>
+									Search
+								</button>
+								<button
+									type='button'
+									className={`w-full text-center px-2.5 py-1 transition-colors ${createLocation ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+									onClick={() => {
+										setCreateLocation(true)
+										setLocation('')
+										setLocationQuery('')
+									}}
+								>
+									Create
+								</button>
+							</div>
+						</div>
+						{createLocation ? (
+							<Input
 								className='h-9'
-								placeholder='Search locations...'
-								value={locationQuery}
-								onChange={(event) => setLocationQuery(event.target.value)}
-								disabled={createEnclosureMutation.isPending}
-								showClear
+								placeholder='New location name...'
+								value={location}
+								onChange={(e) => setLocation(e.target.value)}
+								disabled={isPending}
 							/>
-							<ComboboxContent>
-								<ComboboxEmpty>No matching locations.</ComboboxEmpty>
-								<ComboboxList className='max-h-42 scrollbar-no-track'>
-									<ComboboxCollection>
-										{(loc) => (
-											<ComboboxItem key={loc.id} value={loc.name}>
-												{loc.name}
-											</ComboboxItem>
-										)}
-									</ComboboxCollection>
-								</ComboboxList>
-							</ComboboxContent>
-						</Combobox>
+						) : (
+							<Combobox
+								items={filteredLocations}
+								filter={() => true}
+								value={location}
+								onValueChange={(value) => {
+									setLocation(value ?? '')
+									setLocationQuery(value ?? '')
+								}}
+							>
+								<ComboboxInput
+									className='h-9'
+									placeholder='Search locations...'
+									value={locationQuery}
+									onChange={(event) => setLocationQuery(event.target.value)}
+									disabled={isPending}
+									showClear
+								/>
+								<ComboboxContent>
+									<ComboboxEmpty>No matching locations.</ComboboxEmpty>
+									<ComboboxList className='max-h-42 scrollbar-no-track'>
+										<ComboboxCollection>
+											{(loc) => (
+												<ComboboxItem key={loc.id} value={loc.name}>
+													{loc.name}
+												</ComboboxItem>
+											)}
+										</ComboboxCollection>
+									</ComboboxList>
+								</ComboboxContent>
+							</Combobox>
+						)}
 						<Label>Count</Label>
 						<Input
 							className='h-9'
@@ -236,21 +298,15 @@ export function CreateEnclosureButton() {
 							min='0'
 							onChange={(e) => setCount(e.target.value)}
 							required
-							disabled={createEnclosureMutation.isPending}
+							disabled={isPending}
 						/>
 					</div>
 				</div>
 				<div className='flex flex-col gap-3 justify-center px-4 pb-2'>
-					<Button type='submit' disabled={createEnclosureMutation.isPending || !user}>
-						{createEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Create Enclosure'}
+					<Button type='submit' disabled={isPending || !user}>
+						{isPending ? <LoaderCircle className='animate-spin' /> : 'Create Enclosure'}
 					</Button>
-					<Button
-						type='button'
-						variant='outline'
-						size='default'
-						disabled={createEnclosureMutation.isPending}
-						onClick={() => setOpen(false)}
-					>
+					<Button type='button' variant='outline' size='default' disabled={isPending} onClick={() => setOpen(false)}>
 						Cancel
 					</Button>
 				</div>

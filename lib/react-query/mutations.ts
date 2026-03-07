@@ -310,6 +310,25 @@ export function useKickMember() {
 	})
 }
 
+export function useCreateLocation() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: async ({ orgId, name }: { orgId: UUID; name: string }) => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('locations')
+				.insert({ org_id: orgId, name: name.trim() })
+				.select('id, name, description, created_at')
+				.single()
+			if (error) throw error
+			return data
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgLocations', variables.orgId] })
+		}
+	})
+}
+
 export function useCreateEnclosure() {
 	const queryClient = useQueryClient()
 	return useMutation({
