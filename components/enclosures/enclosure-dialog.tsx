@@ -1,18 +1,20 @@
 'use client'
+import { useState } from 'react'
 import { format } from 'date-fns'
-import { MapPin, Calendar, Users, ClipboardList, StickyNote, LoaderCircle } from 'lucide-react'
+import { MapPin, Calendar, Users, ClipboardList, StickyNote, LoaderCircle, ChevronDown } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { Enclosure, OrgSpecies } from '@/lib/react-query/queries'
 import { useEnclosureNotes } from '@/lib/react-query/queries'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import CreateEnclosureNote from './create-enclosure-note'
 import DeleteEnclosureButton from './delete-enclosure-button'
+import { EditEnclosureButton } from './edit-enclosure-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../ui/collapsible'
 
 export function EnclosureDialog({
 	enclosure,
@@ -26,6 +28,7 @@ export function EnclosureDialog({
 	onOpenChange: (open: boolean) => void
 }) {
 	const { data: enclosureNotes, isLoading } = useEnclosureNotes(enclosure.id)
+	const [notesOpen, setNotesOpen] = useState(false)
 
 	const params = useParams()
 	const orgId = params?.orgId as number | undefined
@@ -40,7 +43,14 @@ export function EnclosureDialog({
 			onOpenChange={onOpenChange}
 			trigger={<div></div>}
 		>
-			<div className='overflow-y-auto max-h-[70vh]'>
+			<div className='overflow-y-auto max-h-[70vh] scrollbar-hide sm:scrollbar-auto'>
+				<Button
+					className='flex gap-2 w-full mb-2'
+					onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}
+				>
+					<ClipboardList className='h-4 w-4' />
+					View Tasks
+				</Button>
 				<div className='grid gap-4'>
 					{/* Tank Details */}
 					<div className='grid grid-cols-2 gap-3'>
@@ -72,46 +82,50 @@ export function EnclosureDialog({
 					<Separator />
 
 					{/* Enclosure Notes */}
-					<div className='space-y-3'>
-						<div className='flex items-center gap-2'>
+					<Collapsible open={notesOpen} onOpenChange={setNotesOpen} className='space-y-3'>
+						<CollapsibleTrigger className='flex items-center gap-2 w-full'>
 							<StickyNote className='h-4 w-4 text-muted-foreground' />
 							<h4 className='text-sm font-semibold'>Enclosure Notes</h4>
 							<Badge variant='secondary' className='ml-auto'>
 								{enclosureNotes?.length}
 							</Badge>
-						</div>
+							<ChevronDown
+								className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${notesOpen ? 'rotate-180' : ''}`}
+							/>
+						</CollapsibleTrigger>
 
-						{isLoading ? (
-							<LoaderCircle className='animate-spin mx-auto' />
-						) : enclosureNotes?.length && enclosureNotes.length > 0 ? (
-							<div className='space-y-2 max-h-[200px] overflow-y-auto rounded-md border p-3'>
-								{enclosureNotes.map((note) => (
-									<div key={note.id} className='rounded-md bg-muted p-3 space-y-1'>
-										<p className='text-sm'>{note.note_text}</p>
-										<p className='text-xs text-muted-foreground'>
-											{note.created_at && format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
-										</p>
-									</div>
-								))}
-							</div>
-						) : (
-							<div className='rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground'>
-								No notes for this enclosure yet.
-							</div>
-						)}
+						<CollapsibleContent className='space-y-2'>
+							{isLoading ? (
+								<LoaderCircle className='animate-spin mx-auto' />
+							) : enclosureNotes?.length && enclosureNotes.length > 0 ? (
+								<div className='space-y-2 max-h-[200px] overflow-y-auto rounded-md border p-3 scrollbar-hide'>
+									{enclosureNotes.map((note) => (
+										<div key={note.id} className='rounded-md bg-muted p-3 space-y-1'>
+											<p className='text-sm'>{note.note_text}</p>
+											<div className='flex flex-row'>
+												<p className='text-xs text-muted-foreground'>
+													{note.created_at && format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
+												</p>
+												<p className='ml-auto text-xs text-muted-foreground'>
+													{note.user ? `${note.user?.first_name} ${note.user?.last_name[0]}.` : ' '}
+												</p>
+											</div>
+										</div>
+									))}
+								</div>
+							) : (
+								<div className='rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground'>
+									No notes for this enclosure yet.
+								</div>
+							)}
+						</CollapsibleContent>
 
 						<CreateEnclosureNote enclosureId={enclosure.id} />
 						<div className='flex flex-col gap-2 pt-1'>
-							<Button
-								className='gap-2 w-full'
-								onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}
-							>
-								<ClipboardList className='h-4 w-4' />
-								View Tasks
-							</Button>
+							<EditEnclosureButton enclosure={enclosure} spec={species} />
 							<DeleteEnclosureButton enclosure_id={enclosure.id} onDeleted={() => onOpenChange(false)} />
 						</div>
-					</div>
+					</Collapsible>
 				</div>
 			</div>
 		</ResponsiveDialogDrawer>
