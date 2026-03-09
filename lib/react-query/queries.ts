@@ -495,17 +495,23 @@ export function useLiveNotificationsRealtime(recipientId: string | undefined) {
 						table: 'notifications',
 						filter: `recipient_id=eq.${recipientId}`
 					},
-					() => {
-						client.invalidateQueries({
-							queryKey: ['notifications', recipientId]
+					(payload) => {
+						const newNotification = payload.new
+
+						client.setQueryData(['notifications', recipientId], (old: any[] | undefined) => {
+							if (!old) return [newNotification]
+
+							// prepend the new notification to the cache
+							return [newNotification, ...old.filter((n) => n.id !== newNotification.id)]
 						})
 					}
 				)
 				.subscribe()
 
-			client.getQueryCache().subscribe((event) => {
+			const unsubscribe = client.getQueryCache().subscribe((event) => {
 				if (event.type === 'removed') {
 					supabase.removeChannel(channel)
+					unsubscribe()
 				}
 			})
 

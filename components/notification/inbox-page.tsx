@@ -11,7 +11,6 @@ import { useDeleteNotification, useMarkNotificationAsViewed } from '@/lib/react-
 import { InboxFilters } from '@/components/notification/inbox-filters'
 import { InboxList, type SortField, type SortDirection } from '@/components/notification/inbox-list'
 import { InboxDeleteDialogs } from '@/components/notification/inbox-delete-button'
-import { useLiveNotificationsRealtime } from '@/lib/react-query/queries'
 
 // ─── InboxPage (main export) ─────────────────────────────
 
@@ -22,8 +21,6 @@ export function InboxPage() {
 	const notifications: Notification[] = data ?? []
 
 	const notificationsWithProfiles = useNotificationsWithProfiles(notifications)
-
-	useLiveNotificationsRealtime(user?.id)
 
 	// Unique senders for filter dropdown
 	const uniqueSenders = useMemo(() => {
