@@ -107,7 +107,7 @@ export function AppSidebar() {
 			<SidebarContent>
 				<SidebarGroup>
 					<SidebarMenuButton
-						className='mb-2.5 cursor-default hover:bg-transparent active:bg-transparent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0'
+						className='mb-2.5 gap-0 cursor-default hover:bg-transparent active:bg-transparent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0'
 						size='lg'
 					>
 						<div className='flex aspect-square size-10 shrink-0 items-center justify-center rounded-lg overflow-hidden [background:radial-gradient(circle,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0.05)_60%,rgba(255,255,255,0)_100%)]'>
