@@ -475,6 +475,45 @@ export function useNotifications(recipientId: string) {
 	})
 }
 
+export function useLiveNotificationsRealtime(recipientId: string | undefined) {
+	return useQuery({
+		queryKey: ['live-notifications-realtime', recipientId],
+		enabled: !!recipientId,
+		staleTime: Infinity,
+
+		queryFn: async ({ queryKey, client }) => {
+			const [, recipientId] = queryKey
+			const supabase = createClient()
+
+			const channel = supabase
+				.channel(`notifications-${recipientId}`)
+				.on(
+					'postgres_changes',
+					{
+						event: 'INSERT',
+						schema: 'public',
+						table: 'notifications',
+						filter: `recipient_id=eq.${recipientId}`
+					},
+					() => {
+						client.invalidateQueries({
+							queryKey: ['notifications', recipientId]
+						})
+					}
+				)
+				.subscribe()
+
+			client.getQueryCache().subscribe((event) => {
+				if (event.type === 'removed') {
+					supabase.removeChannel(channel)
+				}
+			})
+
+			return channel
+		}
+	})
+}
+
 export function useOrgEnclosuresForSpecies(orgId: UUID, speciesId: UUID) {
 	return useQuery({
 		queryKey: ['speciesEnclosures', orgId, speciesId],

@@ -33,20 +33,13 @@ export function NotificationDropdown() {
 	const [open, setOpen] = useState(false)
 
 	const unreadNotifications = notificationsWithProfiles.filter((n) => !n.viewed)
-	const unviewedCount = unreadNotifications.length
-
-	const [visibleIds, setVisibleIds] = useState<string[]>([])
-	const visibleNotifications = notificationsWithProfiles.filter((n) => visibleIds.includes(n.id))
+	const unreadCount = unreadNotifications.length
 
 	const markAsViewedMutation = useMarkNotificationAsViewed(user?.id)
 	const markAllMutation = useMarkAllNotificationsAsViewed(user?.id)
 
 	const handleOpenChange = (isOpen: boolean) => {
 		setOpen(isOpen)
-
-		if (isOpen) {
-			setVisibleIds(unreadNotifications.map((n) => n.id))
-		}
 	}
 
 	return (
@@ -54,9 +47,9 @@ export function NotificationDropdown() {
 			<PopoverTrigger asChild>
 				<Button variant='ghost' size='icon' className='relative'>
 					<Bell className='size-5' />
-					{unviewedCount > 0 && (
+					{unreadCount > 0 && (
 						<span className='absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
-							{unviewedCount > 9 ? '9+' : unviewedCount}
+							{unreadCount > 9 ? '9+' : unreadCount}
 						</span>
 					)}
 				</Button>
@@ -69,7 +62,7 @@ export function NotificationDropdown() {
 			>
 				<div className='flex shrink-0 items-center justify-between px-4 py-3'>
 					<h3 className='text-sm font-semibold'>Unread Notifications</h3>
-					{unviewedCount > 0 && (
+					{unreadCount > 0 && (
 						<Button
 							variant='ghost'
 							size='sm'
@@ -84,8 +77,8 @@ export function NotificationDropdown() {
 				<Separator />
 
 				<div className='flex-1 overflow-y-auto p-1'>
-					{visibleNotifications.length > 0 ? (
-						visibleNotifications.map((notification) => (
+					{unreadCount > 0 ? (
+						unreadNotifications.map((notification) => (
 							<NotificationRow
 								key={notification.id}
 								notification={notification}
