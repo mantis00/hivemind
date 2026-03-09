@@ -51,7 +51,9 @@ export default function PendingInvites() {
 						<LoaderCircle className='animate-spin' />
 					</div>
 				) : !invites || invites.length === 0 ? (
-					<p className='py-2 text-sm text-muted-foreground text-center'>No pending invites.</p>
+					<p className='py-2 text-sm text-muted-foreground text-center'>
+						No pending invites. Here is where you can view your pending organization invites.
+					</p>
 				) : (
 					<div className='divide-y divide-border'>
 						{invites.map((invite) => (

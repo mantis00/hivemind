@@ -37,6 +37,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuGroup
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
 import { EnvVarWarning } from '@/components/env-var-warning'
 import { cn, hasEnvVars } from '@/lib/utils'
@@ -112,8 +113,23 @@ export function AppSidebar() {
 						<div className='flex aspect-square size-10 shrink-0 items-center justify-center rounded-lg overflow-hidden [background:radial-gradient(circle,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0.05)_60%,rgba(255,255,255,0)_100%)]'>
 							<Image src='/icons/icon-96x96.png' alt='Hivemind logo' width={32} height={32} className='size-8' />
 						</div>
-						<div className='grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden'>
-							<span className='text-lg font-dancing-script'>Invertebrate Caretaking</span>
+						<div className='grid flex-1 text-sm leading-tight group-data-[collapsible=icon]:hidden place-items-center'>
+							{(() => {
+								const MAX = 22
+								const name = orgDetails?.name ?? ''
+								const truncated = name.length > MAX
+								const display = truncated ? name.slice(0, MAX - 3) + '...' : name
+								return truncated ? (
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span className='text-lg font-dancing-script cursor-default'>{display}</span>
+										</TooltipTrigger>
+										<TooltipContent>{name}</TooltipContent>
+									</Tooltip>
+								) : (
+									<span className='text-lg font-dancing-script'>{display}</span>
+								)
+							})()}
 						</div>
 					</SidebarMenuButton>
 					<SidebarGroupContent>
@@ -213,12 +229,6 @@ export function AppSidebar() {
 			</SidebarContent>
 			<SidebarFooter>
 				<SidebarMenu className='gap-2'>
-					<SidebarMenuItem>
-						<p className='px-3 py-1.5 text-lg font-bold text-sidebar-foreground font-dancing-script text-center truncate rounded-md group-data-[collapsible=icon]:hidden'>
-							{orgDetails?.name ?? ''}
-						</p>
-					</SidebarMenuItem>
-
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							asChild

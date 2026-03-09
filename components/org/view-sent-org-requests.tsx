@@ -52,7 +52,7 @@ export function ViewSentRequests() {
 	}
 
 	return (
-		<Collapsible defaultOpen>
+		<Collapsible>
 			<CollapsibleTrigger asChild>
 				<button
 					type='button'
@@ -71,7 +71,9 @@ export function ViewSentRequests() {
 						<LoaderCircle className='animate-spin' />
 					</div>
 				) : !visibleRequests || visibleRequests.length === 0 ? (
-					<p className='py-2 text-sm text-muted-foreground text-center'>No requests submitted yet.</p>
+					<p className='py-2 text-sm text-muted-foreground text-center'>
+						No requests submitted yet. Here is where you can view your sent organization creation requests.
+					</p>
 				) : (
 					<div className='divide-y divide-border'>
 						{visibleRequests.map((request) => (

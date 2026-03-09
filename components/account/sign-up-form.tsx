@@ -1,15 +1,15 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { LoaderCircle } from 'lucide-react'
+import { useSignUp } from '@/lib/react-query/auth'
+import { toast } from 'sonner'
 
 export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
 	const [firstName, setFirstName] = useState('')
@@ -17,37 +17,15 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
 	const [repeatPassword, setRepeatPassword] = useState('')
-	const router = useRouter()
-
-	const mutation = useMutation({
-		mutationFn: async () => {
-			if (password !== repeatPassword) {
-				throw new Error('Passwords do not match')
-			}
-
-			const supabase = createClient()
-			const { error } = await supabase.auth.signUp({
-				email,
-				password,
-				options: {
-					emailRedirectTo: `${window.location.origin}/protected`,
-					data: {
-						// supabase user metadata, add first and last name, done through a function on the supabase side running after sign up
-						first_name: firstName.trim(),
-						last_name: lastName.trim()
-					}
-				}
-			})
-			if (error) throw error
-		},
-		onSuccess: () => {
-			router.push('/auth/sign-up-success')
-		}
-	})
+	const mutation = useSignUp()
 
 	const handleSignUp = async (e: React.FormEvent) => {
 		e.preventDefault()
-		mutation.mutate()
+		if (password !== repeatPassword) {
+			toast.error('Passwords do not match!')
+			return
+		}
+		mutation.mutate({ email, password, firstName, lastName })
 	}
 
 	return (
@@ -117,8 +95,15 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 									onChange={(e) => setRepeatPassword(e.target.value)}
 								/>
 							</div>
-							<Button type='submit' className='w-full' disabled={mutation.isPending}>
-								{mutation.isPending ? 'Creating an account...' : 'Sign up'}
+							<Button type='submit' className='w-full' disabled={mutation.isPending || mutation.isSuccess}>
+								{mutation.isPending || mutation.isSuccess ? (
+									<>
+										<LoaderCircle className='animate-spin' />
+										Creating account...
+									</>
+								) : (
+									'Sign up'
+								)}
 							</Button>
 						</div>
 						<div className='mt-4 text-center text-sm'>
