@@ -5,13 +5,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LoaderCircle } from 'lucide-react'
-import { useUpdateEmail } from '@/lib/react-query/auth'
+import { useUpdateEmail, useCurrentClientUser } from '@/lib/react-query/auth'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 
 export function ChangeEmailButton() {
 	const [open, setOpen] = useState(false)
 	const [newEmail, setNewEmail] = useState('')
 	const updateEmail = useUpdateEmail()
+	const { data: user } = useCurrentClientUser()
+
+	const isSameEmail = !!newEmail && newEmail.trim().toLowerCase() === user?.email?.toLowerCase()
 
 	return (
 		<ResponsiveDialogDrawer
@@ -31,6 +34,7 @@ export function ChangeEmailButton() {
 			<form
 				onSubmit={(e) => {
 					e.preventDefault()
+					if (isSameEmail) return
 					updateEmail.mutate(
 						{ email: newEmail },
 						{
@@ -54,8 +58,9 @@ export function ChangeEmailButton() {
 						required
 						disabled={updateEmail.isPending}
 					/>
+					{isSameEmail && <p className='text-sm text-destructive'>This is already your current email address.</p>}
 				</div>
-				<Button type='submit' disabled={updateEmail.isPending || !newEmail}>
+				<Button type='submit' disabled={updateEmail.isPending || !newEmail || isSameEmail}>
 					{updateEmail.isPending ? <LoaderCircle className='animate-spin' /> : 'Send confirmation'}
 				</Button>
 			</form>
