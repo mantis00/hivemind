@@ -45,9 +45,9 @@ export function ProtectedNavActions() {
 
 	return (
 		<div className='flex items-center justify-end gap-2 max-w-full'>
+			<NotificationDropdown />
 			{/* Desktop Actions */}
 			<div className='hidden sm:flex items-center gap-2'>
-				<NotificationDropdown />
 				<Button
 					variant='default'
 					size='sm'
