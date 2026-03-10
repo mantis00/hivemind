@@ -141,7 +141,7 @@ export function TasksFilters({
 								onFiltersChange({
 									...filters,
 									dateRange: range,
-									...(range?.from && range?.to ? { globalSearch: false } : {})
+									...(range?.from && range?.to ? { globalSearch: true } : {})
 								})
 							}
 							numberOfMonths={isMobile ? 1 : 2}

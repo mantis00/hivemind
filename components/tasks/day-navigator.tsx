@@ -13,8 +13,6 @@ interface DayNavigatorProps {
 	isRangeMode: boolean
 	globalSearch: boolean
 	dateRange: DateRange | undefined
-	onClearRange: () => void
-	onClearGlobalSearch: () => void
 	rowCount: number
 	todayCounts: { dueToday: number; late: number } | null
 }
@@ -25,26 +23,17 @@ export function DayNavigator({
 	isRangeMode,
 	globalSearch,
 	dateRange,
-	onClearRange,
-	onClearGlobalSearch,
 	rowCount,
 	todayCounts
 }: DayNavigatorProps) {
 	if (isRangeMode) {
 		return (
-			<div className='flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2'>
-				<div className='flex-1' />
+			<div className='flex items-center justify-center rounded-lg border bg-muted/30 px-4 py-2'>
 				<div className='text-center'>
 					<p className='text-sm font-semibold'>
 						{formatDate(dateRange!.from!.toISOString())} – {formatDate(dateRange!.to!.toISOString())}
 					</p>
 					<p className='text-xs text-muted-foreground'>Custom date range · {rowCount} tasks</p>
-				</div>
-				<div className='flex flex-1 justify-end'>
-					<Button variant='ghost' size='sm' onClick={onClearRange} className='gap-1 text-muted-foreground'>
-						<X className='h-4 w-4' />
-						Clear range
-					</Button>
 				</div>
 			</div>
 		)
@@ -52,17 +41,10 @@ export function DayNavigator({
 
 	if (globalSearch) {
 		return (
-			<div className='flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2'>
-				<div className='flex-1' />
+			<div className='flex items-center justify-center rounded-lg border bg-muted/30 px-4 py-2'>
 				<div className='text-center'>
 					<p className='text-sm font-semibold'>All dates</p>
 					<p className='text-xs text-muted-foreground'>Searching across all tasks · {rowCount} results</p>
-				</div>
-				<div className='flex flex-1 justify-end'>
-					<Button variant='ghost' size='sm' onClick={onClearGlobalSearch} className='gap-1 text-muted-foreground'>
-						<X className='h-4 w-4' />
-						Clear
-					</Button>
 				</div>
 			</div>
 		)

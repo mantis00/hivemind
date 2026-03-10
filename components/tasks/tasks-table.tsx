@@ -215,11 +215,6 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 				isRangeMode={isRangeMode}
 				globalSearch={globalSearch}
 				dateRange={dateRange}
-				onClearRange={() => setFilters((prev) => ({ ...prev, dateRange: undefined }))}
-				onClearGlobalSearch={() => {
-					setPendingGlobalSearch(false)
-					setFilters((prev) => ({ ...prev, globalSearch: false }))
-				}}
 				rowCount={rows.length}
 				todayCounts={todayCounts}
 			/>
@@ -323,12 +318,13 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 							TableRow: ({ style, ...props }) => {
 								const index = props['data-index'] as number
 								const row = rows[index]
+								const isEven = index % 2 === 0
 								return (
 									<tr
 										{...props}
 										ref={index === 0 ? rowRef : undefined}
 										style={style}
-										className='border-b transition-colors hover:bg-muted/50 cursor-pointer active:bg-muted'
+										className={`border-b transition-colors hover:bg-muted cursor-pointer active:bg-muted ${isEven ? 'bg-background' : 'bg-muted/70'}`}
 										onClick={() => handleView(row.original.id as UUID)}
 									>
 										{row.getVisibleCells().map((cell) => (
@@ -353,7 +349,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 						}}
 						fixedHeaderContent={() =>
 							table.getHeaderGroups().map((headerGroup) => (
-								<tr key={headerGroup.id} className='border-b bg-card shadow-sm'>
+								<tr key={headerGroup.id} className='border-b bg-muted shadow-sm'>
 									{headerGroup.headers.map((header) => (
 										<th
 											key={header.id}
