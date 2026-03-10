@@ -3,7 +3,6 @@
 import { CalendarIcon, ChevronDown, X } from 'lucide-react'
 import { UUID } from 'crypto'
 import type { DateRange } from 'react-day-picker'
-import { format } from 'date-fns'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
