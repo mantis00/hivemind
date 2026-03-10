@@ -27,7 +27,7 @@ export function ChangeEmailButton() {
 			}}
 			trigger={
 				<Button variant='outline' size='sm' className='shrink-0' disabled>
-					Change (currently disabled)
+					(currently disabled)
 				</Button>
 			}
 		>

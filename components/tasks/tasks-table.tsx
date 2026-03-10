@@ -11,7 +11,16 @@ import {
 	useReactTable
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
-import { ArrowUpDown, CalendarIcon, ChevronDown, ChevronLeft, ChevronRight, Eye, LoaderCircle, X } from 'lucide-react'
+import {
+	ArrowRight,
+	ArrowUpDown,
+	CalendarIcon,
+	ChevronDown,
+	ChevronLeft,
+	ChevronRight,
+	LoaderCircle,
+	X
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -182,11 +191,11 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void, members: 
 						<Button
 							variant='ghost'
 							size='icon'
-							className='h-8 w-8 text-muted-foreground hover:text-primary bg-muted hover:bg-muted/70'
+							className='h-8 w-8 text-muted-foreground hover:text-primary'
 							title='View task'
 							onClick={() => onView(row.original.id as UUID)}
 						>
-							<Eye className='h-5 w-5' />
+							<ArrowRight className='h-4 w-4' />
 						</Button>
 					</div>
 				)
@@ -568,10 +577,8 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 								<tr
 									key={row.id}
 									ref={index === 0 ? rowRef : undefined}
-									className={`border-b transition-colors hover:bg-muted/50 ${isMobile ? 'cursor-pointer active:bg-muted' : ''}`}
-									onClick={() => {
-										if (isMobile) handleView(row.original.id as UUID)
-									}}
+									className='border-b transition-colors hover:bg-muted/50 cursor-pointer active:bg-muted'
+									onClick={() => handleView(row.original.id as UUID)}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<td
@@ -619,12 +626,8 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 										{...props}
 										ref={index === 0 ? rowRef : undefined}
 										style={style}
-										className={`border-b transition-colors hover:bg-muted/50 ${isMobile ? 'cursor-pointer active:bg-muted' : ''}`}
-										onClick={() => {
-											if (isMobile) {
-												handleView(row.original.id as UUID)
-											}
-										}}
+										className='border-b transition-colors hover:bg-muted/50 cursor-pointer active:bg-muted'
+										onClick={() => handleView(row.original.id as UUID)}
 									>
 										{row.getVisibleCells().map((cell) => (
 											<td
