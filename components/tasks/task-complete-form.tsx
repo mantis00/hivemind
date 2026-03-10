@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useState } from 'react'
-import { CheckCircle2Icon, LoaderCircle, MapPinIcon } from 'lucide-react'
+import { CalendarIcon, CheckCircle2Icon, CircleUserRound, LoaderCircle, MapPinIcon } from 'lucide-react'
 import { UUID } from 'crypto'
 
 import { Button } from '@/components/ui/button'
@@ -23,9 +23,11 @@ import {
 	type QuestionTemplate
 } from '@/lib/react-query/queries'
 import { useSubmitTaskForm } from '@/lib/react-query/mutations'
+import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { ReassignMemberButton } from '@/components/tasks/reassign-member-button'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { formatDate } from '@/context/format-date'
 
 // ─── Card wrapper ─────────────────────────────────────────────────────────────
 
@@ -43,6 +45,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 	const { data: template, isLoading: templateLoading } = useTaskTemplateById(templateId as UUID)
 
 	const submitForm = useSubmitTaskForm()
+	const { data: currentUser } = useCurrentClientUser()
 	const router = useRouter()
 
 	// answers keyed by question_id
@@ -76,7 +79,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 		}))
 
 		submitForm.mutate(
-			{ task_id: taskId, answers: answerPayload },
+			{ task_id: taskId, user_id: currentUser!.id as UUID, answers: answerPayload },
 			{
 				onSuccess: () => {
 					router.back()
@@ -121,12 +124,19 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 						<MapPinIcon className='h-3.5 w-3.5' />
 						{enclosureName}
 					</span>
-					<ReassignMemberButton
-						taskId={taskId}
-						assignedTo={task.assigned_to}
-						assignedMemberName={assignedMemberName}
-						members={members}
-					/>
+					{isCompleted ? (
+						<span className='flex items-center gap-1.5'>
+							<CircleUserRound className='h-3.5 w-3.5' />
+							{assignedMemberName ?? 'Unassigned'}
+						</span>
+					) : (
+						<ReassignMemberButton
+							taskId={taskId}
+							assignedTo={task.assigned_to}
+							assignedMemberName={assignedMemberName}
+							members={members}
+						/>
+					)}
 					{task.priority && (
 						<Badge
 							variant='secondary'
@@ -153,10 +163,19 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 			{/* ── Form or completed state ── */}
 			{isCompleted ? (
 				<Card>
-					<CardContent className='pt-6 text-center text-sm text-muted-foreground'>
+					<CardContent className='pt-6 text-center text-sm text-muted-foreground space-y-1'>
 						<CheckCircle2Icon className='h-12 w-12 mx-auto mb-3 text-green-500' />
 						<p className='font-medium text-foreground'>This task has been completed.</p>
-						{task.completed_time && <p className='text-xs mt-1'>{new Date(task.completed_time).toLocaleString()}</p>}
+						{task.completed_time && <p className='text-xs'>{new Date(task.completed_time).toLocaleString()}</p>}
+						{(() => {
+							const completedByMember = task.completed_by
+								? members.find((m) => (m.id as string) === (task.completed_by as string))
+								: null
+							const completedByName = completedByMember
+								? completedByMember.full_name || `${completedByMember.first_name} ${completedByMember.last_name}`.trim()
+								: null
+							return completedByName ? <p className='text-xs'>Completed by {completedByName}</p> : null
+						})()}
 					</CardContent>
 				</Card>
 			) : questions.length > 0 ? (
@@ -204,7 +223,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 					<Button
 						className='flex-1'
 						disabled={submitForm.isPending}
-						onClick={() => submitForm.mutate({ task_id: taskId, answers: [] }, { onSuccess: () => router.back() })}
+						onClick={() => submitForm.mutate({ task_id: taskId, user_id: currentUser!.id as UUID, answers: [] })}
 					>
 						{submitForm.isPending ? (
 							<LoaderCircle className='h-4 w-4 animate-spin' />

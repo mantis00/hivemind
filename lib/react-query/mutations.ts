@@ -949,7 +949,7 @@ export function useCompleteTask() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ task_id, enclosure_id }: { task_id: UUID; enclosure_id: UUID; user_id: UUID }) => {
+		mutationFn: async ({ task_id, enclosure_id, user_id }: { task_id: UUID; enclosure_id: UUID; user_id: UUID }) => {
 			const supabase = createClient()
 
 			if (!task_id) {
@@ -958,7 +958,7 @@ export function useCompleteTask() {
 
 			const { error } = await supabase
 				.from('tasks')
-				.update({ status: 'completed', completed_time: new Date().toISOString() })
+				.update({ status: 'completed', completed_time: new Date().toISOString(), completed_by: user_id })
 				.eq('id', task_id)
 				.eq('enclosure_id', enclosure_id)
 
@@ -1085,7 +1085,15 @@ export function useSubmitTaskForm() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ task_id, answers }: { task_id: UUID; answers: { question_id: UUID; answer: string }[] }) => {
+		mutationFn: async ({
+			task_id,
+			user_id,
+			answers
+		}: {
+			task_id: UUID
+			user_id: UUID
+			answers: { question_id: UUID; answer: string }[]
+		}) => {
 			const supabase = createClient()
 
 			// Insert all form data answers
@@ -1105,7 +1113,8 @@ export function useSubmitTaskForm() {
 				.from('tasks')
 				.update({
 					status: 'completed',
-					completed_time: new Date().toISOString()
+					completed_time: new Date().toISOString(),
+					completed_by: user_id
 				})
 				.eq('id', task_id)
 

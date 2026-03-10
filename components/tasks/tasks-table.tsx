@@ -55,7 +55,7 @@ import { formatDate } from '@/context/format-date'
  */
 function getEffectiveStatus(task: Task): string {
 	if (task.status === 'completed' || task.status === 'late') return task.status
-	if (task.due_date && toLocalDate(task.due_date) < getDateStr(0)) return 'late'
+	if (task.due_date && task.due_date.slice(0, 10) < getDateStr(0)) return 'late'
 	return task.status ?? 'pending'
 }
 
@@ -151,7 +151,7 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void, members: 
 			cell: ({ row }) => {
 				const due = row.original.due_date
 				if (!due) return <span className='text-xs text-muted-foreground'>—</span>
-				const isToday = toLocalDate(due) === getDateStr(0)
+				const isToday = due.slice(0, 10) === getDateStr(0)
 				return (
 					<span
 						className={`text-xs whitespace-nowrap ${isToday ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}
@@ -261,7 +261,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		const source = enclosureTasks ?? []
 		const todayDate = getDateStr(0)
 		const dueToday = source.filter(
-			(t) => t.due_date && toLocalDate(t.due_date) === todayDate && t.status !== 'completed'
+			(t) => t.due_date && t.due_date.slice(0, 10) === todayDate && t.status !== 'completed'
 		).length
 		const late = source.filter((t) => getEffectiveStatus(t) === 'late').length
 		return { dueToday, late }
@@ -299,7 +299,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 			// In range mode, date bounds already applied by Supabase
 			if (isRangeMode) return true
 
-			const dueDateStr = task.due_date ? toLocalDate(task.due_date) : null
+			const dueDateStr = task.due_date ? task.due_date.slice(0, 10) : null
 
 			if (dayOffset === 0) {
 				// Today: due today + overdue (past due, not completed) + high priority not completed
@@ -312,8 +312,16 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 				return dueToday || overdue || urgent || completedToday
 			}
 
-			// Past or future days: only show tasks due on that exact date
-			return dueDateStr === targetDate
+			const completedOnDay =
+				task.status === 'completed' && task.completed_time != null && toLocalDate(task.completed_time) === targetDate
+
+			if (targetDate < todayDate) {
+				// Past days: only show completed tasks — late/pending tasks already appear on Today
+				return (dueDateStr === targetDate && task.status === 'completed') || completedOnDay
+			}
+
+			// Future days: show tasks due on that date (any status) or completed on that date
+			return dueDateStr === targetDate || completedOnDay
 		})
 
 		// Update stable order for any task IDs not yet seen
