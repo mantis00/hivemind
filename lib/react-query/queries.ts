@@ -176,6 +176,20 @@ export type SpeciesRequest = {
 	reviewed_at?: string
 }
 
+export type PushSubscription = {
+	id: UUID
+	user_id: string
+	org_id: UUID | null
+	endpoint: string
+	p256dh: string
+	auth: string
+	created_at: string
+	user_agent: string | null
+	device_type: string | null
+	last_used_at: string | null
+	is_active: boolean
+}
+
 export function useUserOrgs(userId: string) {
 	return useQuery({
 		queryKey: ['orgs', userId],
@@ -746,5 +760,22 @@ export function useAllSpeciesRequests() {
 			if (error) throw error
 			return data
 		}
+	})
+}
+
+export function usePushSubscriptionsForUser(userId: string | undefined) {
+	return useQuery({
+		queryKey: ['pushSubscriptions', userId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('push_subscriptions')
+				.select('*')
+				.eq('user_id', userId)
+				.eq('is_active', true)) as { data: PushSubscription[] | null; error: PostgrestError | null }
+			if (error) throw error
+			return data
+		},
+		enabled: !!userId
 	})
 }

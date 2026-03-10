@@ -1284,3 +1284,65 @@ export function useRejectSpeciesRequest() {
 		}
 	})
 }
+
+export function useSubscribeToPush() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			userId,
+			orgId,
+			endpoint,
+			p256dh,
+			auth
+		}: {
+			userId: string
+			orgId: UUID | null
+			endpoint: string
+			p256dh: string
+			auth: string
+		}) => {
+			const supabase = createClient()
+
+			const { error } = await supabase.from('push_subscriptions').upsert(
+				{
+					user_id: userId,
+					org_id: orgId,
+					endpoint,
+					p256dh,
+					auth,
+					user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+					last_used_at: new Date().toISOString(),
+					is_active: true
+				},
+				{ onConflict: 'user_id,endpoint' }
+			)
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['pushSubscriptions', variables.userId] })
+		}
+	})
+}
+
+export function useUnsubscribeFromPush() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ userId, endpoint }: { userId: string; endpoint: string }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase
+				.from('push_subscriptions')
+				.update({ is_active: false })
+				.eq('user_id', userId)
+				.eq('endpoint', endpoint)
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['pushSubscriptions', variables.userId] })
+		}
+	})
+}
