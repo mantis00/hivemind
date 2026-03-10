@@ -47,13 +47,11 @@ export function RecentActivityPanel({ items, timeZone }: RecentActivityPanelProp
 		<Card>
 			<CardHeader>
 				<CardTitle>Recent Activity</CardTitle>
-				<CardDescription>Most recent task, enclosure, and note events for this organization.</CardDescription>
+				<CardDescription>Tasks completed today, including overdue/urgent completion context.</CardDescription>
 			</CardHeader>
 			<CardContent className='space-y-3'>
 				{items.length === 0 ? (
-					<p className='text-sm text-muted-foreground'>
-						No recent activity yet. New tasks, notes, and enclosure events appear here.
-					</p>
+					<p className='text-sm text-muted-foreground'>No tasks have been completed yet today.</p>
 				) : (
 					items.map((item) => (
 						<Link

@@ -21,20 +21,12 @@ type TaskRow = {
 }
 
 type EnclosureScheduleRow = Record<string, unknown>
-type TankNoteRow = {
-	id: string
-	created_at: string | null
-	enclosure_id: string | null
-	note_text: string | null
-}
 
 const OPEN_TASK_STATUSES = new Set(['pending', 'in_progress'])
 const CLOSED_TASK_STATUS = 'completed'
 const DEFAULT_TIME_ZONE = 'UTC'
 const ENCLOSURE_FILTER_CHUNK_SIZE = 100
 const MAX_RECENT_ACTIVITY_ITEMS = 10
-const MAX_NOTE_ACTIVITY_ITEMS = 6
-const MAX_NOTE_QUERY_ENCLOSURES = 100
 type DashboardClient = Awaited<ReturnType<typeof createClient>>
 
 function isTaskOpen(task: TaskRow) {
@@ -203,17 +195,26 @@ function getTaskTitle(task: TaskRow) {
 	return 'Task'
 }
 
-function toNoteSummary(noteText: string | null) {
-	if (!noteText || noteText.trim().length === 0) {
-		return 'Note added'
+function wasTaskOverdueWhenCompleted(task: TaskRow) {
+	if (!isValidDate(task.completed_time) || !isValidDate(task.due_date)) {
+		return false
 	}
 
-	const trimmed = noteText.trim()
-	if (trimmed.length <= 50) {
-		return `Note: ${trimmed}`
+	return new Date(task.completed_time!).getTime() > new Date(task.due_date!).getTime()
+}
+
+function getCompletionStateLabels(task: TaskRow) {
+	const labels: string[] = []
+
+	if (wasTaskOverdueWhenCompleted(task)) {
+		labels.push('overdue when completed')
 	}
 
-	return `Note: ${trimmed.slice(0, 47)}...`
+	if (isHighPriority(task.priority)) {
+		labels.push('urgent when completed')
+	}
+
+	return labels
 }
 
 function createChunks(values: string[], chunkSize: number) {
@@ -452,41 +453,6 @@ export async function getDashboardData(orgId: string): Promise<DashboardData> {
 			.slice(0, 8)
 	}
 
-	const noteRows: TankNoteRow[] = []
-	if (enclosureIds.length > 0 && enclosureIds.length <= MAX_NOTE_QUERY_ENCLOSURES) {
-		const { data: rawNoteRows, error: noteError } = (await supabase
-			.from('tank_notes')
-			.select('id, created_at, enclosure_id, note_text')
-			.in('enclosure_id', enclosureIds)
-			.order('created_at', { ascending: false })
-			.limit(MAX_NOTE_ACTIVITY_ITEMS)) as {
-			data: TankNoteRow[] | null
-			error: PostgrestError | null
-		}
-
-		if (noteError && !isMissingRelationOrColumn(noteError)) {
-			addWarning(
-				warnings,
-				'tank_notes.select',
-				`Recent notes unavailable (${noteError.message ?? 'Unknown query error'}).`
-			)
-		}
-
-		if (noteError && isMissingRelationOrColumn(noteError)) {
-			addWarning(warnings, 'tank_notes.schema', 'Recent notes unavailable until tank_notes schema is present.')
-		}
-
-		if (!noteError && rawNoteRows) {
-			noteRows.push(...rawNoteRows)
-		}
-	} else if (enclosureIds.length > MAX_NOTE_QUERY_ENCLOSURES) {
-		addWarning(
-			warnings,
-			'tank_notes.select',
-			'Recent notes query skipped for large orgs to reduce database usage (TODO: replace with server-side org activity feed).'
-		)
-	}
-
 	const recentActivityCandidates: RecentActivityItem[] = []
 
 	for (const task of taskRows) {
@@ -497,55 +463,23 @@ export async function getDashboardData(orgId: string): Promise<DashboardData> {
 			: `/protected/orgs/${orgId}`
 
 		if (isValidDate(task.completed_time)) {
-			// TODO: completion activity should include overdue/urgent state so completion history reflects those task conditions.
+			const completedAt = task.completed_time!
+			const completedDateKey = getDateKeyInTimeZone(new Date(completedAt), serverTimeZone)
+			if (completedDateKey !== todayKey) {
+				continue
+			}
+
+			const completionStateLabels = getCompletionStateLabels(task)
+			const completionStateSuffix = completionStateLabels.length > 0 ? ` (${completionStateLabels.join(', ')})` : ''
+
 			recentActivityCandidates.push({
 				id: `task-completed-${task.id}`,
 				type: 'task_completed',
-				label: `${taskTitle} completed in ${enclosureName}`,
-				occurredAt: task.completed_time!,
+				label: `${taskTitle} completed in ${enclosureName}${completionStateSuffix}`,
+				occurredAt: completedAt,
 				href
 			})
 		}
-
-		if (isValidDate(task.created_at)) {
-			recentActivityCandidates.push({
-				id: `task-created-${task.id}`,
-				type: 'task_created',
-				label: `${taskTitle} created for ${enclosureName}`,
-				occurredAt: task.created_at!,
-				href
-			})
-		}
-	}
-
-	for (const enclosure of enclosureRows) {
-		if (!isValidDate(enclosure.created_at)) {
-			continue
-		}
-
-		const enclosureName = enclosure.name ?? enclosure.id
-		recentActivityCandidates.push({
-			id: `enclosure-created-${enclosure.id}`,
-			type: 'enclosure_created',
-			label: `${enclosureName} enclosure created`,
-			occurredAt: enclosure.created_at!,
-			href: `/protected/orgs/${orgId}/enclosures/${enclosure.id}`
-		})
-	}
-
-	for (const note of noteRows) {
-		if (!note.enclosure_id || !isValidDate(note.created_at)) {
-			continue
-		}
-
-		const enclosureName = enclosureNameById.get(note.enclosure_id) ?? note.enclosure_id
-		recentActivityCandidates.push({
-			id: `note-added-${note.id}`,
-			type: 'note_added',
-			label: `${toNoteSummary(note.note_text)} (${enclosureName})`,
-			occurredAt: note.created_at!,
-			href: `/protected/orgs/${orgId}/enclosures/${note.enclosure_id}`
-		})
 	}
 
 	dashboardData.recentActivity = recentActivityCandidates
