@@ -77,7 +77,14 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 			answer: answers[q.id] ?? ''
 		}))
 
-		submitForm.mutate({ task_id: taskId, user_id: currentUser!.id as UUID, answers: answerPayload })
+		submitForm.mutate(
+			{ task_id: taskId, user_id: currentUser!.id as UUID, answers: answerPayload },
+			{
+				onSuccess: () => {
+					router.back()
+				}
+			}
+		)
 	}
 
 	if (isLoading) {
@@ -215,7 +222,16 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 					<Button
 						className='flex-1'
 						disabled={submitForm.isPending}
-						onClick={() => submitForm.mutate({ task_id: taskId, user_id: currentUser!.id as UUID, answers: [] })}
+						onClick={() =>
+							submitForm.mutate(
+								{ task_id: taskId, user_id: currentUser!.id as UUID, answers: [] },
+								{
+									onSuccess: () => {
+										router.back()
+									}
+								}
+							)
+						}
 					>
 						{submitForm.isPending ? (
 							<LoaderCircle className='h-4 w-4 animate-spin' />
