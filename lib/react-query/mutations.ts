@@ -941,6 +941,7 @@ export function useStartTask() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 		}
 	})
 }
@@ -966,6 +967,7 @@ export function useCompleteTask() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 		}
 	})
 }
@@ -1016,6 +1018,7 @@ export function useCreateTask() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			toast.success('Task created!')
 		}
 	})
@@ -1076,6 +1079,7 @@ export function useCreateSchedule() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			toast.success('Recurring schedule created!')
 		}
 	})
@@ -1122,6 +1126,7 @@ export function useSubmitTaskForm() {
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
 			toast.success('Task completed!')
@@ -1524,6 +1529,7 @@ export function useReassignTask() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['taskById'] })
 			toast.success('Task reassigned!')
 		}
