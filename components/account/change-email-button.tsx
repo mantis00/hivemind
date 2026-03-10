@@ -26,8 +26,8 @@ export function ChangeEmailButton() {
 				if (!isOpen) setNewEmail('')
 			}}
 			trigger={
-				<Button variant='outline' size='sm' className='shrink-0'>
-					Change
+				<Button variant='outline' size='sm' className='shrink-0' disabled>
+					Change (currently disabled)
 				</Button>
 			}
 		>
