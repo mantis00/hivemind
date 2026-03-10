@@ -302,14 +302,12 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 			const dueDateStr = task.due_date ? task.due_date.slice(0, 10) : null
 
 			if (dayOffset === 0) {
-				// Today: due today + overdue (past due, not completed) + high priority not completed
-				// + tasks completed today (shown at bottom)
+				// Today: due today + overdue (past due, not completed) + completed today
 				const dueToday = dueDateStr === todayDate
 				const overdue = dueDateStr !== null && dueDateStr < todayDate && task.status !== 'completed'
-				const urgent = task.priority === 'high' && task.status !== 'completed'
 				const completedToday =
 					task.status === 'completed' && task.completed_time != null && toLocalDate(task.completed_time) === todayDate
-				return dueToday || overdue || urgent || completedToday
+				return dueToday || overdue || completedToday
 			}
 
 			const completedOnDay =
