@@ -252,7 +252,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 					>
 						<thead className='[&_tr]:border-b'>
 							{table.getHeaderGroups().map((headerGroup) => (
-								<tr key={headerGroup.id} className='border-b bg-card shadow-sm'>
+								<tr key={headerGroup.id} className='border-b bg-muted shadow-sm'>
 									{headerGroup.headers.map((header) => (
 										<th
 											key={header.id}
@@ -274,7 +274,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 								<tr
 									key={row.id}
 									ref={index === 0 ? rowRef : undefined}
-									className='border-b transition-colors hover:bg-muted/50 cursor-pointer active:bg-muted'
+									className={`border-b transition-colors hover:bg-muted/30 cursor-pointer active:bg-muted ${index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}`}
 									onClick={() => handleView(row.original.id as UUID)}
 								>
 									{row.getVisibleCells().map((cell) => (

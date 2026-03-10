@@ -5,10 +5,10 @@ import { ArrowRight, ArrowUpDown } from 'lucide-react'
 import { UUID } from 'crypto'
 
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Task, MemberProfile } from '@/lib/react-query/queries'
 import { ReassignMemberButton } from './reassign-member-button'
 import capitalizeFirstLetter from '@/context/captalize-first-letter'
-import { getDateStr } from '@/context/task-day'
 import { formatDate } from '@/context/format-date'
 import { getEffectiveStatus, priorityConfig, statusConfig } from '@/context/task-status'
 
@@ -31,7 +31,22 @@ export function getColumns(
 					<ArrowUpDown className='h-4 w-4' />
 				</button>
 			),
-			cell: ({ row }) => <div className='font-medium truncate'>{row.getValue('name')}</div>
+			cell: ({ row }) => {
+				const name = row.getValue('name') as string
+				if (name && name.length > 20) {
+					return (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<div className='font-medium truncate max-w-[160px] cursor-default'>{name.slice(0, 20)}…</div>
+								</TooltipTrigger>
+								<TooltipContent>{name}</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					)
+				}
+				return <div className='font-medium truncate max-w-[160px]'>{name}</div>
+			}
 		},
 		{
 			id: 'description',
@@ -40,7 +55,21 @@ export function getColumns(
 			cell: ({ row }) => {
 				const task = row.original
 				const desc = task.description ?? task.task_templates?.description
-				return <div className='max-w-xs truncate text-sm text-muted-foreground'>{desc}</div>
+				if (desc && desc.length > 30) {
+					return (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<div className='max-w-[240px] truncate text-sm text-muted-foreground cursor-default'>
+										{desc.slice(0, 30)}…
+									</div>
+								</TooltipTrigger>
+								<TooltipContent className='max-w-xs'>{desc}</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					)
+				}
+				return <div className='max-w-[240px] truncate text-sm text-muted-foreground'>{desc}</div>
 			}
 		},
 		{
@@ -101,14 +130,7 @@ export function getColumns(
 			cell: ({ row }) => {
 				const due = row.original.due_date
 				if (!due) return <span className='text-xs text-muted-foreground'>—</span>
-				const isToday = due.slice(0, 10) === getDateStr(0)
-				return (
-					<span
-						className={`text-xs whitespace-nowrap ${isToday ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}
-					>
-						{formatDate(due)}
-					</span>
-				)
+				return <span className='text-xs whitespace-nowrap text-muted-foreground'>{formatDate(due)}</span>
 			}
 		},
 		{
