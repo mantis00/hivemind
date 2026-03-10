@@ -77,14 +77,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 			answer: answers[q.id] ?? ''
 		}))
 
-		submitForm.mutate(
-			{ task_id: taskId, user_id: currentUser!.id as UUID, answers: answerPayload },
-			{
-				onSuccess: () => {
-					router.back()
-				}
-			}
-		)
+		submitForm.mutate({ task_id: taskId, user_id: currentUser!.id as UUID, answers: answerPayload })
 	}
 
 	if (isLoading) {
