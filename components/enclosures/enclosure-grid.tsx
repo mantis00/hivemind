@@ -292,10 +292,10 @@ export default function EnclosureGrid() {
 							)}
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value='common_name' className='text-l'>
+							<SelectItem value='common_name' className='text-l cursor-pointer'>
 								Common Name
 							</SelectItem>
-							<SelectItem value='scientific_name' className='text-l'>
+							<SelectItem value='scientific_name' className='text-l cursor-pointer'>
 								Scientific Name
 							</SelectItem>
 						</SelectContent>

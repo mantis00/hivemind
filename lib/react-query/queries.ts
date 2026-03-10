@@ -136,9 +136,9 @@ export type Task = {
 	enclosure_id: UUID
 	name: string | null
 	description: string | null
-	status: string | null
+	status: 'completed' | 'pending' | 'late' | null
 	due_date: string | null
-	priority: string | null
+	priority: 'low' | 'medium' | 'high' | null
 	completed_by: UUID | null
 	completed_time: string | null
 	template_id: UUID | null
@@ -160,10 +160,11 @@ export type EnclosureSchedule = {
 	schedule_rule: string
 	time_window: 'Morning' | 'Afternoon' | 'Any' | null
 	is_active: boolean
+	status: 'completed' | 'pending' | 'late' | null
 	last_run_at: string | null
 	task_name: string | null
 	task_description: string | null
-	priority: string | null
+	priority: 'low' | 'medium' | 'high' | null
 	assigned_to: UUID | null
 	end_date: string | null
 	max_occurrences: number | null

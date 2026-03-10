@@ -25,7 +25,7 @@ import { ReassignMemberButton } from '@/components/tasks/reassign-member-button'
 import { ViewScheduleTemplateButton } from '@/components/tasks/view-schedule-template-button'
 import { ScheduledTasksFilters, type ScheduleFilters } from '@/components/tasks/scheduled-tasks-filters'
 
-import getPriorityLevelStatus from '@/context/priority-levels'
+import capitalizeFirstLetter from '@/context/captalize-first-letter'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,11 +105,11 @@ export function ScheduledTasksTable() {
 
 	const [filters, setFilters] = useState<ScheduleFilters>({
 		search: '',
-		statusFilter: [],
-		typeFilter: [],
-		priorityFilter: []
+		activeOnly: false,
+		priorityFilter: [],
+		typeFilter: []
 	})
-	const { search, statusFilter, typeFilter, priorityFilter } = filters
+	const { search, activeOnly, priorityFilter, typeFilter } = filters
 
 	const listRef = useRef<HTMLDivElement>(null)
 
@@ -155,22 +155,18 @@ export function ScheduledTasksTable() {
 			s.enclosure_name?.toLowerCase().includes(term) ||
 			s.species_name?.toLowerCase().includes(term)
 
-		const matchesStatus =
-			statusFilter.length === 0 ||
-			(statusFilter.includes('active') && s.is_active) ||
-			(statusFilter.includes('inactive') && !s.is_active)
-
-		const matchesType = typeFilter.length === 0 || typeFilter.includes(s.schedule_type)
+		const matchesActive = !activeOnly || s.is_active
 		const matchesPriority = priorityFilter.length === 0 || (s.priority !== null && priorityFilter.includes(s.priority))
+		const matchesType = typeFilter.length === 0 || typeFilter.includes(s.schedule_type)
 
-		return matchesSearch && matchesStatus && matchesType && matchesPriority
+		return matchesSearch && matchesActive && matchesPriority && matchesType
 	})
 
 	const count = filtered.length
 	const [actualListHeight, setActualListHeight] = useState(CARD_HEIGHT)
 	const listHeight = isLoading || count === 0 ? 120 : Math.min(actualListHeight, MAX_LIST_HEIGHT)
 
-	const hasActiveFilters = statusFilter.length > 0 || typeFilter.length > 0 || priorityFilter.length > 0
+	const hasActiveFilters = activeOnly || priorityFilter.length > 0 || typeFilter.length > 0
 
 	// ── Render ────────────────────────────────────────────────────────────────
 
@@ -316,7 +312,7 @@ export function ScheduledTasksTable() {
 																priorityConfig[schedule.priority]?.color ?? 'bg-gray-100 text-gray-800'
 															}`}
 														>
-															{getPriorityLevelStatus(schedule.priority)}
+															{capitalizeFirstLetter(schedule.priority)}
 														</span>
 													</>
 												)}
