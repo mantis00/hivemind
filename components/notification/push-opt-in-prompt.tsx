@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { Bell } from 'lucide-react'
+
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Button } from '@/components/ui/button'
+
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useSubscribeToPush } from '@/lib/react-query/mutations'
-import { Bell } from 'lucide-react'
 
 interface PushOptInPromptProps {
 	open: boolean
@@ -17,93 +19,110 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 	const { data: user } = useCurrentClientUser()
 	const subscribeMutation = useSubscribeToPush()
 	const pathname = usePathname()
-	const [dismissed, setDismissed] = useState(false)
+
 	const [isSupported, setIsSupported] = useState(false)
+	const [dismissed, setDismissed] = useState(false)
 
-	const pathname_match = pathname?.match(/^\/protected\/orgs\/([0-9a-fA-F-]{36})/)
-	const orgId = pathname_match?.[1] ?? null
+	const orgMatch = pathname?.match(/^\/protected\/orgs\/([0-9a-fA-F-]{36})/)
+	const orgId = orgMatch?.[1] ?? null
 
-	// Check browser support
+	/* Check browser support*/
+
 	useEffect(() => {
+		if (typeof window === 'undefined') return
+
 		const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+
 		setIsSupported(supported)
+
+		if (sessionStorage.getItem('pushPromptDismissed') === 'true') {
+			setDismissed(true)
+		}
 	}, [])
 
-	// Check if already dismissed this session
-	useEffect(() => {
-		const isDismissed = sessionStorage.getItem('pushPromptDismissed') === 'true'
-		setDismissed(isDismissed)
-	}, [])
+	/* Dismiss prompt*/
 
-	const handleDismiss = () => {
+	const dismiss = () => {
 		sessionStorage.setItem('pushPromptDismissed', 'true')
 		setDismissed(true)
 		onOpenChange(false)
 	}
 
+	/* Enable notifications*/
+
 	const handleEnable = async () => {
 		if (!user || !isSupported) return
 
 		try {
-			// Check current permission
+			/* Request permission */
+
 			let permission = Notification.permission
+
 			if (permission === 'default') {
-				// Request permission from user
 				permission = await Notification.requestPermission()
 			}
 
 			if (permission !== 'granted') {
-				handleDismiss()
+				dismiss()
 				return
 			}
 
-			// Get service worker registration
+			/* Get existing service worker */
+
 			const registration = await navigator.serviceWorker.ready
 
-			// Subscribe to push notifications
-			const subscription = await registration.pushManager.subscribe({
-				userVisibleOnly: true,
-				applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-					? urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
-					: undefined
-			})
+			/* Check for existing subscription */
 
-			const subscriptionJson = subscription.toJSON()
-			if (!subscriptionJson.endpoint || !subscriptionJson.keys?.p256dh || !subscriptionJson.keys?.auth) {
-				throw new Error('Invalid subscription object')
+			let subscription = await registration.pushManager.getSubscription()
+
+			if (!subscription) {
+				const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+				if (!vapidKey) throw new Error('Missing VAPID public key')
+
+				subscription = await registration.pushManager.subscribe({
+					userVisibleOnly: true,
+					applicationServerKey: urlBase64ToUint8Array(vapidKey)
+				})
 			}
 
-			// Save to database via mutation
+			/* Send subscription to backend */
+
+			const sub = subscription.toJSON()
+
+			if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
+				throw new Error('Invalid push subscription')
+			}
+
 			await subscribeMutation.mutateAsync({
 				userId: user.id,
 				orgId: orgId as any,
-				endpoint: subscriptionJson.endpoint,
-				p256dh: subscriptionJson.keys.p256dh,
-				auth: subscriptionJson.keys.auth
+				endpoint: sub.endpoint,
+				p256dh: sub.keys.p256dh,
+				auth: sub.keys.auth
 			})
 
-			handleDismiss()
-		} catch (error) {
-			console.error('Failed to subscribe to push notifications:', error)
+			dismiss()
+		} catch (err) {
+			console.error('Push subscription failed:', err)
 		}
 	}
 
-	// Don't show if not supported, already dismissed, or already subscribed
-	if (!isSupported || dismissed || !open) {
-		return null
-	}
+	/* Render guard*/
+
+	if (!isSupported || !open || dismissed) return null
 
 	return (
 		<ResponsiveDialogDrawer
 			title='Enable Notifications'
-			description='Get updates about alerts, invites, and important changes delivered right to your device.'
+			description='Get alerts, invites, and important updates delivered to your device.'
 			trigger={null}
 			open={open}
 			onOpenChange={onOpenChange}
 		>
-			<Button variant='outline' onClick={handleDismiss}>
+			<Button variant='outline' onClick={dismiss}>
 				Not now
 			</Button>
+
 			<Button onClick={handleEnable} disabled={subscribeMutation.isPending}>
 				{subscribeMutation.isPending ? 'Enabling...' : 'Enable notifications'}
 				<Bell className='ml-2 size-4' />
@@ -112,16 +131,12 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 	)
 }
 
-// Helper to convert VAPID key from base64 to Uint8Array
+/* VAPID helper*/
+
 function urlBase64ToUint8Array(base64String: string) {
 	const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-	const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/')
+	const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
 
 	const rawData = window.atob(base64)
-	const outputArray = new Uint8Array(rawData.length)
-
-	for (let i = 0; i < rawData.length; ++i) {
-		outputArray[i] = rawData.charCodeAt(i)
-	}
-	return outputArray
+	return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)))
 }

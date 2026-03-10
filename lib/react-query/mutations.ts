@@ -1315,7 +1315,7 @@ export function useSubscribeToPush() {
 					last_used_at: new Date().toISOString(),
 					is_active: true
 				},
-				{ onConflict: 'user_id,endpoint' }
+				{ onConflict: 'endpoint' }
 			)
 
 			if (error) throw error
