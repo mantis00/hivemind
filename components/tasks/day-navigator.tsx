@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { DateRange } from 'react-day-picker'
 
 import { Button } from '@/components/ui/button'
