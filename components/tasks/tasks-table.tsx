@@ -193,7 +193,6 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void, members: 
 							variant='ghost'
 							size='icon'
 							className='h-8 w-8 text-muted-foreground hover:text-primary'
-							title='View task'
 							onClick={(e) => {
 								e.stopPropagation()
 								onView(row.original.id as UUID)
