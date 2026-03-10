@@ -29,6 +29,7 @@ export function EnclosureDialog({
 }) {
 	const { data: enclosureNotes, isLoading } = useEnclosureNotes(enclosure.id)
 	const [notesOpen, setNotesOpen] = useState(false)
+	const [navigating, setNavigating] = useState(false)
 
 	const params = useParams()
 	const orgId = params?.orgId as number | undefined
@@ -46,9 +47,13 @@ export function EnclosureDialog({
 			<div className='overflow-y-auto max-h-[70vh] scrollbar-hide sm:scrollbar-auto'>
 				<Button
 					className='flex gap-2 w-full mb-2'
-					onClick={() => router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)}
+					disabled={navigating}
+					onClick={() => {
+						setNavigating(true)
+						router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)
+					}}
 				>
-					<ClipboardList className='h-4 w-4' />
+					{navigating ? <LoaderCircle className='h-4 w-4 animate-spin' /> : <ClipboardList className='h-4 w-4' />}
 					View Tasks
 				</Button>
 				<div className='grid gap-4'>

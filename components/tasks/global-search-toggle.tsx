@@ -42,9 +42,6 @@ export function GlobalSearchToggle({ globalSearch, onGlobalSearchChange }: Globa
 				}}
 				footer={
 					<div className='flex gap-2 w-full'>
-						<Button variant='outline' className='flex-1' onClick={() => setConfirmOpen(false)}>
-							Cancel
-						</Button>
 						<Button
 							className='flex-1'
 							onClick={() => {

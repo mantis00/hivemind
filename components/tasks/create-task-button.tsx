@@ -228,15 +228,6 @@ export function CreateTaskButton({ enclosureId, orgId }: CreateTaskButtonProps) 
 			onOpenChange={handleOpenChange}
 			footer={
 				<div className='flex gap-2 w-full'>
-					<Button
-						type='button'
-						variant='outline'
-						className='flex-1'
-						onClick={() => setOpen(false)}
-						disabled={isPending}
-					>
-						Cancel
-					</Button>
 					<Button type='button' className='flex-1' disabled={isPending} onClick={handleSubmit}>
 						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Create Task'}
 					</Button>

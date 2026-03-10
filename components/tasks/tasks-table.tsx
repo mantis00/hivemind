@@ -83,14 +83,13 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void, members: 
 		{
 			accessorKey: 'name',
 			header: ({ column }) => (
-				<Button
-					variant='ghost'
+				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='h-8 p-0'
+					className='flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
 				>
 					Task Name
-					<ArrowUpDown className='ml-2 h-4 w-4' />
-				</Button>
+					<ArrowUpDown className='h-4 w-4' />
+				</button>
 			),
 			cell: ({ row }) => <div className='font-medium truncate'>{row.getValue('name')}</div>
 		},
@@ -107,14 +106,13 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void, members: 
 		{
 			accessorKey: 'priority',
 			header: ({ column }) => (
-				<Button
-					variant='ghost'
+				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='h-8 p-0'
+					className='flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
 				>
 					Priority
-					<ArrowUpDown className='ml-2 h-4 w-4' />
-				</Button>
+					<ArrowUpDown className='h-4 w-4' />
+				</button>
 			),
 			cell: ({ row }) => {
 				const priority = row.getValue('priority') as string | null
@@ -129,14 +127,13 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void, members: 
 		{
 			accessorKey: 'status',
 			header: ({ column }) => (
-				<Button
-					variant='ghost'
+				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='h-8 p-0'
+					className='flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
 				>
 					Status
-					<ArrowUpDown className='ml-2 h-4 w-4' />
-				</Button>
+					<ArrowUpDown className='h-4 w-4' />
+				</button>
 			),
 			cell: ({ row }) => {
 				const status = getEffectiveStatus(row.original)
@@ -556,7 +553,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 										setPendingGlobalSearch(false)
 									}
 								}}
-								numberOfMonths={2}
+								numberOfMonths={isMobile ? 1 : 2}
 							/>
 						</PopoverContent>
 					</Popover>

@@ -91,7 +91,7 @@ export function ResponsiveDialogDrawer({
 					<DrawerDescription>{description}</DrawerDescription>
 				</DrawerHeader>
 				<div className='overflow-y-auto flex-1 flex flex-col gap-2 scrollbar-hide'>{children}</div>
-				{footer && <DrawerFooter>{footer}</DrawerFooter>}
+				{footer && <DrawerFooter className='px-0'>{footer}</DrawerFooter>}
 			</DrawerContent>
 		</Drawer>
 	)
