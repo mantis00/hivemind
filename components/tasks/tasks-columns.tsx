@@ -25,7 +25,7 @@ export function getColumns(
 			header: ({ column }) => (
 				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
+					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors'
 				>
 					Task Name
 					<ArrowUpDown className='h-4 w-4' />
@@ -36,7 +36,7 @@ export function getColumns(
 		{
 			id: 'description',
 			accessorKey: 'description',
-			header: 'Description',
+			header: () => <span className='font-bold'>Description</span>,
 			cell: ({ row }) => {
 				const task = row.original
 				const desc = task.description ?? task.task_templates?.description
@@ -48,7 +48,7 @@ export function getColumns(
 			header: ({ column }) => (
 				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
+					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors'
 				>
 					Priority
 					<ArrowUpDown className='h-4 w-4' />
@@ -70,7 +70,7 @@ export function getColumns(
 			header: ({ column }) => (
 				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
+					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors'
 				>
 					Status
 					<ArrowUpDown className='h-4 w-4' />
@@ -92,7 +92,7 @@ export function getColumns(
 			header: ({ column }) => (
 				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
+					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors'
 				>
 					Due Date
 					<ArrowUpDown className='h-4 w-4' />
@@ -113,7 +113,7 @@ export function getColumns(
 		},
 		{
 			id: 'assigned_to',
-			header: 'Assigned To',
+			header: () => <span className='font-bold'>Assigned To</span>,
 			cell: ({ row }) => {
 				const task = row.original
 				const member = task.assigned_to ? memberMap.get(task.assigned_to as string) : null

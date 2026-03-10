@@ -169,7 +169,6 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	})
 
 	const { rows } = table.getRowModel()
-
 	const rowH = measuredRowHeight ?? ESTIMATED_ROW_HEIGHT
 	const naturalHeight = rows.length * rowH + HEADER_HEIGHT
 	const cappedHeight = Math.min(TARGET_VISIBLE_ROWS * rowH + HEADER_HEIGHT, MAX_TABLE_HEIGHT)
