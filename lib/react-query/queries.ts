@@ -627,19 +627,34 @@ export function useTasksForEnclosures(enclosureIds: UUID[]) {
 		queryFn: async () => {
 			const supabase = createClient()
 			const CHUNK_SIZE = 200
+			const PAGE_SIZE = 1000
+
 			const chunks: UUID[][] = []
 			for (let i = 0; i < enclosureIds.length; i += CHUNK_SIZE) {
 				chunks.push(enclosureIds.slice(i, i + CHUNK_SIZE))
 			}
-			const results = await Promise.all(
-				chunks.map((chunk) =>
-					supabase.from('tasks').select('*, task_templates(type, description)').in('enclosure_id', chunk)
-				)
+
+			const chunkResults = await Promise.all(
+				chunks.map(async (chunk) => {
+					const tasks: Task[] = []
+					let from = 0
+					while (true) {
+						const { data, error } = (await supabase
+							.from('tasks')
+							.select('*, task_templates(type, description)')
+							.in('enclosure_id', chunk)
+							.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
+
+						if (error) throw error
+						tasks.push(...(data ?? []))
+						if ((data?.length ?? 0) < PAGE_SIZE) break
+						from += PAGE_SIZE
+					}
+					return tasks
+				})
 			)
-			for (const { error } of results) {
-				if (error) throw error
-			}
-			return results.flatMap((r) => r.data ?? []) as Task[]
+
+			return chunkResults.flat()
 		},
 		enabled: enclosureIds.length > 0
 	})

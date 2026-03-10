@@ -30,8 +30,7 @@ import {
 	DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
+import { GlobalSearchToggle } from './global-search-toggle'
 import type { Task, MemberProfile } from '@/lib/react-query/queries'
 import { useTasksForEnclosures, useTasksForEnclosuresInRange, useOrgMemberProfiles } from '@/lib/react-query/queries'
 import { ReassignMemberButton } from './reassign-member-button'
@@ -173,12 +172,14 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void, members: 
 				const member = task.assigned_to ? memberMap.get(task.assigned_to as string) : null
 				const name = member ? member.full_name || `${member.first_name} ${member.last_name}`.trim() : null
 				return (
-					<ReassignMemberButton
-						taskId={task.id as UUID}
-						assignedTo={task.assigned_to}
-						assignedMemberName={name}
-						members={members}
-					/>
+					<div onClick={(e) => e.stopPropagation()}>
+						<ReassignMemberButton
+							taskId={task.id as UUID}
+							assignedTo={task.assigned_to}
+							assignedMemberName={name}
+							members={members}
+						/>
+					</div>
 				)
 			}
 		},
@@ -193,7 +194,10 @@ function getColumns(isMobile: boolean, onView: (taskId: UUID) => void, members: 
 							size='icon'
 							className='h-8 w-8 text-muted-foreground hover:text-primary'
 							title='View task'
-							onClick={() => onView(row.original.id as UUID)}
+							onClick={(e) => {
+								e.stopPropagation()
+								onView(row.original.id as UUID)
+							}}
 						>
 							<ArrowRight className='h-4 w-4' />
 						</Button>
@@ -222,6 +226,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	const [sorting, setSorting] = React.useState<SortingState>([])
 	const [globalFilter, setGlobalFilter] = React.useState('')
 	const [globalSearch, setGlobalSearch] = React.useState(false)
+	const [pendingGlobalSearch, setPendingGlobalSearch] = React.useState(false)
 	const [priorityFilter, setPriorityFilter] = React.useState<string[]>([])
 	const [statusFilter, setStatusFilter] = React.useState<string[]>([])
 	const MAX_TABLE_HEIGHT = isMobile ? MAX_TABLE_HEIGHT_MOBILE : MAX_TABLE_HEIGHT_DESKTOP
@@ -250,9 +255,10 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		setStatusFilter([])
 		setGlobalFilter('')
 		setGlobalSearch(false)
+		setPendingGlobalSearch(false)
 	}
 
-	const { data: enclosureTasks, isLoading: tasksLoading } = useTasksForEnclosures(isRangeMode ? [] : [enclosureId])
+	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(isRangeMode ? [] : [enclosureId])
 
 	const todayCounts = React.useMemo(() => {
 		if (isRangeMode) return null
@@ -264,12 +270,12 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		const late = source.filter((t) => getEffectiveStatus(t) === 'late').length
 		return { dueToday, late }
 	}, [enclosureTasks, isRangeMode])
-	const { data: rangeTasks, isLoading: rangeLoading } = useTasksForEnclosuresInRange(
+	const { data: rangeTasks, isFetching: rangeFetching } = useTasksForEnclosuresInRange(
 		isRangeMode ? [enclosureId] : [],
 		dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
 		dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : ''
 	)
-	const activeLoading = isRangeMode ? rangeLoading : tasksLoading
+	const activeLoading = pendingGlobalSearch || (isRangeMode ? rangeFetching : tasksFetching)
 
 	const handleView = React.useCallback(
 		(taskId: UUID) => {
@@ -390,6 +396,13 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		measuredRef.current = false
 	}, [sorting])
 
+	// Clear the global-search pending loader once data is available
+	React.useEffect(() => {
+		if (pendingGlobalSearch && !tasksFetching) {
+			setPendingGlobalSearch(false)
+		}
+	}, [pendingGlobalSearch, tasksFetching])
+
 	if (!isMounted) return null
 
 	return (
@@ -413,6 +426,25 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 						>
 							<X className='h-4 w-4' />
 							Clear range
+						</Button>
+					</div>
+				</div>
+			) : globalSearch ? (
+				<div className='flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2'>
+					<div className='flex-1' />
+					<div className='text-center'>
+						<p className='text-sm font-semibold'>All dates</p>
+						<p className='text-xs text-muted-foreground'>Searching across all tasks · {rows.length} results</p>
+					</div>
+					<div className='flex flex-1 justify-end'>
+						<Button
+							variant='ghost'
+							size='sm'
+							onClick={() => setGlobalSearch(false)}
+							className='gap-1 text-muted-foreground'
+						>
+							<X className='h-4 w-4' />
+							Clear
 						</Button>
 					</div>
 				</div>
@@ -441,17 +473,23 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 			{/* Filters */}
 			<div className='flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap'>
 				{isMobile && <CreateTaskButton enclosureId={enclosureId} orgId={orgId} />}
-				<div className='flex items-center gap-2 flex-1'>
+				<div className='flex items-center gap-2'>
 					<Input
 						placeholder='Search tasks...'
 						value={globalFilter}
 						onChange={(e) => setGlobalFilter(e.target.value)}
-						className='w-full'
+						className='w-48'
 					/>
-					<Switch id='global-search' checked={globalSearch} onCheckedChange={setGlobalSearch} />
-					<Label htmlFor='global-search' className='text-xs text-muted-foreground whitespace-nowrap cursor-pointer'>
-						All dates
-					</Label>
+					<GlobalSearchToggle
+						globalSearch={globalSearch}
+						onGlobalSearchChange={(val) => {
+							if (val) {
+								setPendingGlobalSearch(true)
+								setDateRange(undefined)
+							}
+							setGlobalSearch(val)
+						}}
+					/>
 				</div>
 				<div className='flex flex-wrap items-center gap-2 flex-1'>
 					<DropdownMenu>
@@ -512,21 +550,25 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 							<Calendar
 								mode='range'
 								selected={dateRange}
-								onSelect={(range) => setDateRange(range)}
+								onSelect={(range) => {
+									setDateRange(range)
+									if (range?.from && range?.to) {
+										setGlobalSearch(false)
+										setPendingGlobalSearch(false)
+									}
+								}}
 								numberOfMonths={2}
 							/>
 						</PopoverContent>
 					</Popover>
-					{hasActiveFilters && (
-						<Button
-							variant='ghost'
-							onClick={resetFilters}
-							className='gap-1.5 text-muted-foreground hover:text-foreground'
-						>
-							{isMobile ? '' : 'Reset'}
-							<X className='h-4 w-4' />
-						</Button>
-					)}
+					<Button
+						variant='ghost'
+						onClick={resetFilters}
+						className={`gap-1.5 text-muted-foreground hover:text-foreground ${hasActiveFilters ? '' : 'invisible pointer-events-none'}`}
+					>
+						{isMobile ? '' : 'Reset'}
+						<X className='h-4 w-4' />
+					</Button>
 					{!isMobile && (
 						<div className='ml-auto'>
 							<CreateTaskButton enclosureId={enclosureId} orgId={orgId} />
