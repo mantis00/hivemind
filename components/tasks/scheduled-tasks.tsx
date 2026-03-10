@@ -215,6 +215,8 @@ export function ScheduledTasksTable() {
 												{schedule.task_description && <TruncatedDescription text={schedule.task_description} />}
 											</div>
 											{/* Active/Paused toggle */}
+											<DeleteScheduleButton scheduleId={schedule.id as UUID} taskName={schedule.task_name} />
+											<ViewScheduleTemplateButton templateId={schedule.template_id} taskName={schedule.task_name} />
 											<TooltipProvider>
 												<Tooltip>
 													<TooltipTrigger asChild>
@@ -243,8 +245,6 @@ export function ScheduledTasksTable() {
 													</TooltipContent>
 												</Tooltip>
 											</TooltipProvider>
-											<ViewScheduleTemplateButton templateId={schedule.template_id} taskName={schedule.task_name} />
-											<DeleteScheduleButton scheduleId={schedule.id as UUID} taskName={schedule.task_name} />
 										</div>
 
 										{/* ── Row 2: enclosure / species badges ── */}
