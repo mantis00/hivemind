@@ -86,7 +86,7 @@ export default function RootLayout({
 	return (
 		<html lang='en' suppressHydrationWarning>
 			<body className={`${geistSans.className} ${dancingScript.variable} antialiased`}>
-				<ThemeProvider attribute='class' defaultTheme='light' disableTransitionOnChange>
+				<ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange>
 					<QueryProvider>
 						<div vaul-drawer-wrapper='' className='bg-background'>
 							{children}
