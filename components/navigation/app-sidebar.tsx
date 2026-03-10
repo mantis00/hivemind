@@ -26,7 +26,8 @@ import {
 	LogOut,
 	Box,
 	FolderHeart,
-	ArrowRightLeft
+	ArrowRightLeft,
+	ClipboardList
 } from 'lucide-react'
 import {
 	DropdownMenu,
@@ -182,6 +183,14 @@ export function AppSidebar() {
 												<Link href={orgId ? `/protected/orgs/${orgId}/enclosures` : '/protected/orgs'}>
 													<Box className='size-4' />
 													<span>Enclosures</span>
+												</Link>
+											</SidebarMenuSubButton>
+										</SidebarMenuSubItem>
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild>
+												<Link href={orgId ? `/protected/orgs/${orgId}/tasks` : '/protected/orgs'}>
+													<ClipboardList className='size-4' />
+													<span>Tasks</span>
 												</Link>
 											</SidebarMenuSubButton>
 										</SidebarMenuSubItem>

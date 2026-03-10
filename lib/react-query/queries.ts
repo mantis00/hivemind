@@ -138,11 +138,11 @@ export type Task = {
 	completed_by: UUID | null
 	completed_time: string | null
 	template_id: UUID | null
-	form_data: Record<string, unknown> | null
 	schedule_id: UUID | null
 	time_window: string | null
 	start_time: string | null
 	time_to_completion: string | null
+	assigned_to: UUID | null
 }
 
 export function useUserOrgs(userId: string) {
@@ -499,16 +499,33 @@ export function useEnclosuresByIds(enclosureIds: UUID[]) {
 }
 
 export function useTasksForEnclosures(enclosureIds: UUID[]) {
+	const enclosureFilterChunkSize = 100
+
 	return useQuery({
 		queryKey: ['tasksForEnclosures', enclosureIds],
 		queryFn: async () => {
-			const supabase = createClient()
-			const { data, error } = (await supabase.from('tasks').select('*').in('enclosure_id', enclosureIds)) as {
-				data: Task[] | null
-				error: PostgrestError | null
+			if (enclosureIds.length === 0) {
+				return []
 			}
-			if (error) throw error
-			return data
+
+			const supabase = createClient()
+			const uniqueEnclosureIds = Array.from(new Set(enclosureIds))
+			const allTasks: Task[] = []
+
+			for (let index = 0; index < uniqueEnclosureIds.length; index += enclosureFilterChunkSize) {
+				const enclosureChunk = uniqueEnclosureIds.slice(index, index + enclosureFilterChunkSize)
+				const { data, error } = (await supabase.from('tasks').select('*').in('enclosure_id', enclosureChunk)) as {
+					data: Task[] | null
+					error: PostgrestError | null
+				}
+
+				if (error) throw error
+				if (data) {
+					allTasks.push(...data)
+				}
+			}
+
+			return allTasks
 		},
 		enabled: enclosureIds.length > 0
 	})
