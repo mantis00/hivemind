@@ -37,7 +37,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	const { data: members = [] } = useOrgMemberProfiles(orgId)
 
 	const [dayOffset, setDayOffset] = React.useState(0)
-	const [sorting, setSorting] = React.useState<SortingState>([])
+	const [sorting, setSorting] = React.useState<SortingState>([{ id: 'due_date', desc: false }])
 	const [filters, setFilters] = React.useState<TaskFilters>({
 		globalFilter: '',
 		globalSearch: false,
