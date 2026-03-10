@@ -19,7 +19,7 @@ export function ChangeEmailButton() {
 	return (
 		<ResponsiveDialogDrawer
 			title='Change Email'
-			description='Enter your new email address. A confirmation link will be sent to verify it before the change takes effect.'
+			description='Enter your new email address. A confirmation link will be sent to BOTH email addresses. You must verify both to complete the change.'
 			open={open}
 			onOpenChange={(isOpen) => {
 				setOpen(isOpen)
