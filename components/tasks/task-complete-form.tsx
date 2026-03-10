@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useState } from 'react'
-import { CalendarIcon, CheckCircle2Icon, CircleUserRound, LoaderCircle, MapPinIcon } from 'lucide-react'
+import { CheckCircle2Icon, CircleUserRound, LoaderCircle, MapPinIcon } from 'lucide-react'
 import { UUID } from 'crypto'
 
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,6 @@ import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { ReassignMemberButton } from '@/components/tasks/reassign-member-button'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { formatDate } from '@/context/format-date'
 
 // ─── Card wrapper ─────────────────────────────────────────────────────────────
 
