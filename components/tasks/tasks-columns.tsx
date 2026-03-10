@@ -88,7 +88,16 @@ export function getColumns(
 		},
 		{
 			id: 'due_date',
-			header: 'Due Date',
+			accessorKey: 'due_date',
+			header: ({ column }) => (
+				<button
+					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+					className='flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
+				>
+					Due Date
+					<ArrowUpDown className='h-4 w-4' />
+				</button>
+			),
 			cell: ({ row }) => {
 				const due = row.original.due_date
 				if (!due) return <span className='text-xs text-muted-foreground'>—</span>

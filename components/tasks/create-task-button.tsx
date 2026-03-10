@@ -234,7 +234,7 @@ export function CreateTaskButton({ enclosureId, orgId }: CreateTaskButtonProps) 
 				</div>
 			}
 		>
-			<div data-vaul-no-drag className='overflow-y-auto flex-1 min-h-0 space-y-5 pr-1'>
+			<div data-vaul-no-drag className='overflow-y-auto flex-1 min-h-0 space-y-5 pr-4'>
 				{/* ── Task Type ── */}
 				<div className='space-y-2'>
 					<Label className='text-sm font-semibold'>Task Type</Label>

@@ -247,7 +247,9 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 					<div className='flex items-center justify-center h-24 text-muted-foreground text-sm'>
 						{isRangeMode
 							? `No tasks between ${formatDate(dateRange!.from!.toISOString(), false)} and ${formatDate(dateRange!.to!.toISOString())}.`
-							: `No tasks for ${getDayLabel(dayOffset).toLowerCase()}.`}
+							: globalSearch
+								? 'No tasks match your search across all dates.'
+								: `No tasks for ${getDayLabel(dayOffset).toLowerCase()}.`}
 					</div>
 				) : rows.length <= TARGET_VISIBLE_ROWS ? (
 					<table
