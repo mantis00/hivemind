@@ -11,9 +11,9 @@ import type { Species } from '@/lib/react-query/queries'
 import { type FieldDef, emptyField, validateFields } from './template-fields'
 import { TaskTypeSelector, DescriptionField, FieldsEditor } from './task-template-form-parts'
 
-// ─── CreateTaskCard ───────────────────────────────────────────────────────────
+// ─── CreateTaskTemplateCard ───────────────────────────────────────────────────────────
 
-interface CreateTaskCardProps {
+interface CreateTaskTemplateCardProps {
 	species: Species
 	/** Task types already used for this species — used to populate the picker and block duplicates */
 	usedTypes: string[]
@@ -21,7 +21,7 @@ interface CreateTaskCardProps {
 	onCancel: () => void
 }
 
-export function CreateTaskCard({ species, usedTypes, onSuccess, onCancel }: CreateTaskCardProps) {
+export function CreateTaskTemplateCard({ species, usedTypes, onSuccess, onCancel }: CreateTaskTemplateCardProps) {
 	const [taskType, setTaskType] = useState('')
 	const [showNewTypeInput, setShowNewTypeInput] = useState(false)
 	const [description, setDescription] = useState('')
@@ -111,12 +111,12 @@ export function CreateTaskCard({ species, usedTypes, onSuccess, onCancel }: Crea
 				/>
 			</div>
 
-			<div className='flex gap-2 justify-end pt-2 border-t'>
-				<Button type='button' variant='outline' size='sm' onClick={onCancel}>
+			<div className='flex gap-2 pt-2 border-t'>
+				<Button type='button' variant='outline' className='flex-1' onClick={onCancel}>
 					Cancel
 				</Button>
-				<Button type='submit' size='sm' disabled={createTemplate.isPending}>
-					{createTemplate.isPending && <LoaderCircle className='h-3.5 w-3.5 animate-spin' />}
+				<Button type='submit' className='flex-1' disabled={createTemplate.isPending}>
+					{createTemplate.isPending && <LoaderCircle className='h-4 w-4 animate-spin' />}
 					Save Template
 				</Button>
 			</div>

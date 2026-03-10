@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useIsMounted } from '@/hooks/use-is-mounted'
 
 export function ProtectedNavHomeLink() {
 	const pathname = usePathname()
@@ -12,11 +12,7 @@ export function ProtectedNavHomeLink() {
 	)
 	const orgId = match?.[1]
 	const href = orgId ? `/protected/orgs/${orgId}` : '/protected/orgs'
-	const [isMounted, setIsMounted] = useState(false)
-
-	useEffect(() => {
-		setIsMounted(true)
-	}, [])
+	const isMounted = useIsMounted()
 
 	if (!isMounted) {
 		return null

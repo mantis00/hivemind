@@ -5,6 +5,7 @@ import { useDropzone } from 'react-dropzone'
 import { CloudUploadIcon, LoaderCircle } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { Label } from '@/components/ui/label'
+import Image from 'next/image'
 
 interface SpeciesImageDropzoneProps {
 	label?: string
@@ -44,7 +45,14 @@ export function SpeciesImageDropzone({
 			<Label className='text-xs text-muted-foreground'>{label}</Label>
 
 			{previewUrl && (
-				<img src={previewUrl} alt='Preview' className='rounded-md max-h-36 w-full object-contain border mb-1' />
+				<Image
+					src={previewUrl}
+					alt='Preview'
+					width={400}
+					height={144}
+					unoptimized
+					className='rounded-md max-h-36 w-full object-contain border mb-1'
+				/>
 			)}
 
 			<div
