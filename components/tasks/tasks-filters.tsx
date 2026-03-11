@@ -66,7 +66,7 @@ export function TasksFilters({
 
 	const { data: orgSpecies, isPending: isPending } = useOrgSpecies(orgId as UUID)
 	const [speciesQuery, setSpeciesQuery] = useState(filters.speciesFilter ?? '')
-	const [showScientific, setShowScientific] = useState(false)
+	const [showScientific] = useState(false)
 
 	const scoreMatch = (str: string | undefined, val: string): number => {
 		if (!str) return -1

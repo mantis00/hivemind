@@ -133,7 +133,9 @@ export default function OrgTasksTable() {
 				isMobile,
 				handleView,
 				members,
-				['enclosure_name', 'species', 'name', 'status', 'due_date', 'assigned_to', 'actions'],
+				isMobile
+					? ['enclosure_name', 'name', 'due_date']
+					: ['enclosure_name', 'species', 'name', 'status', 'due_date', 'assigned_to', 'actions'],
 				orgEnclosures,
 				orgSpecies ?? undefined,
 				handleViewEnclosure
