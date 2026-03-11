@@ -32,7 +32,6 @@ export function CreateEnclosureButton({
 	const [localOpen, setLocalOpen] = useState(false)
 	const open = controlled ? propsOpen! : localOpen
 	const setOpen = controlled ? (val: boolean) => propsOnOpenChange?.(val) : setLocalOpen
-	const [name, setName] = useState('')
 	const [species, setSpecies] = useState('')
 	const [speciesQuery, setSpeciesQuery] = useState('')
 	const [showScientific, setShowScientific] = useState(false)
@@ -117,7 +116,6 @@ export function CreateEnclosureButton({
 			{
 				onSuccess: () => {
 					setOpen(false)
-					setName('')
 					setSpecies('')
 					setSpeciesQuery('')
 					setCreateLocation(false)
