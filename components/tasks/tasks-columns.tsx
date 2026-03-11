@@ -1,10 +1,9 @@
 'use client'
 
 import type { ColumnDef } from '@tanstack/react-table'
-import { ArrowRight, ArrowUpDown } from 'lucide-react'
+import { ArrowUpDown } from 'lucide-react'
 import { UUID } from 'crypto'
 
-import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Task, MemberProfile } from '@/lib/react-query/queries'
 import { ReassignMemberButton } from './reassign-member-button'
@@ -12,11 +11,7 @@ import capitalizeFirstLetter from '@/context/captalize-first-letter'
 import { formatDate } from '@/context/format-date'
 import { getEffectiveStatus, priorityConfig, statusConfig } from '@/context/task-status'
 
-export function getColumns(
-	isMobile: boolean,
-	onView: (taskId: UUID) => void,
-	members: MemberProfile[]
-): ColumnDef<Task>[] {
+export function getColumns(isMobile: boolean, members: MemberProfile[]): ColumnDef<Task>[] {
 	const memberMap = new Map(members.map((m) => [m.id as string, m]))
 
 	const all: ColumnDef<Task>[] = [
@@ -38,14 +33,16 @@ export function getColumns(
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<div className='font-medium truncate max-w-[160px] cursor-default'>{name.slice(0, 20)}…</div>
+									<div className='font-medium truncate max-w-[160px] cursor-default group-hover:underline'>
+										{name.slice(0, 20)}…
+									</div>
 								</TooltipTrigger>
 								<TooltipContent>{name}</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
 					)
 				}
-				return <div className='font-medium truncate max-w-[160px]'>{name}</div>
+				return <div className='font-medium truncate max-w-[160px] group-hover:underline'>{name}</div>
 			}
 		},
 		{
@@ -60,7 +57,7 @@ export function getColumns(
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<div className='max-w-[240px] truncate text-sm text-muted-foreground cursor-default'>
+									<div className='max-w-[240px] truncate text-sm text-muted-foreground cursor-default group-hover:underline'>
 										{desc.slice(0, 30)}…
 									</div>
 								</TooltipTrigger>
@@ -69,7 +66,7 @@ export function getColumns(
 						</TooltipProvider>
 					)
 				}
-				return <div className='max-w-[240px] truncate text-sm text-muted-foreground'>{desc}</div>
+				return <div className='max-w-[240px] truncate text-sm text-muted-foreground group-hover:underline'>{desc}</div>
 			}
 		},
 		{
@@ -130,7 +127,11 @@ export function getColumns(
 			cell: ({ row }) => {
 				const due = row.original.due_date
 				if (!due) return <span className='text-xs text-muted-foreground'>—</span>
-				return <span className='text-xs whitespace-nowrap text-muted-foreground'>{formatDate(due)}</span>
+				return (
+					<span className='text-xs whitespace-nowrap text-muted-foreground group-hover:underline'>
+						{formatDate(due)}
+					</span>
+				)
 			}
 		},
 		{
@@ -151,25 +152,6 @@ export function getColumns(
 					</div>
 				)
 			}
-		},
-		{
-			id: 'actions',
-			header: '',
-			cell: ({ row }) => (
-				<div className='flex items-center gap-1'>
-					<Button
-						variant='ghost'
-						size='icon'
-						className='h-8 w-8 text-muted-foreground hover:text-primary'
-						onClick={(e) => {
-							e.stopPropagation()
-							onView(row.original.id as UUID)
-						}}
-					>
-						<ArrowRight className='h-4 w-4' />
-					</Button>
-				</div>
-			)
 		}
 	]
 
@@ -178,5 +160,6 @@ export function getColumns(
 		return mobileOrder.map((id) => all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!)
 	}
 
-	return all
+	const desktopOrder = ['name', 'description', 'due_date', 'priority', 'status', 'assigned_to']
+	return desktopOrder.map((id) => all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!)
 }
