@@ -57,7 +57,7 @@ export function getColumns(isMobile: boolean, members: MemberProfile[]): ColumnD
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<div className='max-w-[240px] truncate text-sm text-muted-foreground cursor-default group-hover:underline'>
+									<div className='max-w-[130px] truncate text-sm text-muted-foreground cursor-default group-hover:underline'>
 										{desc.slice(0, 30)}…
 									</div>
 								</TooltipTrigger>
