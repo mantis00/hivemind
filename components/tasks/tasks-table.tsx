@@ -43,7 +43,8 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		globalSearch: false,
 		priorityFilter: [],
 		statusFilter: [],
-		dateRange: undefined
+		dateRange: undefined,
+		speciesFilter: ''
 	})
 	const [pendingGlobalSearch, setPendingGlobalSearch] = React.useState(false)
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
@@ -68,7 +69,14 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	const hasActiveFilters = priorityFilter.length > 0 || statusFilter.length > 0 || globalFilter !== '' || globalSearch
 
 	const resetFilters = () => {
-		setFilters({ globalFilter: '', globalSearch: false, priorityFilter: [], statusFilter: [], dateRange: undefined })
+		setFilters({
+			globalFilter: '',
+			globalSearch: false,
+			priorityFilter: [],
+			statusFilter: [],
+			dateRange: undefined,
+			speciesFilter: ''
+		})
 		setPendingGlobalSearch(false)
 	}
 
