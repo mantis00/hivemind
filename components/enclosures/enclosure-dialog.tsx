@@ -1,20 +1,16 @@
 'use client'
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { MapPin, Calendar, Users, ClipboardList, StickyNote, LoaderCircle, ChevronDown } from 'lucide-react'
+import { MapPin, Calendar, Users, ClipboardList, LoaderCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import type { Enclosure, OrgSpecies } from '@/lib/react-query/queries'
-import { useEnclosureNotes } from '@/lib/react-query/queries'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
-import CreateEnclosureNote from './create-enclosure-note'
 import DeleteEnclosureButton from './delete-enclosure-button'
 import { EditEnclosureButton } from './edit-enclosure-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../ui/collapsible'
 import EnclosureNotesDialog from './enclosure-notes-dialog'
 
 export function EnclosureDialog({
@@ -28,7 +24,6 @@ export function EnclosureDialog({
 	open: boolean
 	onOpenChange: (open: boolean) => void
 }) {
-	const { data: enclosureNotes, isLoading } = useEnclosureNotes(enclosure.id)
 	const [notesOpen, setNotesOpen] = useState(false)
 	const [navigating, setNavigating] = useState(false)
 
