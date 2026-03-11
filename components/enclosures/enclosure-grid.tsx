@@ -7,7 +7,7 @@ import {
 	Edit,
 	ListChecks,
 	LoaderCircle,
-	MoreHorizontal,
+	Menu,
 	Move,
 	PlusIcon,
 	Search,
@@ -58,6 +58,7 @@ export default function EnclosureGrid() {
 	const [manageOpen, setManageOpen] = useState(false)
 	const [createOpen, setCreateOpen] = useState(false)
 	const batchDeleteMutation = useBatchDeleteEnclosures()
+	const isMobile = useIsMobile()
 
 	const handleSelectChange = (enclosureId: UUID, checked: boolean) => {
 		setSelectedIds((prev) => {
@@ -218,7 +219,7 @@ export default function EnclosureGrid() {
 	return (
 		<>
 			<div className='mx-auto items-center w-full'>
-				{!useIsMobile() && <EnclosureCounts />}
+				{!isMobile && <EnclosureCounts />}
 				<div className='mb-2 flex items-center flex-row gap-2 justify-end'>
 					{selectMode && (
 						<div className='flex items-center gap-2 mr-auto'>
@@ -243,29 +244,42 @@ export default function EnclosureGrid() {
 							)}
 						</div>
 					)}
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant='outline' size='sm'>
-								<MoreHorizontal className='h-4 w-4' />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align='end'>
-							<DropdownMenuItem onSelect={() => setManageOpen(true)}>
-								<Move className='h-4 w-4' />
-								Manage Species
-							</DropdownMenuItem>
-							<DropdownMenuItem onSelect={() => setCreateOpen(true)}>
-								<PlusIcon className='h-4 w-4' />
-								Add Enclosure
-							</DropdownMenuItem>
-							<DropdownMenuItem onSelect={toggleSelectMode}>
+					{isMobile ? (
+						<>
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button variant='outline' size='sm'>
+										<Menu className='h-4 w-4' />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align='end'>
+									<DropdownMenuItem onSelect={() => setManageOpen(true)}>
+										<Move className='h-4 w-4' />
+										Manage Species
+									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => setCreateOpen(true)}>
+										<PlusIcon className='h-4 w-4' />
+										Add Enclosure
+									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={toggleSelectMode}>
+										<ListChecks className='h-4 w-4' />
+										Select
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+							<ManageSpeciesButton open={manageOpen} onOpenChange={setManageOpen} />
+							<CreateEnclosureButton open={createOpen} onOpenChange={setCreateOpen} />
+						</>
+					) : (
+						<>
+							<Button variant='outline' size='sm' onClick={toggleSelectMode} className='gap-1.5'>
 								<ListChecks className='h-4 w-4' />
 								Select
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-					<ManageSpeciesButton open={manageOpen} onOpenChange={setManageOpen} />
-					<CreateEnclosureButton open={createOpen} onOpenChange={setCreateOpen} />
+							</Button>
+							<ManageSpeciesButton />
+							<CreateEnclosureButton />
+						</>
+					)}
 				</div>
 
 				{/* Sort and Search */}
