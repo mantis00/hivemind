@@ -28,45 +28,26 @@ export function getColumns(isMobile: boolean, members: MemberProfile[]): ColumnD
 			),
 			cell: ({ row }) => {
 				const name = row.getValue('name') as string
-				if (name && name.length > 20) {
-					return (
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<div className='font-medium truncate max-w-[160px] cursor-default group-hover:underline'>
-										{name.slice(0, 20)}…
-									</div>
-								</TooltipTrigger>
-								<TooltipContent>{name}</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					)
-				}
-				return <div className='font-medium truncate max-w-[160px] group-hover:underline'>{name}</div>
-			}
-		},
-		{
-			id: 'description',
-			accessorKey: 'description',
-			header: () => <span className='font-bold'>Description</span>,
-			cell: ({ row }) => {
 				const task = row.original
 				const desc = task.description ?? task.task_templates?.description
-				if (desc && desc.length > 30) {
+				const truncatedName = name && name.length > 40 ? `${name.slice(0, 40)}…` : name
+				const tooltipContent = [name && name.length > 40 ? name : null, desc].filter(Boolean).join('\n')
+
+				if (tooltipContent) {
 					return (
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<div className='max-w-[130px] truncate text-sm text-muted-foreground cursor-default group-hover:underline'>
-										{desc.slice(0, 30)}…
+									<div className='font-medium truncate w-[200px] cursor-default group-hover:underline'>
+										{truncatedName}
 									</div>
 								</TooltipTrigger>
-								<TooltipContent className='max-w-xs'>{desc}</TooltipContent>
+								<TooltipContent className='max-w-xs whitespace-pre-line'>{tooltipContent}</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
 					)
 				}
-				return <div className='max-w-[240px] truncate text-sm text-muted-foreground group-hover:underline'>{desc}</div>
+				return <div className='font-medium truncate w-[160px] group-hover:underline'>{name}</div>
 			}
 		},
 		{
@@ -160,6 +141,6 @@ export function getColumns(isMobile: boolean, members: MemberProfile[]): ColumnD
 		return mobileOrder.map((id) => all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!)
 	}
 
-	const desktopOrder = ['name', 'description', 'due_date', 'priority', 'status', 'assigned_to']
+	const desktopOrder = ['name', 'due_date', 'priority', 'status', 'assigned_to']
 	return desktopOrder.map((id) => all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!)
 }
