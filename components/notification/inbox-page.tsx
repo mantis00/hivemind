@@ -18,7 +18,7 @@ export function InboxPage() {
 	const { data: user } = useCurrentClientUser()
 
 	const { data, isLoading } = useNotifications(user?.id ?? '')
-	const notifications: Notification[] = data ?? []
+	const notifications = useMemo<Notification[]>(() => data ?? [], [data])
 
 	const notificationsWithProfiles = useNotificationsWithProfiles(notifications)
 

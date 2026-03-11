@@ -136,9 +136,9 @@ export type Task = {
 	enclosure_id: UUID
 	name: string | null
 	description: string | null
-	status: string | null
+	status: 'completed' | 'pending' | 'late' | null
 	due_date: string | null
-	priority: string | null
+	priority: 'low' | 'medium' | 'high' | null
 	completed_by: UUID | null
 	completed_time: string | null
 	template_id: UUID | null
@@ -147,6 +147,56 @@ export type Task = {
 	time_window: string | null
 	start_time: string | null
 	time_to_completion: string | null
+	assigned_to: UUID | null
+	task_templates?: { type: string; description: string | null } | null
+}
+
+export type EnclosureSchedule = {
+	id: UUID
+	created_at: string
+	enclosure_id: UUID
+	template_id: UUID | null
+	schedule_type: 'fixed_calendar' | 'relative_interval'
+	schedule_rule: string
+	time_window: 'Morning' | 'Afternoon' | 'Any' | null
+	is_active: boolean
+	status: 'completed' | 'pending' | 'late' | null
+	last_run_at: string | null
+	task_name: string | null
+	task_description: string | null
+	priority: 'low' | 'medium' | 'high' | null
+	assigned_to: UUID | null
+	end_date: string | null
+	max_occurrences: number | null
+	occurrence_count: number
+}
+
+export type TaskFormData = {
+	id: UUID
+	task_id: UUID
+	question_id: UUID
+	answer: string | null
+	created_at: string
+}
+
+export type QuestionTemplate = {
+	id: UUID
+	task_template_id: UUID
+	question_key: string
+	label: string
+	type: string
+	required: boolean
+	choices: string[] | null
+	created_at: string
+}
+
+export type TaskTemplate = {
+	id: UUID
+	species_id: UUID
+	type: string
+	description: string | null
+	created_at: string
+	question_templates?: QuestionTemplate[]
 }
 
 export type Notification = {
@@ -166,11 +216,11 @@ export type Notification = {
 export type SpeciesRequest = {
 	id: UUID
 	created_at: string
-	requester_id: UUID
+	requester_id: string
 	org_id: UUID
 	scientific_name: string
 	common_name: string
-	reviewer_id?: UUID
+	reviewer_id?: string
 	care_instructions: string
 	status: 'pending' | 'approved' | 'rejected' | 'cancelled'
 	reviewed_at?: string
@@ -319,14 +369,25 @@ export function useOrgEnclosures(orgId: UUID) {
 		queryKey: ['orgEnclosures', orgId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
-				.from('enclosures')
-				.select('*, locations(name, description)')
-				.eq('org_id', orgId)
-				.order('current_count', { ascending: true })) as { data: Enclosure[] | null; error: PostgrestError | null }
+			const PAGE_SIZE = 1000
+			const allEnclosures: Enclosure[] = []
+			let from = 0
 
-			if (error) throw error
-			return data
+			while (true) {
+				const { data, error } = (await supabase
+					.from('enclosures')
+					.select('*, locations(name, description)')
+					.eq('org_id', orgId)
+					.order('current_count', { ascending: true })
+					.range(from, from + PAGE_SIZE - 1)) as { data: Enclosure[] | null; error: PostgrestError | null }
+
+				if (error) throw error
+				allEnclosures.push(...(data ?? []))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+
+			return allEnclosures
 		},
 		enabled: !!orgId
 	})
@@ -565,14 +626,95 @@ export function useTasksForEnclosures(enclosureIds: UUID[]) {
 		queryKey: ['tasksForEnclosures', enclosureIds],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase.from('tasks').select('*').in('enclosure_id', enclosureIds)) as {
-				data: Task[] | null
+			const CHUNK_SIZE = 200
+			const PAGE_SIZE = 1000
+
+			const chunks: UUID[][] = []
+			for (let i = 0; i < enclosureIds.length; i += CHUNK_SIZE) {
+				chunks.push(enclosureIds.slice(i, i + CHUNK_SIZE))
+			}
+
+			const chunkResults = await Promise.all(
+				chunks.map(async (chunk) => {
+					const tasks: Task[] = []
+					let from = 0
+					while (true) {
+						const { data, error } = (await supabase
+							.from('tasks')
+							.select('*, task_templates(type, description)')
+							.in('enclosure_id', chunk)
+							.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
+
+						if (error) throw error
+						tasks.push(...(data ?? []))
+						if ((data?.length ?? 0) < PAGE_SIZE) break
+						from += PAGE_SIZE
+					}
+					return tasks
+				})
+			)
+
+			return chunkResults.flat()
+		},
+		enabled: enclosureIds.length > 0
+	})
+}
+
+export function useTasksForEnclosuresInRange(enclosureIds: UUID[], startDate: string, endDate: string) {
+	return useQuery({
+		queryKey: ['tasksForEnclosuresInRange', enclosureIds, startDate, endDate],
+		queryFn: async () => {
+			const supabase = createClient()
+			const CHUNK_SIZE = 200
+			const PAGE_SIZE = 1000
+
+			const chunks: UUID[][] = []
+			for (let i = 0; i < enclosureIds.length; i += CHUNK_SIZE) {
+				chunks.push(enclosureIds.slice(i, i + CHUNK_SIZE))
+			}
+
+			const chunkResults = await Promise.all(
+				chunks.map(async (chunk) => {
+					const tasks: Task[] = []
+					let from = 0
+					while (true) {
+						const { data, error } = (await supabase
+							.from('tasks')
+							.select('*, task_templates(type, description)')
+							.in('enclosure_id', chunk)
+							.gte('due_date', startDate)
+							.lte('due_date', endDate)
+							.order('due_date', { ascending: true })
+							.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
+
+						if (error) throw error
+						tasks.push(...(data ?? []))
+						if ((data?.length ?? 0) < PAGE_SIZE) break
+						from += PAGE_SIZE
+					}
+					return tasks
+				})
+			)
+
+			return chunkResults.flat()
+		},
+		enabled: enclosureIds.length > 0 && !!startDate && !!endDate
+	})
+}
+
+export function useTaskName(taskId: UUID) {
+	return useQuery({
+		queryKey: ['task', taskId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase.from('tasks').select('name').eq('id', taskId).maybeSingle()) as {
+				data: { name: string } | null
 				error: PostgrestError | null
 			}
 			if (error) throw error
-			return data
+			return data?.name ?? null
 		},
-		enabled: enclosureIds.length > 0
+		enabled: !!taskId
 	})
 }
 
@@ -605,26 +747,6 @@ export function useAllSpecies() {
 			return data
 		}
 	})
-}
-
-export type QuestionTemplate = {
-	id: UUID
-	task_template_id: UUID
-	question_key: string
-	label: string
-	type: string
-	required: boolean
-	choices: string[] | null
-	created_at: string
-}
-
-export type TaskTemplate = {
-	id: UUID
-	species_id: UUID
-	type: string
-	description: string | null
-	created_at: string
-	question_templates?: QuestionTemplate[]
 }
 
 export function useTaskTemplatesForSpecies(speciesId: UUID) {
@@ -669,6 +791,102 @@ export function useAllTaskTypes() {
 	})
 }
 
+export function useTaskTemplatesForOrgSpecies(orgSpeciesId: UUID) {
+	return useQuery({
+		queryKey: ['taskTemplatesForOrgSpecies', orgSpeciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			// Resolve org_species → master_species_id
+			const { data: orgSpecies, error: orgSpeciesError } = await supabase
+				.from('org_species')
+				.select('master_species_id')
+				.eq('id', orgSpeciesId)
+				.single()
+			if (orgSpeciesError) throw orgSpeciesError
+			if (!orgSpecies) return []
+
+			// Fetch templates for that master species — no question_templates needed here
+			const { data, error } = await supabase
+				.from('task_templates')
+				.select('id, type, description, created_at')
+				.eq('species_id', orgSpecies.master_species_id)
+				.order('type', { ascending: true })
+			if (error) throw error
+			return (data ?? []) as { id: UUID; type: string; description: string | null; created_at: string }[]
+		},
+		enabled: !!orgSpeciesId
+	})
+}
+
+export function useOrgMemberProfiles(orgId: UUID) {
+	return useQuery({
+		queryKey: ['orgMemberProfiles', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('user_org_role')
+				.select('user_id, access_lvl, profiles(id, first_name, last_name, full_name, email)')
+				.eq('org_id', orgId)
+				.order('created_at', { ascending: true })) as {
+				data: { user_id: string; access_lvl: number; profiles: MemberProfile }[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+			return (data ?? []).map((row) => row.profiles).filter(Boolean) as MemberProfile[]
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useTaskById(taskId: UUID) {
+	return useQuery({
+		queryKey: ['taskById', taskId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase.from('tasks').select('*').eq('id', taskId).single()) as {
+				data: Task | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+			return data
+		},
+		enabled: !!taskId
+	})
+}
+
+export function useTaskFormAnswers(taskId: UUID) {
+	return useQuery({
+		queryKey: ['taskFormAnswers', taskId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase.from('task_form_data').select('*').eq('task_id', taskId)) as {
+				data: TaskFormData[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+			return data ?? []
+		},
+		enabled: !!taskId
+	})
+}
+
+export function useTaskTemplateById(templateId: UUID) {
+	return useQuery({
+		queryKey: ['taskTemplateById', templateId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('task_templates')
+				.select('*, question_templates(*)')
+				.eq('id', templateId)
+				.single()
+			if (error) throw error
+			return data as TaskTemplate
+		},
+		enabled: !!templateId
+	})
+}
+
 export function useOrgSpecies(org_id: UUID) {
 	return useQuery({
 		queryKey: ['orgSpecies', org_id],
@@ -701,5 +919,51 @@ export function useAllSpeciesRequests() {
 			if (error) throw error
 			return data
 		}
+	})
+}
+
+export function useCurrentUserProfile() {
+	const { data: user } = useCurrentClientUser()
+	return useQuery({
+		queryKey: ['currentUserProfile', user?.id],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('profiles')
+				.select('id, first_name, last_name, email, full_name, theme_preference, is_superadmin, updated_at')
+				.eq('id', user!.id)
+				.single()
+			if (error) throw error
+			return data as AllProfile
+		},
+		enabled: !!user?.id
+	})
+}
+
+export function useSchedulesForEnclosures(enclosureIds: UUID[]) {
+	return useQuery({
+		queryKey: ['schedulesForEnclosures', enclosureIds],
+		queryFn: async () => {
+			const supabase = createClient()
+			const CHUNK_SIZE = 200
+			const chunks: UUID[][] = []
+			for (let i = 0; i < enclosureIds.length; i += CHUNK_SIZE) {
+				chunks.push(enclosureIds.slice(i, i + CHUNK_SIZE))
+			}
+			const results = await Promise.all(
+				chunks.map((chunk) =>
+					supabase
+						.from('enclosure_schedules')
+						.select('*')
+						.in('enclosure_id', chunk)
+						.order('created_at', { ascending: false })
+				)
+			)
+			for (const { error } of results) {
+				if (error) throw error
+			}
+			return results.flatMap((r) => r.data ?? []) as EnclosureSchedule[]
+		},
+		enabled: enclosureIds.length > 0
 	})
 }

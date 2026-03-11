@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { type Species, useUsedTaskTypesForSpecies } from '@/lib/react-query/queries'
 import { Card, CardContent } from '@/components/ui/card'
 import { Bug } from 'lucide-react'
+import Image from 'next/image'
 import { EditSpeciesButton } from './edit-species-button'
 import { TaskTemplatesButton } from './task-templates-button'
 
@@ -19,9 +20,11 @@ export function SpeciesAdminRow({ species }: { species: Species }) {
 			>
 				<CardContent className='p-2 flex items-center gap-3'>
 					{species.picture_url ? (
-						<img
+						<Image
 							src={species.picture_url}
 							alt={species.common_name}
+							width={40}
+							height={40}
 							className='h-10 w-10 rounded-md object-cover shrink-0 border'
 						/>
 					) : (

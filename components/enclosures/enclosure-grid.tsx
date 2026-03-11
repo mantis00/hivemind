@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
 import SpeciesRow from './species-row'
@@ -44,7 +45,8 @@ export default function EnclosureGrid() {
 	const [isSorted, setIsSorted] = useState(false)
 	const [sortKey, setSortKey] = useState('')
 
-	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>([])
+	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>(orgSpecies ?? [])
+	const [prevOrgSpecies, setPrevOrgSpecies] = useState(orgSpecies)
 	const [itemHeight, setItemHeight] = useState<number>(114)
 	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
 	const [openSpeciesId, setOpenSpeciesId] = useState<UUID | null>(null)
@@ -91,9 +93,14 @@ export default function EnclosureGrid() {
 	const measureRef = useRef<HTMLDivElement>(null)
 	const virtuosoRef = useRef<HTMLDivElement>(null)
 
-	useEffect(() => {
-		if (orgSpecies) setDisplayedSpecies(orgSpecies)
-	}, [orgSpecies])
+	// Sync displayedSpecies when the query data changes ("setState during render" pattern)
+	if (prevOrgSpecies !== orgSpecies) {
+		setPrevOrgSpecies(orgSpecies)
+		if (searchValue.trim() === '') {
+			setDisplayedSpecies(orgSpecies ?? [])
+			setSearchCount(0)
+		}
+	}
 
 	useEffect(() => {
 		if (measureRef.current) {
@@ -109,20 +116,6 @@ export default function EnclosureGrid() {
 		const maxHeight = 680
 		setDynamicTableHeight(Math.min(height, maxHeight))
 	}
-
-	useEffect(() => {
-		if (searchValue.trim() === '') {
-			setDisplayedSpecies(orgSpecies ?? [])
-			setSearchCount(0)
-		}
-	}, [searchValue, orgSpecies])
-
-	useEffect(() => {
-		if (displayedSpecies?.length > 0) {
-			const temp = [...(displayedSpecies ?? [])].toReversed()
-			setDisplayedSpecies(temp)
-		}
-	}, [sortUp])
 
 	const handleSortChange = (sortOn: string) => {
 		if (!displayedSpecies?.length) return
@@ -313,15 +306,26 @@ export default function EnclosureGrid() {
 							)}
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value='common_name' className='text-l'>
+							<SelectItem value='common_name' className='text-l cursor-pointer'>
 								Common Name
 							</SelectItem>
-							<SelectItem value='scientific_name' className='text-l'>
+							<SelectItem value='scientific_name' className='text-l cursor-pointer'>
 								Scientific Name
 							</SelectItem>
 						</SelectContent>
 					</Select>
-					<Button variant='outline' size='icon' onClick={() => setSortUp(!sortUp)} disabled={isLoading || !isSorted}>
+					<Button
+						variant='outline'
+						size='icon'
+						onClick={() => {
+							const newSortUp = !sortUp
+							setSortUp(newSortUp)
+							if (displayedSpecies?.length > 0) {
+								setDisplayedSpecies([...displayedSpecies].toReversed())
+							}
+						}}
+						disabled={isLoading || !isSorted}
+					>
 						{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
 					</Button>
 					<InputGroup className='w-40 sm:w-60 ml-auto' onKeyDown={handleKeyDown}>
@@ -329,7 +333,12 @@ export default function EnclosureGrid() {
 							placeholder='Search...'
 							value={searchValue}
 							onChange={(e) => {
-								setSearchValue(e.target.value)
+								const val = e.target.value
+								setSearchValue(val)
+								if (val.trim() === '') {
+									setDisplayedSpecies(orgSpecies ?? [])
+									setSearchCount(0)
+								}
 							}}
 						/>
 						{searchValue && (
@@ -466,9 +475,11 @@ export default function EnclosureGrid() {
 								<Edit className='h-4 w-4 mr-2' /> Edit
 							</Button>
 							{openSpecies.species.picture_url ? (
-								<img
+								<Image
 									src={openSpecies.species.picture_url}
-									alt={openSpecies.custom_common_name}
+									alt={openSpecies.custom_common_name ?? ''}
+									width={600}
+									height={192}
 									className='rounded-md max-h-48 w-full object-contain mx-auto'
 								/>
 							) : (

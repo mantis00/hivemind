@@ -1,16 +1,24 @@
 name: Format Check
 
 on:
-  pull_request:
-    branches: [main]
+  push:
 
 jobs:
   format:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
-      - run: npm run format:check
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Format Check
+        run: npm run format:check

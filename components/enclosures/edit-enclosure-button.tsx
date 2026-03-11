@@ -93,7 +93,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 		const location_id = orgLocations?.find((loc) => loc?.name === location)
 
 		if (!species_id || !location_id) {
-			console.log('ERROR LOOKING UP SPECIES OR LOCATION')
 			return
 		}
 

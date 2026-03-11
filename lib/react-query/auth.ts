@@ -1,23 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+
 export function useLogout() {
-	const router = useRouter()
 	const queryClient = useQueryClient()
 
 	return useMutation({
 		mutationFn: async () => {
 			const supabase = createClient()
-			const { error } = await supabase.auth.signOut()
-			if (error) throw error
+			await supabase.auth.signOut()
 		},
 		onSuccess: async () => {
 			// Clear all cached queries
 			await queryClient.clear()
 
-			// Redirect
-			router.replace('/auth/login')
+			// Hard reload to fully wipe all client state, memory, and cookies
+			// so a subsequent login with a different account starts completely fresh
+			window.location.replace('/auth/login')
 		}
 	})
 }
@@ -63,6 +64,95 @@ export function useResestPassword() {
 			const supabase = createClient()
 			const { error } = await supabase.auth.updateUser({ password })
 			if (error) throw error
+		},
+		onSuccess: () => {
+			toast.success('Password updated successfully!')
+		}
+	})
+}
+
+export function useLogin() {
+	const router = useRouter()
+
+	return useMutation({
+		mutationFn: async ({ email, password }: { email: string; password: string }) => {
+			const supabase = createClient()
+			const { error } = await supabase.auth.signInWithPassword({ email, password })
+			if (error) throw error
+			return { redirectTo: '/protected' }
+		},
+		onSuccess: (data) => {
+			if (data?.redirectTo) {
+				router.push(data.redirectTo)
+			}
+		}
+	})
+}
+
+export function useForgotPassword() {
+	return useMutation({
+		mutationFn: async ({ email }: { email: string }) => {
+			const supabase = createClient()
+			const { error } = await supabase.auth.resetPasswordForEmail(email, {
+				redirectTo: `${window.location.origin}/auth/update-password`
+			})
+			if (error) throw error
+		}
+	})
+}
+
+export function useSignUp() {
+	const router = useRouter()
+
+	return useMutation({
+		mutationFn: async ({
+			email,
+			password,
+			firstName,
+			lastName
+		}: {
+			email: string
+			password: string
+			firstName: string
+			lastName: string
+		}) => {
+			const supabase = createClient()
+			const { error } = await supabase.auth.signUp({
+				email,
+				password,
+				options: {
+					emailRedirectTo: `${window.location.origin}/protected`,
+					data: {
+						first_name: firstName.trim(),
+						last_name: lastName.trim()
+					}
+				}
+			})
+			if (error) throw error
+		},
+		onSuccess: () => {
+			router.push('/auth/sign-up-success')
+		}
+	})
+}
+
+export function useUpdateEmail() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ email }: { email: string }) => {
+			const supabase = createClient()
+			const { error } = await supabase.auth.updateUser(
+				{ email: email.trim().toLowerCase() },
+				{ emailRedirectTo: `${window.location.origin}/auth/confirm?next=/protected/account` }
+			)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+			queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] })
+			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			toast.success('Confirmation sent — check your inbox to verify the new email.')
 		}
 	})
 }
