@@ -152,8 +152,7 @@ export function CreateEnclosureButton({
 									className={`w-full text-center px-2.5 py-1 transition-colors ${!showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
 									onClick={() => {
 										setShowScientific(false)
-										setSpecies('')
-										setSpeciesQuery('')
+										setSpeciesQuery(species ?? '')
 									}}
 								>
 									Common
@@ -163,8 +162,9 @@ export function CreateEnclosureButton({
 									className={`w-full text-center px-2.5 py-1 transition-colors ${showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
 									onClick={() => {
 										setShowScientific(true)
-										setSpecies('')
-										setSpeciesQuery('')
+										const scientificName = orgSpecies?.find((s) => s.custom_common_name === species)?.species
+											?.scientific_name
+										setSpeciesQuery(scientificName ?? '')
 									}}
 								>
 									Scientific
