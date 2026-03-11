@@ -30,7 +30,7 @@ export interface TaskFilters {
 }
 
 interface TasksFiltersProps {
-	enclosureId: UUID
+	enclosureId?: UUID
 	orgId: UUID
 	filters: TaskFilters
 	onFiltersChange: (filters: TaskFilters) => void
@@ -52,7 +52,7 @@ export function TasksFilters({
 
 	return (
 		<div className='flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap'>
-			{isMobile && <CreateTaskButton enclosureId={enclosureId} orgId={orgId} />}
+			{isMobile && enclosureId && <CreateTaskButton enclosureId={enclosureId} orgId={orgId} />}
 
 			<div className='flex items-center gap-2'>
 				<Input
@@ -158,7 +158,7 @@ export function TasksFilters({
 					<X className='h-4 w-4' />
 				</Button>
 
-				{!isMobile && (
+				{!isMobile && enclosureId && (
 					<div className='ml-auto'>
 						<CreateTaskButton enclosureId={enclosureId} orgId={orgId} />
 					</div>

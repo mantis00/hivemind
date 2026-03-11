@@ -88,7 +88,7 @@ export function CreateEnclosureButton({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		if (!name || !species || !location) return
+		if (!species || !location) return
 
 		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
 		if (!species_id) return
@@ -111,7 +111,6 @@ export function CreateEnclosureButton({
 			{
 				orgId: orgId as UUID,
 				species_id: species_id.id as UUID,
-				name: name,
 				location: resolvedLocationId,
 				current_count: count ? parseInt(count, 10) : 0
 			},
@@ -147,16 +146,6 @@ export function CreateEnclosureButton({
 			<form onSubmit={handleSubmit}>
 				<div className='grid py-4 px-4'>
 					<div className='grid grid-cols-1 gap-4'>
-						<Label>Enclosure Name</Label>
-						<Input
-							id='name'
-							className='h-9'
-							placeholder='Enclosure Name'
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							required
-							disabled={isPending}
-						/>
 						<div className='flex items-center justify-between'>
 							<Label>Species</Label>
 							<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>

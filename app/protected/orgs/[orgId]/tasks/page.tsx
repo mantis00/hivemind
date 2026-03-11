@@ -1,4 +1,4 @@
-import { ScheduledTasksTable } from '@/components/tasks/scheduled-tasks'
+import OrgTasksTable from '@/components/tasks/org-tasks-table'
 
 export default async function Page() {
 	return (
@@ -6,17 +6,11 @@ export default async function Page() {
 			<div className='flex-col mx-auto max-w-5xl'>
 				<div className='pb-5'>
 					<h1 className='text-2xl font-semibold'>Tasks</h1>
-					<p className='text-sm text-muted-foreground'>Manage your organization&apos;s tasks and details</p>
+					<p className='text-sm text-muted-foreground'>Your organization&apos;s tasks</p>
 				</div>
 				<div className='flex flex-col gap-6'>
 					<section className='space-y-3'>
-						<div>
-							<h2 className='text-lg font-semibold'>Recurring Schedules</h2>
-							<p className='text-sm text-muted-foreground'>
-								All active and paused recurring task schedules across your enclosures.
-							</p>
-						</div>
-						<ScheduledTasksTable />
+						<OrgTasksTable />
 					</section>
 				</div>
 			</div>

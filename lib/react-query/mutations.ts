@@ -367,27 +367,21 @@ export function useCreateEnclosure() {
 		mutationFn: async ({
 			orgId,
 			species_id,
-			name,
 			location,
 			current_count
 		}: {
 			orgId: UUID
 			species_id: UUID
-			name: string
 			location: UUID
 			current_count: number
 		}) => {
 			const supabase = createClient()
-			if (name.trim() === '') {
-				throw new Error('Recieved an empty field')
-			}
 			// Insert the organization
 			const { error: enclosureError } = await supabase
 				.from('enclosures')
 				.insert({
 					org_id: orgId,
 					species_id: species_id,
-					name: name.trim(),
 					location: location,
 					current_count: current_count
 				})
@@ -500,27 +494,21 @@ export function useUpdateEnclosure() {
 	return useMutation({
 		mutationFn: async ({
 			enclosure_id,
-			name,
 			species_id,
 			location_id,
 			count
 		}: {
 			orgId: UUID
 			enclosure_id: UUID
-			name: string
 			species_id: UUID
 			location_id: UUID
 			count: number
 		}) => {
 			const supabase = createClient()
 
-			if (name.trim() === '') {
-				throw new Error('First name or last name cannot be empty')
-			}
-
 			const { error } = await supabase
 				.from('enclosures')
-				.update({ name: name.trim(), species_id: species_id, location: location_id, current_count: count })
+				.update({ species_id: species_id, location: location_id, current_count: count })
 				.eq('id', enclosure_id)
 
 			if (error) throw error
