@@ -1,64 +1,24 @@
-//hooks/use-generate-qr-csv.ts
-
-// import { createClient } from '@/lib/supabase/client'
-// import { numberToAlphaCode } from '@/lib/utils'
-
-// export async function generateQrCsv(orgId: string) {
-//   const supabase = createClient()
-
-//   const { data, error } = await supabase
-//     .from('enclosures')
-//     .select(`
-//       id,
-//       name,
-//       species:species_id (
-//         scientific_name
-//       )
-//     `)
-//     .eq('org_id', orgId)
-
-//   if (error) {
-//     console.error('Error fetching enclosures:', error)
-//     return
+// export async function generateQrCsv(
+//   orgId: string,
+//   filters: {
+//     sort: SortOptions
+//     printed: PrintedFilter
 //   }
+// ) {
+//   const params = new URLSearchParams()
 
-//   if (!data || data.length === 0) {
-//     alert('No enclosures found for this organization.')
-//     return
+//   params.set('sort', filters.sort)
+//   params.set('printed', filters.printed)
+
+//   const response = await fetch(
+//     `/api/orgs/${orgId}/exportQR?${params.toString()}`
+//   )
+
+//   if (!response.ok) {
+//     const text = await response.text()
+//     console.error('CSV API error:', text)
+//     throw new Error(`Failed to generate CSV: ${text}`)
 //   }
-
-//   const headers = ['alpha_code', 'scientific_name', 'url']
-
-//   const rows = data.map((enc: any, index: number) => {
-//     const alpha = numberToAlphaCode(index)
-
-//     const url = `${window.location.origin}/protected/orgs/${orgId}/enclosures/${enc.id}`
-
-//     return [
-//       alpha,
-//       enc.species?.scientific_name ?? '',
-//       url
-//     ]
-//   })
-
-//   const csv = [
-//     headers.join(','),
-//     ...rows.map((row) => row.join(','))
-//   ].join('\n')
-
-//   const blob = new Blob([csv], { type: 'text/csv' })
-//   const downloadUrl = URL.createObjectURL(blob)
-
-//   const a = document.createElement('a')
-//   a.href = downloadUrl
-//   a.download = 'enclosures.csv'
-//   a.click()
-
-//   URL.revokeObjectURL(downloadUrl)
-// }
-
-// export async function generateQrCsv(orgId: string) {
-//   const response = await fetch(`/api/orgs/${orgId}/exportQR`)
 
 //   const blob = await response.blob()
 
@@ -72,8 +32,33 @@
 //   window.URL.revokeObjectURL(url)
 // }
 
-export async function generateQrCsv(orgId: string) {
-	const response = await fetch(`/api/orgs/${orgId}/exportQR`)
+type SortOptions = 'none' | 'alpha' | 'alpha_desc' | 'common' | 'common_desc' | 'scientific' | 'scientific_desc'
+type PrintedFilter = 'all' | 'printed' | 'unprinted'
+type SearchType = 'any' | 'alpha' | 'scientific' | 'common'
+
+export async function generateQrCsv(
+	orgId: string,
+	filters: {
+		sort: SortOptions
+		printed: PrintedFilter
+		limit: number
+		search: string
+		searchType: SearchType
+	}
+) {
+	const params = new URLSearchParams()
+
+	params.set('sort', filters.sort)
+	params.set('printed', filters.printed)
+	params.set('limit', filters.limit.toString())
+
+	if (filters.search) {
+		params.set('search', filters.search)
+	}
+
+	params.set('searchType', filters.searchType)
+
+	const response = await fetch(`/api/orgs/${orgId}/exportQR?${params.toString()}`)
 
 	if (!response.ok) {
 		const text = await response.text()
