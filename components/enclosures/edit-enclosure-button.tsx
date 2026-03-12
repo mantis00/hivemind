@@ -5,8 +5,8 @@ import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LoaderCircle, Edit2Icon } from 'lucide-react'
-import { useState, useMemo } from 'react'
-import { useUpdateEnclosure } from '@/lib/react-query/mutations'
+import { useState, useMemo, useRef } from 'react'
+import { useUpdateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { Enclosure, OrgSpecies, useOrgLocations, useSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
@@ -24,15 +24,17 @@ import { toast } from 'sonner'
 
 export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure; spec: OrgSpecies }) {
 	const [open, setOpen] = useState(false)
-	const [name, setName] = useState(enclosure?.name)
 	const [species, setSpecies] = useState(spec?.custom_common_name)
 	const [speciesQuery, setSpeciesQuery] = useState(species ?? '')
 	const [showScientific, setShowScientific] = useState(false)
 	const [location, setLocation] = useState(enclosure.locations?.name)
 	const [locationQuery, setLocationQuery] = useState(location ?? '')
+	const [createLocation, setCreateLocation] = useState(false)
+	const savedLocationRef = useRef<string | undefined>(undefined)
 	const [count, setCount] = useState(enclosure?.current_count)
 	const { data: user } = useCurrentClientUser()
 	const editEnclosureMutation = useUpdateEnclosure()
+	const createLocationMutation = useCreateLocation()
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 
@@ -74,53 +76,64 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const handleOpenChange = (isOpen: boolean) => {
 		if (isOpen) {
 			// Reset form state from latest props when dialog opens
-			setName(enclosure?.name)
 			setSpecies(spec?.custom_common_name)
 			setSpeciesQuery(spec?.custom_common_name ?? '')
 			setShowScientific(false)
 			setLocation(enclosure.locations?.name)
 			setLocationQuery(enclosure.locations?.name ?? '')
+			setCreateLocation(false)
+			savedLocationRef.current = undefined
 			setCount(enclosure?.current_count)
 		}
 		setOpen(isOpen)
 	}
 
+	const isPending = editEnclosureMutation.isPending || createLocationMutation.isPending
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		if (!name || !species || !location) return
+		if (!species || !location) return
 
 		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
-		const location_id = orgLocations?.find((loc) => loc?.name === location)
+		if (!species_id) return
 
-		if (!species_id || !location_id) {
-			return
-		}
+		let resolvedLocationId: UUID
 
-		if (
-			name === enclosure?.name &&
-			species_id.custom_common_name === species &&
-			location_id.name === location &&
-			enclosure.current_count === count
-		) {
-			toast.info('No changes to save.')
-			return
+		if (createLocation) {
+			const newLoc = await createLocationMutation.mutateAsync({
+				orgId: orgId as UUID,
+				name: location
+			})
+			resolvedLocationId = newLoc.id as UUID
+		} else {
+			const existing = orgLocations?.find((loc) => loc?.name === location)
+			if (!existing) return
+			resolvedLocationId = existing.id as UUID
+
+			if (
+				species_id.custom_common_name === species &&
+				existing.name === location &&
+				enclosure.current_count === count
+			) {
+				toast.info('No changes to save.')
+				return
+			}
 		}
 
 		editEnclosureMutation.mutate(
 			{
 				orgId: orgId as UUID,
 				enclosure_id: enclosure.id,
-				name: name === '' ? enclosure.name : name,
 				species_id: species_id.id,
-				location_id: location_id.id,
+				location_id: resolvedLocationId,
 				count: count
 			},
 			{
 				onSuccess: () => {
 					setOpen(false)
-					setName('')
 					setSpecies('')
 					setSpeciesQuery('')
+					setCreateLocation(false)
 					setLocation('')
 					setLocationQuery('')
 					setCount(0)
@@ -131,8 +144,8 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 
 	return (
 		<ResponsiveDialogDrawer
-			title='Edit Enclosure'
-			description='All fields are required'
+			title={`Edit Enclosure: ${enclosure?.name}`}
+			description='All fields are required. Defaults are saved.'
 			open={open}
 			onOpenChange={handleOpenChange}
 			trigger={
@@ -144,16 +157,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			<form onSubmit={handleSubmit}>
 				<div className='grid py-4 px-4'>
 					<div className='grid grid-cols-1 gap-4'>
-						<Label>Enclosure Name</Label>
-						<Input
-							id='name'
-							className='h-9'
-							placeholder='Enclosure Name'
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							required
-							disabled={editEnclosureMutation.isPending}
-						/>
 						<div className='flex items-center justify-between'>
 							<Label>Species</Label>
 							<div className='flex items-center rounded-md border text-xs overflow-hidden'>
@@ -162,8 +165,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 									className={`px-2.5 py-1 transition-colors ${!showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
 									onClick={() => {
 										setShowScientific(false)
-										setSpecies('')
-										setSpeciesQuery('')
+										setSpeciesQuery(species ?? '')
 									}}
 								>
 									Common
@@ -173,8 +175,9 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 									className={`px-2.5 py-1 transition-colors ${showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
 									onClick={() => {
 										setShowScientific(true)
-										setSpecies('')
-										setSpeciesQuery('')
+										const scientificName = orgSpecies?.find((s) => s.custom_common_name === species)?.species
+											?.scientific_name
+										setSpeciesQuery(scientificName ?? '')
 									}}
 								>
 									Scientific
@@ -195,7 +198,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 								placeholder={species}
 								value={speciesQuery}
 								onChange={(event) => setSpeciesQuery(event.target.value)}
-								disabled={editEnclosureMutation.isPending}
+								disabled={isPending}
 								showClear
 							/>
 							<ComboboxContent>
@@ -218,37 +221,75 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 								</ComboboxList>
 							</ComboboxContent>
 						</Combobox>
-						<Label>Enclosure Location</Label>
-						<Combobox
-							items={filteredLocations}
-							filter={() => true}
-							value={location}
-							onValueChange={(value) => {
-								setLocation(value ?? '')
-								setLocationQuery(value ?? '')
-							}}
-						>
-							<ComboboxInput
+						<div className='flex items-center justify-between'>
+							<Label>Enclosure Location</Label>
+							<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>
+								<button
+									type='button'
+									className={`w-full text-center px-2.5 py-1 transition-colors ${!createLocation ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+									onClick={() => {
+										setCreateLocation(false)
+										const restored = savedLocationRef.current
+										setLocation(restored)
+										setLocationQuery(restored ?? '')
+									}}
+								>
+									Search
+								</button>
+								<button
+									type='button'
+									className={`w-full text-center px-2.5 py-1 transition-colors ${createLocation ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+									onClick={() => {
+										savedLocationRef.current = location
+										setCreateLocation(true)
+										setLocation('')
+										setLocationQuery('')
+									}}
+								>
+									Create
+								</button>
+							</div>
+						</div>
+						{createLocation ? (
+							<Input
 								className='h-9'
-								placeholder={location}
-								value={locationQuery}
-								onChange={(event) => setLocationQuery(event.target.value)}
-								disabled={editEnclosureMutation.isPending}
-								showClear
+								placeholder='New location name...'
+								value={location ?? ''}
+								onChange={(e) => setLocation(e.target.value)}
+								disabled={isPending}
 							/>
-							<ComboboxContent>
-								<ComboboxEmpty>No matching locations.</ComboboxEmpty>
-								<ComboboxList className='max-h-42 scrollbar-no-track'>
-									<ComboboxCollection>
-										{(loc) => (
-											<ComboboxItem key={loc.id} value={loc.name}>
-												{loc.name}
-											</ComboboxItem>
-										)}
-									</ComboboxCollection>
-								</ComboboxList>
-							</ComboboxContent>
-						</Combobox>
+						) : (
+							<Combobox
+								items={filteredLocations}
+								filter={() => true}
+								value={location}
+								onValueChange={(value) => {
+									setLocation(value ?? '')
+									setLocationQuery(value ?? '')
+								}}
+							>
+								<ComboboxInput
+									className='h-9'
+									placeholder={location || 'Search locations...'}
+									value={locationQuery}
+									onChange={(event) => setLocationQuery(event.target.value)}
+									disabled={isPending}
+									showClear
+								/>
+								<ComboboxContent>
+									<ComboboxEmpty>No matching locations.</ComboboxEmpty>
+									<ComboboxList className='max-h-42 scrollbar-no-track'>
+										<ComboboxCollection>
+											{(loc) => (
+												<ComboboxItem key={loc.id} value={loc.name}>
+													{loc.name}
+												</ComboboxItem>
+											)}
+										</ComboboxCollection>
+									</ComboboxList>
+								</ComboboxContent>
+							</Combobox>
+						)}
 						<Label>Count</Label>
 						<Input
 							className='h-9'
@@ -259,20 +300,15 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							min='0'
 							onChange={(e) => setCount(Number(e.target.value))}
 							required
-							disabled={editEnclosureMutation.isPending}
+							disabled={isPending}
 						/>
 					</div>
 				</div>
 				<div className='flex flex-col gap-3 justify-center px-4 pb-2'>
-					<Button type='submit' disabled={editEnclosureMutation.isPending || !user}>
-						{editEnclosureMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
+					<Button type='submit' disabled={isPending || !user}>
+						{isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
 					</Button>
-					<Button
-						type='button'
-						variant='outline'
-						disabled={editEnclosureMutation.isPending}
-						onClick={() => setOpen(false)}
-					>
+					<Button type='button' variant='outline' disabled={isPending} onClick={() => setOpen(false)}>
 						Cancel
 					</Button>
 				</div>

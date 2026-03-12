@@ -26,7 +26,8 @@ import {
 	Boxes,
 	ClipboardList,
 	FolderHeart,
-	ArrowRightLeft
+	ArrowRightLeft,
+	Calendar
 } from 'lucide-react'
 import {
 	DropdownMenu,
@@ -217,6 +218,17 @@ export function AppSidebar() {
 												>
 													<ClipboardList className='size-4' />
 													<span>Tasks</span>
+												</Link>
+											</SidebarMenuSubButton>
+										</SidebarMenuSubItem>{' '}
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild>
+												<Link
+													href={orgId ? `/protected/orgs/${orgId}/schedules` : '/protected/orgs'}
+													onClick={closeMobileOnNav}
+												>
+													<Calendar className='size-4' />
+													<span>Task Schedules</span>
 												</Link>
 											</SidebarMenuSubButton>
 										</SidebarMenuSubItem>{' '}

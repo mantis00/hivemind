@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { CheckIcon, XIcon, LoaderCircle, ChevronDownIcon } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { usePendingInvites } from '@/lib/react-query/queries'
+import { useMemberProfiles, usePendingInvites } from '@/lib/react-query/queries'
 import { useAcceptInvite, useRejectInvite } from '@/lib/react-query/mutations'
 import getAccessLevelName from '@/context/access-levels'
 import { formatDate } from '@/context/format-date'
@@ -18,6 +18,10 @@ export default function PendingInvites() {
 	const acceptMutation = useAcceptInvite()
 	const rejectMutation = useRejectInvite()
 	const [pendingInviteId, setPendingInviteId] = useState<UUID | null>(null)
+	const { data: userProfile } = useMemberProfiles(user?.id ? [user.id] : [])
+	const isSuperadmin = userProfile?.some((profile) => profile.is_superadmin === true)
+
+	if (isSuperadmin) return null
 
 	const handleAccept = (inviteId: UUID) => {
 		if (!user?.id) return

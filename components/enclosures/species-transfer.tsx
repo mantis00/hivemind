@@ -32,8 +32,8 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 
 	const [leftList, setLeftList] = useState<Item[]>([])
 	const [rightList, setRightList] = useState<Item[]>([])
-	const [prevSpecies, setPrevSpecies] = useState(species)
-	const [prevMasterSpecies, setPrevMasterSpecies] = useState(master_species)
+	const [prevSpecies, setPrevSpecies] = useState<typeof species | null>(null)
+	const [prevMasterSpecies, setPrevMasterSpecies] = useState<typeof master_species | null>(null)
 	const [leftSearch, setLeftSearch] = useState('')
 	const [rightSearch, setRightSearch] = useState('')
 	const [showScientific, setShowScientific] = useState(false)

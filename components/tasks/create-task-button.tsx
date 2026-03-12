@@ -37,11 +37,12 @@ type TaskType = 'template' | 'custom'
 interface CreateTaskButtonProps {
 	enclosureId: UUID
 	orgId: UUID
+	disabled?: boolean
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CreateTaskButton({ enclosureId, orgId }: CreateTaskButtonProps) {
+export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskButtonProps) {
 	const [open, setOpen] = useState(false)
 
 	// Task type
@@ -219,7 +220,7 @@ export function CreateTaskButton({ enclosureId, orgId }: CreateTaskButtonProps) 
 			description='Set up a new task for your facility. Choose from a template or create a custom task.'
 			className='sm:max-w-5xl'
 			trigger={
-				<Button>
+				<Button disabled={disabled}>
 					<PlusIcon className='h-4 w-4' />
 					Create Task
 				</Button>
