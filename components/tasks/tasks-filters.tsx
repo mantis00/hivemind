@@ -91,149 +91,148 @@ export function TasksFilters({
 	}, [speciesQuery, orgSpecies, showScientific])
 
 	return (
-		<div className='flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap'>
-			{isMobile && enclosureId && <CreateTaskButton enclosureId={enclosureId} orgId={orgId} />}
+		<>
+			<div className='flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap'>
+				<div className='flex items-center gap-2'>
+					<Input
+						placeholder='Search tasks...'
+						value={globalFilter}
+						onChange={(e) => onFiltersChange({ ...filters, globalFilter: e.target.value })}
+						className='w-48'
+					/>
+					<GlobalSearchToggle
+						globalSearch={globalSearch}
+						onGlobalSearchChange={(val) =>
+							onFiltersChange({ ...filters, globalSearch: val, ...(val ? { dateRange: undefined } : {}) })
+						}
+					/>
+				</div>
 
-			<div className='flex items-center gap-2'>
-				<Input
-					placeholder='Search tasks...'
-					value={globalFilter}
-					onChange={(e) => onFiltersChange({ ...filters, globalFilter: e.target.value })}
-					className='w-48'
-				/>
-				<GlobalSearchToggle
-					globalSearch={globalSearch}
-					onGlobalSearchChange={(val) =>
-						onFiltersChange({ ...filters, globalSearch: val, ...(val ? { dateRange: undefined } : {}) })
-					}
-				/>
-			</div>
+				<div className='flex flex-wrap items-center gap-2 flex-1'>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant='outline' className='gap-2'>
+								Priority {priorityFilter.length > 0 && `(${priorityFilter.length})`}
+								<ChevronDown className='h-4 w-4' />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align='end'>
+							{(['low', 'medium', 'high'] as const).map((priority) => (
+								<DropdownMenuCheckboxItem
+									key={priority}
+									checked={priorityFilter.includes(priority)}
+									onSelect={(e) => e.preventDefault()}
+									onCheckedChange={(checked) =>
+										onFiltersChange({
+											...filters,
+											priorityFilter: checked
+												? [...priorityFilter, priority]
+												: priorityFilter.filter((p) => p !== priority)
+										})
+									}
+								>
+									{capitalizeFirstLetter(priority)}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
 
-			<div className='flex flex-wrap items-center gap-2 flex-1'>
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant='outline' className='gap-2'>
-							Priority {priorityFilter.length > 0 && `(${priorityFilter.length})`}
-							<ChevronDown className='h-4 w-4' />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align='end'>
-						{(['low', 'medium', 'high'] as const).map((priority) => (
-							<DropdownMenuCheckboxItem
-								key={priority}
-								checked={priorityFilter.includes(priority)}
-								onSelect={(e) => e.preventDefault()}
-								onCheckedChange={(checked) =>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant='outline' className='gap-2'>
+								Status {statusFilter.length > 0 && `(${statusFilter.length})`}
+								<ChevronDown className='h-4 w-4' />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align='end'>
+							{(['pending', 'late', 'completed'] as const).map((status) => (
+								<DropdownMenuCheckboxItem
+									key={status}
+									checked={statusFilter.includes(status)}
+									onSelect={(e) => e.preventDefault()}
+									onCheckedChange={(checked) =>
+										onFiltersChange({
+											...filters,
+											statusFilter: checked ? [...statusFilter, status] : statusFilter.filter((s) => s !== status)
+										})
+									}
+								>
+									{statusConfig[status].label}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+					<Popover>
+						<PopoverTrigger asChild>
+							<Button variant={isRangeMode ? 'secondary' : 'outline'} className='gap-2'>
+								<CalendarIcon className='h-4 w-4' />
+								{isRangeMode
+									? `${formatDate(dateRange!.from!.toISOString(), false)} – ${formatDate(dateRange!.to!.toISOString())}`
+									: 'Date range'}
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className='w-auto p-0' align='start'>
+							<Calendar
+								mode='range'
+								selected={dateRange}
+								onSelect={(range) =>
 									onFiltersChange({
 										...filters,
-										priorityFilter: checked
-											? [...priorityFilter, priority]
-											: priorityFilter.filter((p) => p !== priority)
+										dateRange: range,
+										...(range?.from && range?.to ? { globalSearch: true } : {})
 									})
 								}
-							>
-								{capitalizeFirstLetter(priority)}
-							</DropdownMenuCheckboxItem>
-						))}
-					</DropdownMenuContent>
-				</DropdownMenu>
-
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant='outline' className='gap-2'>
-							Status {statusFilter.length > 0 && `(${statusFilter.length})`}
-							<ChevronDown className='h-4 w-4' />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align='end'>
-						{(['pending', 'late', 'completed'] as const).map((status) => (
-							<DropdownMenuCheckboxItem
-								key={status}
-								checked={statusFilter.includes(status)}
-								onSelect={(e) => e.preventDefault()}
-								onCheckedChange={(checked) =>
-									onFiltersChange({
-										...filters,
-										statusFilter: checked ? [...statusFilter, status] : statusFilter.filter((s) => s !== status)
-									})
-								}
-							>
-								{statusConfig[status].label}
-							</DropdownMenuCheckboxItem>
-						))}
-					</DropdownMenuContent>
-				</DropdownMenu>
-				<Popover>
-					<PopoverTrigger asChild>
-						<Button variant={isRangeMode ? 'secondary' : 'outline'} className='gap-2'>
-							<CalendarIcon className='h-4 w-4' />
-							{isRangeMode
-								? `${formatDate(dateRange!.from!.toISOString(), false)} – ${formatDate(dateRange!.to!.toISOString())}`
-								: 'Date range'}
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className='w-auto p-0' align='start'>
-						<Calendar
-							mode='range'
-							selected={dateRange}
-							onSelect={(range) =>
-								onFiltersChange({
-									...filters,
-									dateRange: range,
-									...(range?.from && range?.to ? { globalSearch: true } : {})
-								})
-							}
-							numberOfMonths={isMobile ? 1 : 2}
-						/>
-					</PopoverContent>
-				</Popover>
-				{showSpeciesFilter && (
-					<Combobox
-						items={filteredSpecies}
-						filter={() => true}
-						value={filters.speciesFilter}
-						onValueChange={(value) => {
-							onFiltersChange({ ...filters, speciesFilter: value ?? '' })
-							setSpeciesQuery(value ?? '')
-						}}
+								numberOfMonths={isMobile ? 1 : 2}
+							/>
+						</PopoverContent>
+					</Popover>
+					{showSpeciesFilter && (
+						<Combobox
+							items={filteredSpecies}
+							filter={() => true}
+							value={filters.speciesFilter}
+							onValueChange={(value) => {
+								onFiltersChange({ ...filters, speciesFilter: value ?? '' })
+								setSpeciesQuery(value ?? '')
+							}}
+						>
+							<ComboboxInput
+								className='h-9'
+								placeholder='Filter by species...'
+								value={speciesQuery}
+								onChange={(event) => setSpeciesQuery(event.target.value)}
+								disabled={isPending}
+								showClear
+							/>
+							<ComboboxContent>
+								<ComboboxEmpty>No matching species.</ComboboxEmpty>
+								<ComboboxList className='max-h-42 scrollbar-no-track'>
+									<ComboboxCollection>
+										{(spec) => (
+											<ComboboxItem key={spec.id} value={spec.custom_common_name}>
+												{spec.custom_common_name}
+											</ComboboxItem>
+										)}
+									</ComboboxCollection>
+								</ComboboxList>
+							</ComboboxContent>
+						</Combobox>
+					)}
+					<Button
+						variant='ghost'
+						onClick={onReset}
+						className={`gap-1.5 text-muted-foreground hover:text-foreground ${hasActiveFilters ? '' : 'invisible pointer-events-none'}`}
 					>
-						<ComboboxInput
-							className='h-9'
-							placeholder='Filter by species...'
-							value={speciesQuery}
-							onChange={(event) => setSpeciesQuery(event.target.value)}
-							disabled={isPending}
-							showClear
-						/>
-						<ComboboxContent>
-							<ComboboxEmpty>No matching species.</ComboboxEmpty>
-							<ComboboxList className='max-h-42 scrollbar-no-track'>
-								<ComboboxCollection>
-									{(spec) => (
-										<ComboboxItem key={spec.id} value={spec.custom_common_name}>
-											{spec.custom_common_name}
-										</ComboboxItem>
-									)}
-								</ComboboxCollection>
-							</ComboboxList>
-						</ComboboxContent>
-					</Combobox>
-				)}
-				<Button
-					variant='ghost'
-					onClick={onReset}
-					className={`gap-1.5 text-muted-foreground hover:text-foreground ${hasActiveFilters ? '' : 'invisible pointer-events-none'}`}
-				>
-					{isMobile ? '' : 'Reset'}
-					<X className='h-4 w-4' />
-				</Button>
-
-				{!isMobile && enclosureId && (
-					<div className='ml-auto'>
-						<CreateTaskButton enclosureId={enclosureId} orgId={orgId} />
-					</div>
-				)}
+						{isMobile ? '' : 'Reset'}
+						<X className='h-4 w-4' />
+					</Button>
+				</div>
 			</div>
-		</div>
+			{enclosureId && (
+				<div className='w-full [&_button]:w-full'>
+					<CreateTaskButton enclosureId={enclosureId} orgId={orgId} />
+				</div>
+			)}
+		</>
 	)
 }

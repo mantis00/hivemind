@@ -75,7 +75,7 @@ export default function OrgTasksTable() {
 					open={open}
 					onOpenChange={(isOpen) => (isOpen ? setOpen(true) : handleClose())}
 				>
-					<div className='grid gap-4 py-4 px-4'>
+					<div className='grid gap-4 py-2 px-4'>
 						<div className='grid gap-2'>
 							<Label>Enclosure</Label>
 							<Combobox
@@ -112,7 +112,7 @@ export default function OrgTasksTable() {
 						{/* TODO: render task creation form here using selectedEnclosure?.id */}
 					</div>
 
-					<div className='flex flex-col gap-3 px-4 pb-2'>
+					<div className='flex flex-col gap-2 px-4 pb-2'>
 						<CreateTaskButton enclosureId={selectedEnclosure?.id as UUID} orgId={orgId} disabled={!selectedEnclosure} />
 						<Button type='button' variant='outline' onClick={handleClose}>
 							Cancel
