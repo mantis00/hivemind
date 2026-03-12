@@ -123,7 +123,7 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 			let subscription = await registration.pushManager.getSubscription()
 
 			if (!subscription) {
-				const vapidKey = process.env.VAPID_PUBLIC_KEY
+				const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 				if (!vapidKey) throw new Error('Missing VAPID public key')
 
 				subscription = await registration.pushManager.subscribe({
