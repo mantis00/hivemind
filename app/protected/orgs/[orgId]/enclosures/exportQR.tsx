@@ -91,7 +91,7 @@ export default function ExportQR() {
 
 				{/* Row limit */}
 				<div>
-					<label className='text-sm font-medium'>Count (max 3000)</label>
+					<label className='text-sm font-medium'>Number of enclosures (max 3000)</label>
 
 					<input
 						type='number'
