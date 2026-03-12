@@ -34,8 +34,8 @@ export function EnclosureDialog({
 
 	return (
 		<ResponsiveDialogDrawer
-			title={enclosure.name + ' - ' + species?.custom_common_name}
-			description={species?.species.scientific_name}
+			title={enclosure.name}
+			description={species?.custom_common_name}
 			open={open}
 			onOpenChange={onOpenChange}
 			trigger={<div></div>}

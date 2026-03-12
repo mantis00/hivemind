@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useState } from 'react'
-import { CheckCircle2Icon, CircleUserRound, LoaderCircle, MapPinIcon } from 'lucide-react'
+import { ArrowLeftCircle, CheckCircle2Icon, CircleUserRound, LoaderCircle, MapPinIcon } from 'lucide-react'
 import { UUID } from 'crypto'
 
 import { Button } from '@/components/ui/button'
@@ -175,6 +175,16 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 								: null
 							return completedByName ? <p className='text-xs'>Completed by {completedByName}</p> : null
 						})()}
+						<Button
+							variant='ghost'
+							className='border-2 mt-2'
+							onClick={() => {
+								router.back()
+							}}
+						>
+							<ArrowLeftCircle />
+							Return to Enclosure Tasks
+						</Button>
 					</CardContent>
 				</Card>
 			) : questions.length > 0 ? (

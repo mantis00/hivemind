@@ -32,7 +32,6 @@ export function CreateEnclosureButton({
 	const [localOpen, setLocalOpen] = useState(false)
 	const open = controlled ? propsOpen! : localOpen
 	const setOpen = controlled ? (val: boolean) => propsOnOpenChange?.(val) : setLocalOpen
-	const [name, setName] = useState('')
 	const [species, setSpecies] = useState('')
 	const [speciesQuery, setSpeciesQuery] = useState('')
 	const [showScientific, setShowScientific] = useState(false)
@@ -88,7 +87,7 @@ export function CreateEnclosureButton({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		if (!name || !species || !location) return
+		if (!species || !location) return
 
 		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
 		if (!species_id) return
@@ -111,14 +110,12 @@ export function CreateEnclosureButton({
 			{
 				orgId: orgId as UUID,
 				species_id: species_id.id as UUID,
-				name: name,
 				location: resolvedLocationId,
 				current_count: count ? parseInt(count, 10) : 0
 			},
 			{
 				onSuccess: () => {
 					setOpen(false)
-					setName('')
 					setSpecies('')
 					setSpeciesQuery('')
 					setCreateLocation(false)
@@ -147,16 +144,6 @@ export function CreateEnclosureButton({
 			<form onSubmit={handleSubmit}>
 				<div className='grid py-4 px-4'>
 					<div className='grid grid-cols-1 gap-4'>
-						<Label>Enclosure Name</Label>
-						<Input
-							id='name'
-							className='h-9'
-							placeholder='Enclosure Name'
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							required
-							disabled={isPending}
-						/>
 						<div className='flex items-center justify-between'>
 							<Label>Species</Label>
 							<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>
@@ -165,8 +152,7 @@ export function CreateEnclosureButton({
 									className={`w-full text-center px-2.5 py-1 transition-colors ${!showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
 									onClick={() => {
 										setShowScientific(false)
-										setSpecies('')
-										setSpeciesQuery('')
+										setSpeciesQuery(species ?? '')
 									}}
 								>
 									Common
@@ -176,8 +162,9 @@ export function CreateEnclosureButton({
 									className={`w-full text-center px-2.5 py-1 transition-colors ${showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
 									onClick={() => {
 										setShowScientific(true)
-										setSpecies('')
-										setSpeciesQuery('')
+										const scientificName = orgSpecies?.find((s) => s.custom_common_name === species)?.species
+											?.scientific_name
+										setSpeciesQuery(scientificName ?? '')
 									}}
 								>
 									Scientific

@@ -5,16 +5,58 @@ import { ArrowUpDown } from 'lucide-react'
 import { UUID } from 'crypto'
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import type { Task, MemberProfile } from '@/lib/react-query/queries'
+import type { Task, MemberProfile, Enclosure, OrgSpecies } from '@/lib/react-query/queries'
 import { ReassignMemberButton } from './reassign-member-button'
 import capitalizeFirstLetter from '@/context/captalize-first-letter'
 import { formatDate } from '@/context/format-date'
 import { getEffectiveStatus, priorityConfig, statusConfig } from '@/context/task-status'
 
-export function getColumns(isMobile: boolean, members: MemberProfile[]): ColumnDef<Task>[] {
+export function getColumns(
+	isMobile: boolean,
+	onView: (taskId: UUID) => void,
+	members: MemberProfile[],
+	columnIds?: string[],
+	enclosures?: Enclosure[],
+	orgSpecies?: OrgSpecies[],
+	onViewEnclosure?: (enclosureId: UUID) => void
+): ColumnDef<Task>[] {
 	const memberMap = new Map(members.map((m) => [m.id as string, m]))
+	const enclosureMap = new Map((enclosures ?? []).map((e) => [e.id as string, e]))
+	const speciesMap = new Map((orgSpecies ?? []).map((s) => [s.id as string, s]))
 
 	const all: ColumnDef<Task>[] = [
+		{
+			id: 'enclosure_name',
+			header: () => <span className='font-bold'>Enclosure</span>,
+			cell: ({ row }) => {
+				const enc = enclosureMap.get(row.original.enclosure_id as string)
+				if (!enc) return <span className='text-xs text-muted-foreground'>—</span>
+				if (onViewEnclosure) {
+					return (
+						<button
+							className='text-sm font-medium text-primary hover:underline'
+							onClick={(e) => {
+								e.stopPropagation()
+								onViewEnclosure(enc.id as UUID)
+							}}
+						>
+							{enc.name}
+						</button>
+					)
+				}
+				return <span className='text-sm'>{enc.name}</span>
+			}
+		},
+		{
+			id: 'species',
+			header: () => <span className='font-bold'>Species</span>,
+			cell: ({ row }) => {
+				const enc = enclosureMap.get(row.original.enclosure_id as string)
+				const spec = enc ? speciesMap.get(enc.species_id as string) : undefined
+				if (!spec) return <span className='text-xs text-muted-foreground'>—</span>
+				return <span className='text-sm'>{spec.custom_common_name}</span>
+			}
+		},
 		{
 			accessorKey: 'name',
 			header: ({ column }) => (
@@ -136,11 +178,26 @@ export function getColumns(isMobile: boolean, members: MemberProfile[]): ColumnD
 		}
 	]
 
+	if (columnIds) {
+		return columnIds
+			.map((id) => all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id))
+			.filter(Boolean) as ColumnDef<Task>[]
+	}
+
+	const enclosureOnlyIds = new Set(['enclosure_name', 'species'])
+	const defaultCols = all.filter(
+		(col) => !enclosureOnlyIds.has(col.id ?? (col as { accessorKey?: string }).accessorKey ?? '')
+	)
+
 	if (isMobile) {
 		const mobileOrder = ['name', 'status', 'due_date']
-		return mobileOrder.map((id) => all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!)
+		return mobileOrder.map(
+			(id) => defaultCols.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!
+		)
 	}
 
 	const desktopOrder = ['name', 'due_date', 'priority', 'status', 'assigned_to']
-	return desktopOrder.map((id) => all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!)
+	return desktopOrder.map(
+		(id) => defaultCols.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!
+	)
 }
