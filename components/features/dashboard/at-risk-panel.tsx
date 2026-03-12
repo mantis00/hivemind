@@ -32,30 +32,32 @@ export function AtRiskPanel({ orgId, items, timeZone }: AtRiskPanelProps) {
 		<Card>
 			<CardHeader>
 				<CardTitle>At-Risk Enclosures</CardTitle>
-				<CardDescription>Highest-risk enclosures based on overdue and high-priority open tasks.</CardDescription>
+				<CardDescription>Highest-risk enclosures based on overdue and urgent open tasks.</CardDescription>
 			</CardHeader>
-			<CardContent className='space-y-3'>
+			<CardContent>
 				{items.length === 0 ? (
 					<p className='text-sm text-muted-foreground'>No at-risk enclosures right now.</p>
 				) : (
-					items.map((item) => (
-						<Link
-							key={item.enclosureId}
-							href={`/protected/orgs/${orgId}/enclosures/${item.enclosureId}`}
-							className='flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/30'
-						>
-							<div className='flex items-center justify-between gap-3'>
-								<p className='font-medium'>{item.enclosureName}</p>
-								<div className='flex items-center gap-2'>
-									<Badge variant='destructive'>{item.overdueCount} overdue</Badge>
-									<Badge variant='secondary'>{item.highPriorityCount} high</Badge>
+					<div className='max-h-[30rem] space-y-3 overflow-y-auto pr-1'>
+						{items.map((item) => (
+							<Link
+								key={item.enclosureId}
+								href={`/protected/orgs/${orgId}/enclosures/${item.enclosureId}`}
+								className='flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/30'
+							>
+								<div className='flex items-center justify-between gap-3'>
+									<p className='font-medium'>{item.enclosureName}</p>
+									<div className='flex items-center gap-2'>
+										<Badge variant='destructive'>{item.overdueCount} overdue</Badge>
+										<Badge variant='secondary'>{item.highPriorityCount} urgent</Badge>
+									</div>
 								</div>
-							</div>
-							<p className='text-sm text-muted-foreground'>
-								Next due: {formatDateTime(item.nextDueAt, timeZone)} ({timeZone})
-							</p>
-						</Link>
-					))
+								<p className='text-sm text-muted-foreground'>
+									Next due: {formatDateTime(item.nextDueAt, timeZone)} ({timeZone})
+								</p>
+							</Link>
+						))}
+					</div>
 				)}
 			</CardContent>
 		</Card>

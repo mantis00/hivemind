@@ -25,6 +25,8 @@ type KanbanColumns = {
 	done: Task[]
 }
 
+type SpeciesNameMode = 'scientific' | 'common'
+
 function toLocalDateKey(date: Date) {
 	const year = date.getFullYear()
 	const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -146,6 +148,7 @@ export function TasksKanbanPage() {
 	const [selectedEnclosureIds, setSelectedEnclosureIds] = useState<string[]>([])
 	const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([])
 	const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+	const [speciesNameMode, setSpeciesNameMode] = useState<SpeciesNameMode>('scientific')
 
 	const todayDateKey = toLocalDateKey(new Date())
 
@@ -154,8 +157,13 @@ export function TasksKanbanPage() {
 
 		for (const species of orgSpeciesRows ?? []) {
 			const scientificName = species.species?.scientific_name?.trim()
-			const fallbackName = species.custom_common_name?.trim()
-			const label = scientificName || fallbackName || `Species ${(species.id as string).slice(0, 8)}`
+			const orgCommonName = species.custom_common_name?.trim()
+			const defaultCommonName = species.species?.common_name?.trim()
+			const commonName = orgCommonName || defaultCommonName
+			const label =
+				speciesNameMode === 'common'
+					? commonName || scientificName || `Species ${(species.id as string).slice(0, 8)}`
+					: scientificName || commonName || `Species ${(species.id as string).slice(0, 8)}`
 			nameById.set(species.id as string, label)
 			if (species.master_species_id) {
 				nameById.set(species.master_species_id as string, label)
@@ -163,7 +171,7 @@ export function TasksKanbanPage() {
 		}
 
 		return nameById
-	}, [orgSpeciesRows])
+	}, [orgSpeciesRows, speciesNameMode])
 
 	const userNameById = useMemo(() => {
 		const profileNameById = new Map<string, string>()
@@ -371,11 +379,32 @@ export function TasksKanbanPage() {
 			<section className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'>
 				<TaskFilterList
 					title='Species'
-					description='Filter by species represented in selected enclosures.'
+					description={`Filter by species (${speciesNameMode} names).`}
 					options={speciesOptions}
 					selectedIds={selectedSpeciesIds}
 					onToggle={(id) => setSelectedSpeciesIds((current) => toggleSelection(current, id))}
 					onClear={() => setSelectedSpeciesIds([])}
+					compactWhenClosed
+					headerControls={
+						<div className='flex items-center rounded-md border p-0.5'>
+							<Button
+								variant={speciesNameMode === 'scientific' ? 'secondary' : 'ghost'}
+								size='sm'
+								className='h-6 px-2 text-[11px]'
+								onClick={() => setSpeciesNameMode('scientific')}
+							>
+								Scientific
+							</Button>
+							<Button
+								variant={speciesNameMode === 'common' ? 'secondary' : 'ghost'}
+								size='sm'
+								className='h-6 px-2 text-[11px]'
+								onClick={() => setSpeciesNameMode('common')}
+							>
+								Common
+							</Button>
+						</div>
+					}
 				/>
 				<TaskFilterList
 					title='Enclosures'

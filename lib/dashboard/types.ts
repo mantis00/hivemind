@@ -14,12 +14,12 @@ export type AtRiskEnclosureSummary = {
 }
 
 export type UpcomingScheduleItem = {
-	scheduleId: string
+	taskId: string
 	enclosureId: string
 	enclosureName: string
-	scheduleType: string
-	timeWindow: string | null
-	lastRunAt: string | null
+	taskTitle: string
+	dueAt: string | null
+	priority: string | null
 }
 
 export type RecentActivityItem = {

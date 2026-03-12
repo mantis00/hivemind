@@ -1,6 +1,6 @@
 'use client'
 
-import { useDeferredValue, useMemo, useState } from 'react'
+import { type ReactNode, useDeferredValue, useMemo, useState } from 'react'
 import { ChevronDownIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,13 +23,27 @@ type TaskFilterListProps = {
 	selectedIds: string[]
 	onToggle: (id: string) => void
 	onClear: () => void
+	headerControls?: ReactNode
+	compactWhenClosed?: boolean
 }
 
-export function TaskFilterList({ title, description, options, selectedIds, onToggle, onClear }: TaskFilterListProps) {
+export function TaskFilterList({
+	title,
+	description,
+	options,
+	selectedIds,
+	onToggle,
+	onClear,
+	headerControls,
+	compactWhenClosed = false
+}: TaskFilterListProps) {
 	const [query, setQuery] = useState('')
 	const [isOpen, setIsOpen] = useState(false)
 	const deferredQuery = useDeferredValue(query)
 	const normalizedQuery = deferredQuery.trim().toLowerCase()
+	const showCompactClosedHeader = compactWhenClosed && !isOpen
+	const showDescription = !showCompactClosedHeader
+	const showSelectionSummary = selectedIds.length > 0 && !showCompactClosedHeader
 
 	const filteredOptions = useMemo(() => {
 		if (normalizedQuery.length === 0) {
@@ -42,13 +56,14 @@ export function TaskFilterList({ title, description, options, selectedIds, onTog
 	return (
 		<Collapsible open={isOpen} onOpenChange={setIsOpen}>
 			<Card className='h-full'>
-				<CardHeader className='space-y-1 pb-2'>
+				<CardHeader className={cn('space-y-1 pb-2', showCompactClosedHeader && 'space-y-0 py-2')}>
 					<div className='flex items-start justify-between gap-2'>
 						<div className='space-y-1'>
 							<CardTitle className='text-base'>{title}</CardTitle>
-							<CardDescription>{description}</CardDescription>
+							{showDescription ? <CardDescription>{description}</CardDescription> : null}
 						</div>
 						<div className='flex shrink-0 items-center gap-1'>
+							{headerControls}
 							{selectedIds.length > 0 ? (
 								<Button variant='ghost' size='sm' className='h-7 px-2 text-xs' onClick={onClear}>
 									Clear
@@ -66,7 +81,7 @@ export function TaskFilterList({ title, description, options, selectedIds, onTog
 							</CollapsibleTrigger>
 						</div>
 					</div>
-					{selectedIds.length > 0 ? (
+					{showSelectionSummary ? (
 						<p className='text-xs text-muted-foreground'>
 							{selectedIds.length} selected {selectedIds.length === 1 ? 'option' : 'options'}
 						</p>

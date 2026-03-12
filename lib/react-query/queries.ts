@@ -78,6 +78,7 @@ export type OrgSpecies = {
 	master_species_id: UUID
 	species: {
 		scientific_name: string
+		common_name: string | null
 		picture_url: string
 	}
 }
@@ -366,7 +367,7 @@ export function useSpecies(orgId: UUID) {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('org_species')
-				.select('*, species(scientific_name, picture_url)')) as {
+				.select('*, species(scientific_name, common_name, picture_url)')) as {
 				data: OrgSpecies[] | null
 				error: PostgrestError | null
 			}

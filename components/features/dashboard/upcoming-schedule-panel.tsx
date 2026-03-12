@@ -28,37 +28,34 @@ function formatDateTime(value: string | null, timeZone: string) {
 }
 
 export function UpcomingSchedulePanel({ orgId, items, timeZone }: UpcomingSchedulePanelProps) {
-	// TODO: repurpose this panel to display the Kanban board's "To Do" section instead of recurring schedule rows.
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Upcoming Schedule</CardTitle>
-				<CardDescription>
-					Active recurring schedules across the organization. Currently using last-run timestamps until next-run support
-					is added.
-				</CardDescription>
+				<CardTitle>Tasks Due Today</CardTitle>
+				<CardDescription>Open tasks due today for this organization.</CardDescription>
 			</CardHeader>
-			<CardContent className='space-y-3'>
+			<CardContent>
 				{items.length === 0 ? (
-					<p className='text-sm text-muted-foreground'>
-						No schedule data available yet. Once schedule rows exist, they will appear here. A future update will add
-						true next-run scheduling.
-					</p>
+					<p className='text-sm text-muted-foreground'>No open tasks due today.</p>
 				) : (
-					items.map((item) => (
-						<Link
-							key={item.scheduleId}
-							href={`/protected/orgs/${orgId}/enclosures/${item.enclosureId}`}
-							className='flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/30'
-						>
-							<div className='flex items-center justify-between gap-3'>
-								<p className='font-medium'>{item.enclosureName}</p>
-								<Badge variant='outline'>{item.scheduleType}</Badge>
-							</div>
-							<p className='text-sm text-muted-foreground'>Last run: {formatDateTime(item.lastRunAt, timeZone)}</p>
-							{item.timeWindow ? <p className='text-xs text-muted-foreground'>Window: {item.timeWindow}</p> : null}
-						</Link>
-					))
+					<div className='max-h-[30rem] space-y-3 overflow-y-auto pr-1'>
+						{items.map((item) => (
+							<Link
+								key={item.taskId}
+								href={`/protected/orgs/${orgId}/enclosures/${item.enclosureId}`}
+								className='flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/30'
+							>
+								<div className='flex items-center justify-between gap-3'>
+									<p className='font-medium'>{item.taskTitle}</p>
+									<Badge variant={item.priority?.toLowerCase() === 'high' ? 'destructive' : 'outline'}>
+										{item.priority?.toLowerCase() === 'high' ? 'Urgent' : (item.priority ?? 'Unspecified')}
+									</Badge>
+								</div>
+								<p className='text-sm text-muted-foreground'>Enclosure: {item.enclosureName}</p>
+								<p className='text-sm text-muted-foreground'>Due: {formatDateTime(item.dueAt, timeZone)}</p>
+							</Link>
+						))}
+					</div>
 				)}
 			</CardContent>
 		</Card>

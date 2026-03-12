@@ -20,8 +20,6 @@ type TaskRow = {
 	completed_time: string | null
 }
 
-type EnclosureScheduleRow = Record<string, unknown>
-
 const OPEN_TASK_STATUSES = new Set(['pending', 'in_progress'])
 const CLOSED_TASK_STATUS = 'completed'
 const DEFAULT_TIME_ZONE = 'UTC'
@@ -112,28 +110,6 @@ function getDateKeyInTimeZone(date: Date, timeZone: string) {
 	}).format(date)
 }
 
-function getStringField(row: Record<string, unknown>, keys: string[]) {
-	for (const key of keys) {
-		const value = row[key]
-		if (typeof value === 'string' && value.length > 0) {
-			return value
-		}
-	}
-
-	return null
-}
-
-function getBooleanField(row: Record<string, unknown>, keys: string[], fallback: boolean) {
-	for (const key of keys) {
-		const value = row[key]
-		if (typeof value === 'boolean') {
-			return value
-		}
-	}
-
-	return fallback
-}
-
 function compareNullableIsoDatesAsc(a: string | null, b: string | null) {
 	if (!a && !b) {
 		return 0
@@ -148,14 +124,6 @@ function compareNullableIsoDatesAsc(a: string | null, b: string | null) {
 	}
 
 	return new Date(a).getTime() - new Date(b).getTime()
-}
-
-function isMissingRelationOrColumn(error: PostgrestError | null) {
-	if (!error) {
-		return false
-	}
-
-	return error.code === '42P01' || error.code === '42703'
 }
 
 function createDashboardQueryError(
@@ -391,67 +359,35 @@ export async function getDashboardData(orgId: string): Promise<DashboardData> {
 		})
 		.slice(0, 5)
 
-	const scheduleRows: EnclosureScheduleRow[] = []
+	dashboardData.upcomingSchedule = openTaskRows
+		.filter((task) => {
+			if (!task.enclosure_id || !isValidDate(task.due_date)) {
+				return false
+			}
 
-	for (let chunkIndex = 0; chunkIndex < enclosureIdChunks.length; chunkIndex += 1) {
-		const enclosureChunk = enclosureIdChunks[chunkIndex]
-		const { data: rawScheduleRows, error: scheduleError } = await supabase
-			.from('enclosure_schedules')
-			.select('*')
-			.in('enclosure_id', enclosureChunk)
+			const dueDateKey = getDateKeyInTimeZone(new Date(task.due_date!), serverTimeZone)
+			return dueDateKey === todayKey
+		})
+		.sort((a, b) => {
+			const aUrgentSortOrder = isHighPriority(a.priority) ? 0 : 1
+			const bUrgentSortOrder = isHighPriority(b.priority) ? 0 : 1
+			if (aUrgentSortOrder !== bUrgentSortOrder) {
+				return aUrgentSortOrder - bUrgentSortOrder
+			}
 
-		if (scheduleError && !isMissingRelationOrColumn(scheduleError)) {
-			addWarning(
-				warnings,
-				'enclosure_schedules.select',
-				`Upcoming schedule may be incomplete (${scheduleError.message ?? 'Unknown query error'}).`
-			)
-			break
-		}
-
-		if (scheduleError && isMissingRelationOrColumn(scheduleError)) {
-			addWarning(
-				warnings,
-				'enclosure_schedules.schema',
-				'Schedule data unavailable until missing table/columns are added.'
-			)
-			break
-		}
-
-		if (rawScheduleRows) {
-			scheduleRows.push(...(rawScheduleRows as EnclosureScheduleRow[]))
-		}
-	}
-
-	if (scheduleRows.length > 0) {
-		// TODO: replace this schedule-based feed with Kanban "To Do" lane data once the Kanban tasks page is implemented.
-		// TODO: dashboard upcoming panel should mirror the Kanban board's current to-do section.
-		dashboardData.upcomingSchedule = scheduleRows
-			.filter((row) => getBooleanField(row, ['is_active', 'active'], true))
-			.map((row, index) => {
-				const enclosureId = getStringField(row, ['enclosure_id'])
-				if (!enclosureId) {
-					return null
-				}
-
-				const scheduleId = getStringField(row, ['id', 'schedule_id']) ?? `${enclosureId}-${index}`
-				const scheduleType = getStringField(row, ['schedule_type', 'type']) ?? 'Scheduled'
-				const lastRunAt = getStringField(row, ['last_run_at']) ?? null
-				const timeWindow = getStringField(row, ['time_window']) ?? null
-
-				return {
-					scheduleId,
-					enclosureId,
-					enclosureName: enclosureNameById.get(enclosureId) ?? enclosureId,
-					scheduleType,
-					timeWindow,
-					lastRunAt
-				}
-			})
-			.filter((item): item is NonNullable<typeof item> => item !== null)
-			.sort((a, b) => compareNullableIsoDatesAsc(b.lastRunAt, a.lastRunAt))
-			.slice(0, 8)
-	}
+			return compareNullableIsoDatesAsc(a.due_date, b.due_date)
+		})
+		.map((task) => {
+			const enclosureId = task.enclosure_id as string
+			return {
+				taskId: task.id,
+				enclosureId,
+				enclosureName: enclosureNameById.get(enclosureId) ?? enclosureId,
+				taskTitle: getTaskTitle(task),
+				dueAt: task.due_date,
+				priority: typeof task.priority === 'string' ? task.priority : null
+			}
+		})
 
 	const recentActivityCandidates: RecentActivityItem[] = []
 

@@ -49,23 +49,25 @@ export function RecentActivityPanel({ items, timeZone }: RecentActivityPanelProp
 				<CardTitle>Recent Activity</CardTitle>
 				<CardDescription>Tasks completed today, including overdue/urgent completion context.</CardDescription>
 			</CardHeader>
-			<CardContent className='space-y-3'>
+			<CardContent>
 				{items.length === 0 ? (
 					<p className='text-sm text-muted-foreground'>No tasks have been completed yet today.</p>
 				) : (
-					items.map((item) => (
-						<Link
-							key={item.id}
-							href={item.href}
-							className='flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/30'
-						>
-							<div className='flex items-center justify-between gap-3'>
-								<p className='font-medium'>{item.label}</p>
-								<Badge variant='outline'>{getActivityBadgeLabel(item)}</Badge>
-							</div>
-							<p className='text-sm text-muted-foreground'>{formatDateTime(item.occurredAt, timeZone)}</p>
-						</Link>
-					))
+					<div className='max-h-[30rem] space-y-3 overflow-y-auto pr-1'>
+						{items.map((item) => (
+							<Link
+								key={item.id}
+								href={item.href}
+								className='flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/30'
+							>
+								<div className='flex items-center justify-between gap-3'>
+									<p className='font-medium'>{item.label}</p>
+									<Badge variant='outline'>{getActivityBadgeLabel(item)}</Badge>
+								</div>
+								<p className='text-sm text-muted-foreground'>{formatDateTime(item.occurredAt, timeZone)}</p>
+							</Link>
+						))}
+					</div>
 				)}
 			</CardContent>
 		</Card>
