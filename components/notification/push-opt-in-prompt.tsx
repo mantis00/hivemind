@@ -49,6 +49,35 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 		}
 	}, [])
 
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		if (!canEnablePush) return
+
+		let isCancelled = false
+
+		const suppressIfAlreadyEnabled = async () => {
+			if (Notification.permission !== 'granted') return
+
+			const registration = await navigator.serviceWorker.getRegistration()
+			if (!registration) return
+
+			const existingSubscription = await registration.pushManager.getSubscription()
+			if (!existingSubscription || isCancelled) return
+
+			sessionStorage.setItem('pushPromptDismissed', 'true')
+			setDismissed(true)
+			onOpenChange(false)
+		}
+
+		suppressIfAlreadyEnabled().catch((err) => {
+			console.error('Failed to check existing push subscription:', err)
+		})
+
+		return () => {
+			isCancelled = true
+		}
+	}, [canEnablePush, onOpenChange])
+
 	/* Dismiss prompt*/
 
 	const dismiss = () => {
