@@ -1,3 +1,5 @@
+'use client'
+
 import { Search, CalendarIcon, X, Bell } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -9,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { DateRange } from 'react-day-picker'
 import type { NotificationType } from '@/context/notification-config'
 import { typeIcons, typeColors, typeLabels } from '@/context/notification-config'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface InboxFiltersProps {
 	searchQuery: string
@@ -43,6 +46,7 @@ export function InboxFilters({
 	hasActiveFilters,
 	clearFilters
 }: InboxFiltersProps) {
+	const isMobile = useIsMobile()
 	return (
 		<section className='space-y-3'>
 			<h2 className='text-lg font-semibold'>Filters</h2>
@@ -132,7 +136,12 @@ export function InboxFilters({
 						</Button>
 					</PopoverTrigger>
 					<PopoverContent className='w-auto p-0' align='start'>
-						<Calendar mode='range' selected={dateRange} onSelect={(range) => setDateRange(range)} numberOfMonths={2} />
+						<Calendar
+							mode='range'
+							selected={dateRange}
+							onSelect={(range) => setDateRange(range)}
+							numberOfMonths={isMobile ? 1 : 2}
+						/>
 					</PopoverContent>
 				</Popover>
 

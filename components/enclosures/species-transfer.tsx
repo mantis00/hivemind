@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ChevronLeftIcon, ChevronRightIcon, LoaderCircle, SaveIcon, SquareCheckIcon, SquareIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAllSpecies, useOrgSpecies } from '@/lib/react-query/queries'
 import { useAddBatchSpeciesToOrg, useDeleteBatchSpeciesFromOrg } from '@/lib/react-query/mutations'
 import { useParams } from 'next/navigation'
@@ -32,6 +32,8 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 
 	const [leftList, setLeftList] = useState<Item[]>([])
 	const [rightList, setRightList] = useState<Item[]>([])
+	const [prevSpecies, setPrevSpecies] = useState<typeof species | null>(null)
+	const [prevMasterSpecies, setPrevMasterSpecies] = useState<typeof master_species | null>(null)
 	const [leftSearch, setLeftSearch] = useState('')
 	const [rightSearch, setRightSearch] = useState('')
 	const [showScientific, setShowScientific] = useState(false)
@@ -42,7 +44,10 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 		removedNames: string
 	} | null>(null)
 
-	useEffect(() => {
+	// Sync lists when query data changes ("setState during render" pattern)
+	if (prevSpecies !== species || prevMasterSpecies !== master_species) {
+		setPrevSpecies(species)
+		setPrevMasterSpecies(master_species)
 		if (species) {
 			setLeftList(
 				species.map((s) => ({
@@ -52,7 +57,6 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 				}))
 			)
 		}
-
 		if (master_species) {
 			const orgSpeciesIds = new Set(species?.map((s) => s.master_species_id) ?? [])
 			setRightList(
@@ -65,7 +69,7 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 					}))
 			)
 		}
-	}, [species, master_species])
+	}
 
 	const moveToRight = () => {
 		const selectedItems = leftList.filter((item) => item.selected)

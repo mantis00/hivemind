@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { AppSidebar } from '@/components/navigation/app-sidebar'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import { useEffect, useState } from 'react'
+import { useIsMounted } from '@/hooks/use-is-mounted'
 
 function isOrgRoute(pathname: string | null) {
 	if (!pathname) return false
@@ -15,11 +15,7 @@ function isOrgRoute(pathname: string | null) {
 
 export function ProtectedSidebar() {
 	const pathname = usePathname()
-	const [isMounted, setIsMounted] = useState(false)
-
-	useEffect(() => {
-		setIsMounted(true)
-	}, [])
+	const isMounted = useIsMounted()
 
 	if (!isMounted) {
 		return null

@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { useState } from 'react'
 import { useLogout } from '@/lib/react-query/auth'
+import { LoaderCircle } from 'lucide-react'
 
 export function LogoutButton() {
 	const [open, setOpen] = useState(false)
+	const [loading, setLoading] = useState(false)
 
 	const logoutMutation = useLogout()
 
@@ -22,17 +24,16 @@ export function LogoutButton() {
 				</Button>
 			}
 		>
-			<Button variant='outline' onClick={() => setOpen(false)}>
-				Cancel
-			</Button>
 			<Button
 				variant='destructive'
-				onSelect={(e) => {
+				disabled={loading}
+				onClick={(e) => {
 					e.preventDefault()
+					setLoading(true)
 					logoutMutation.mutate()
 				}}
 			>
-				Logout
+				{loading ? <LoaderCircle className='animate-spin' /> : 'Logout'}
 			</Button>
 		</ResponsiveDialogDrawer>
 	)

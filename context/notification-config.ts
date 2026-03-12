@@ -1,4 +1,4 @@
-import { Bell, AtSign, UserPlus, RefreshCw, AlertCircle } from 'lucide-react'
+import { AtSign, UserPlus, RefreshCw, AlertCircle } from 'lucide-react'
 import type { ElementType } from 'react'
 
 export type NotificationType = 'mention' | 'invite' | 'update' | 'alert'

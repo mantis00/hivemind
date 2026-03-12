@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { CheckIcon, XIcon, LoaderCircle, ChevronDownIcon } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { useAllOrgRequests, useAllSpeciesRequests, useMemberProfiles } from '@/lib/react-query/queries'
+import { useAllSpeciesRequests, useMemberProfiles } from '@/lib/react-query/queries'
 import { useApproveSpeciesRequest, useRejectSpeciesRequest } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { formatDate } from '@/context/format-date'
@@ -31,13 +31,14 @@ export function ViewPendingSpeciesRequests() {
 	const approveMutation = useApproveSpeciesRequest()
 	const rejectMutation = useRejectSpeciesRequest()
 	const [pendingRequestId, setPendingRequestId] = useState<UUID | null>(null)
+	const [now] = useState(() => Date.now())
 
 	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 	const visibleRequests =
 		requests?.filter((r) => {
 			if (r.status === 'pending') return true
 			const lastUpdated = new Date(r.reviewed_at ?? r.created_at).getTime()
-			return Date.now() <= lastUpdated + SEVEN_DAYS_MS
+			return now <= lastUpdated + SEVEN_DAYS_MS
 		}) ?? []
 	const pendingRequests = visibleRequests.filter((r) => r.status === 'pending')
 	const requesterIds = [...new Set(visibleRequests.map((r) => r.requester_id))]
@@ -56,7 +57,7 @@ export function ViewPendingSpeciesRequests() {
 	}
 
 	return (
-		<Collapsible defaultOpen>
+		<Collapsible>
 			<CollapsibleTrigger asChild>
 				<button
 					type='button'

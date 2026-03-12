@@ -21,7 +21,7 @@ export function useCreateOrg() {
 
 			if (orgError) throw orgError
 
-			// Update the user_org_role table with proper access level
+			// Add creator as Superadmin (3)
 			const { error: relationError } = await supabase.from('user_org_role').insert({
 				user_id: userId,
 				org_id: org.org_id,
@@ -33,10 +33,28 @@ export function useCreateOrg() {
 				await supabase.from('orgs').delete().eq('org_id', org.org_id)
 				throw relationError
 			}
+
+			// Add all other existing superadmins to the org
+			const { data: superadmins } = await supabase
+				.from('profiles')
+				.select('id')
+				.eq('is_superadmin', true)
+				.neq('id', userId)
+
+			if (superadmins && superadmins.length > 0) {
+				await supabase.from('user_org_role').upsert(
+					superadmins.map((s) => ({
+						user_id: s.id,
+						org_id: org.org_id,
+						access_lvl: 3
+					})),
+					{ onConflict: 'user_id,org_id' }
+				)
+			}
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate and refetch user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			toast.success('Organization created!')
 		}
 	})
 }
@@ -58,8 +76,8 @@ export function useDeleteOrg() {
 			if (orgError) throw orgError
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate and refetch user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			toast.success('Organization deleted.')
 		}
 	})
 }
@@ -75,9 +93,9 @@ export function useLeaveOrg() {
 			if (error) throw error
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate org members and user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgMembers', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			toast.success('You have left the organization.')
 		}
 	})
 }
@@ -101,8 +119,21 @@ export function useUpdateProfile() {
 			if (error) throw error
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate profile queries
 			queryClient.invalidateQueries({ queryKey: ['profiles', variables.userId] })
+			queryClient.invalidateQueries({ queryKey: ['currentUserProfile', variables.userId] })
+			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			queryClient.invalidateQueries({ queryKey: ['orgMemberProfiles'] })
+			toast.success('Profile updated!')
+		}
+	})
+}
+
+export function useUpdateThemePreference() {
+	return useMutation({
+		mutationFn: async ({ userId, theme }: { userId: string; theme: string }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('profiles').update({ theme_preference: theme }).eq('id', userId)
+			if (error) throw error
 		}
 	})
 }
@@ -239,11 +270,11 @@ export function useAcceptInvite() {
 			if (updateError) throw updateError
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate invites
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
 			queryClient.invalidateQueries({ queryKey: ['orgMembers'] })
 			queryClient.invalidateQueries({ queryKey: ['profiles'] })
+			toast.success('Invite accepted!')
 		}
 	})
 }
@@ -261,8 +292,8 @@ export function useRejectInvite() {
 			if (error) throw error
 		},
 		onSuccess: () => {
-			// Invalidate invites
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
+			toast.success('Invite declined.')
 		}
 	})
 }
@@ -284,8 +315,8 @@ export function useRetractInvite() {
 			if (error) throw error
 		},
 		onSuccess: () => {
-			// Invalidate org invites
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
+			toast.success('Invite cancelled.')
 		}
 	})
 }
@@ -303,9 +334,9 @@ export function useKickMember() {
 			if (error) throw error
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate org members and user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgMembers', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			toast.success('Member removed.')
 		}
 	})
 }
@@ -325,6 +356,7 @@ export function useCreateLocation() {
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgLocations', variables.orgId] })
+			toast.success('Location created!')
 		}
 	})
 }
@@ -335,27 +367,21 @@ export function useCreateEnclosure() {
 		mutationFn: async ({
 			orgId,
 			species_id,
-			name,
 			location,
 			current_count
 		}: {
 			orgId: UUID
 			species_id: UUID
-			name: string
 			location: UUID
 			current_count: number
 		}) => {
 			const supabase = createClient()
-			if (name.trim() === '') {
-				throw new Error('Recieved an empty field')
-			}
 			// Insert the organization
 			const { error: enclosureError } = await supabase
 				.from('enclosures')
 				.insert({
 					org_id: orgId,
 					species_id: species_id,
-					name: name.trim(),
 					location: location,
 					current_count: current_count
 				})
@@ -365,9 +391,9 @@ export function useCreateEnclosure() {
 			if (enclosureError) throw enclosureError
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate and refetch enclosures orgs
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			toast.success('Enclosure created!')
 		}
 	})
 }
@@ -392,9 +418,9 @@ export function useDeleteEnclosure() {
 			if (enclosureError) throw enclosureError
 		},
 		onSuccess: (data, variables) => {
-			// Invalidate and refetch user orgs
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			toast.success('Enclosure deleted.')
 		}
 	})
 }
@@ -403,7 +429,7 @@ export function useBatchDeleteEnclosures() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ ids, orgId }: { ids: UUID[]; orgId: UUID }) => {
+		mutationFn: async ({ ids }: { ids: UUID[]; orgId: UUID }) => {
 			const supabase = createClient()
 
 			// Delete tasks for all enclosures
@@ -421,6 +447,7 @@ export function useBatchDeleteEnclosures() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			toast.success('Enclosures deleted.')
 		}
 	})
 }
@@ -454,9 +481,9 @@ export function useCreateEnclosureNote() {
 
 			if (enclosureNoteError) throw enclosureNoteError
 		},
-		onSuccess: (data, variables) => {
-			// Invalidate and refetch enclosures orgs
+		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['enclosureNotes', variables.enclosureId] })
+			toast.success('Note added!')
 		}
 	})
 }
@@ -466,29 +493,22 @@ export function useUpdateEnclosure() {
 
 	return useMutation({
 		mutationFn: async ({
-			orgId,
 			enclosure_id,
-			name,
 			species_id,
 			location_id,
 			count
 		}: {
 			orgId: UUID
 			enclosure_id: UUID
-			name: string
 			species_id: UUID
 			location_id: UUID
 			count: number
 		}) => {
 			const supabase = createClient()
 
-			if (name.trim() === '') {
-				throw new Error('First name or last name cannot be empty')
-			}
-
 			const { error } = await supabase
 				.from('enclosures')
-				.update({ name: name.trim(), species_id: species_id, location: location_id, current_count: count })
+				.update({ species_id: species_id, location: location_id, current_count: count })
 				.eq('id', enclosure_id)
 
 			if (error) throw error
@@ -496,6 +516,7 @@ export function useUpdateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			toast.success('Enclosure updated!')
 		}
 	})
 }
@@ -512,9 +533,9 @@ export function useSuperadminElavate() {
 
 			if (error) throw error
 		},
-		onSuccess: (data, variables) => {
-			// Invalidate and refetch superadmin data
+		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			toast.success('User elevated to superadmin!')
 		}
 	})
 }
@@ -574,6 +595,7 @@ export function useApproveOrgRequest() {
 			queryClient.invalidateQueries({ queryKey: ['orgs'] })
 			queryClient.invalidateQueries({ queryKey: ['orgMembers'] })
 			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			toast.success('Organization request approved!')
 		}
 	})
 }
@@ -596,6 +618,7 @@ export function useRejectOrgRequest() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
 			queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
+			toast.success('Organization request rejected.')
 		}
 	})
 }
@@ -618,6 +641,7 @@ export function useRetractOrgRequest() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['orgRequests'] })
 			queryClient.invalidateQueries({ queryKey: ['allOrgRequests'] })
+			toast.success('Request cancelled.')
 		}
 	})
 }
@@ -641,6 +665,7 @@ export function useUpdateSpeciesImage() {
 			queryClient.invalidateQueries({ queryKey: ['singleSpecies', variables.species_id] })
 			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
 			queryClient.invalidateQueries({ queryKey: ['species'] })
+			toast.success('Species image updated!')
 		}
 	})
 }
@@ -788,6 +813,7 @@ export function useCreateTaskTemplate() {
 			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			queryClient.invalidateQueries({ queryKey: ['taskTemplatesForOrgSpecies'] })
 			toast.success('Task template created!')
 		}
 	})
@@ -799,7 +825,6 @@ export function useUpdateTaskTemplate() {
 	return useMutation({
 		mutationFn: async ({
 			templateId,
-			speciesId,
 			type,
 			description,
 			fields
@@ -850,6 +875,7 @@ export function useUpdateTaskTemplate() {
 			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			queryClient.invalidateQueries({ queryKey: ['taskTemplatesForOrgSpecies'] })
 			toast.success('Template updated!')
 		}
 	})
@@ -876,6 +902,7 @@ export function useDeleteTaskTemplate() {
 			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			queryClient.invalidateQueries({ queryKey: ['taskTemplatesForOrgSpecies'] })
 			toast.success('Template deleted!')
 		}
 	})
@@ -902,6 +929,7 @@ export function useStartTask() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 		}
 	})
 }
@@ -910,7 +938,7 @@ export function useCompleteTask() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ task_id, enclosure_id }: { task_id: UUID; enclosure_id: UUID; user_id: UUID }) => {
+		mutationFn: async ({ task_id, enclosure_id, user_id }: { task_id: UUID; enclosure_id: UUID; user_id: UUID }) => {
 			const supabase = createClient()
 
 			if (!task_id) {
@@ -919,7 +947,7 @@ export function useCompleteTask() {
 
 			const { error } = await supabase
 				.from('tasks')
-				.update({ status: 'completed', completed_time: new Date().toISOString() })
+				.update({ status: 'completed', completed_time: new Date().toISOString(), completed_by: user_id })
 				.eq('id', task_id)
 				.eq('enclosure_id', enclosure_id)
 
@@ -927,28 +955,170 @@ export function useCompleteTask() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 		}
 	})
 }
 
 export function useCreateTask() {
+	const queryClient = useQueryClient()
+
 	return useMutation({
-		mutationFn: async ({ enclosure_id, user_id, org_id }: { enclosure_id: UUID; user_id: UUID; org_id: UUID }) => {
+		mutationFn: async ({
+			enclosure_id,
+			template_id,
+			name,
+			description,
+			assigned_to,
+			priority,
+			due_date,
+			time_window
+		}: {
+			enclosure_id: UUID
+			template_id: UUID | null
+			name: string | null
+			description: string | null
+			assigned_to: UUID | null
+			priority: string
+			due_date: string
+			time_window: string
+		}) => {
 			const supabase = createClient()
 
-			if (!enclosure_id) {
-				throw new Error('Enclosure ID is missing!')
+			const { data, error } = await supabase
+				.from('tasks')
+				.insert({
+					enclosure_id,
+					template_id,
+					name,
+					description,
+					assigned_to,
+					priority,
+					status: 'pending',
+					due_date,
+					time_window
+				})
+				.select()
+				.single()
+
+			if (error) throw error
+			return data
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			toast.success('Task created!')
+		}
+	})
+}
+
+export function useCreateSchedule() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			enclosure_id,
+			template_id,
+			schedule_type,
+			schedule_rule,
+			task_name,
+			task_description,
+			assigned_to,
+			priority,
+			time_window,
+			end_date,
+			max_occurrences
+		}: {
+			enclosure_id: UUID
+			template_id: UUID | null
+			schedule_type: 'fixed_calendar' | 'relative_interval'
+			schedule_rule: string
+			task_name: string | null
+			task_description: string | null
+			assigned_to: UUID | null
+			priority: string
+			time_window: string
+			end_date: string | null
+			max_occurrences: number | null
+		}) => {
+			const supabase = createClient()
+
+			const { data, error } = await supabase
+				.from('enclosure_schedules')
+				.insert({
+					enclosure_id,
+					template_id,
+					schedule_type,
+					schedule_rule,
+					task_name,
+					task_description,
+					assigned_to,
+					priority,
+					time_window,
+					end_date,
+					max_occurrences,
+					is_active: true
+				})
+				.select()
+				.single()
+
+			if (error) throw error
+			return data
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			toast.success('Recurring schedule created!')
+		}
+	})
+}
+
+export function useSubmitTaskForm() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			task_id,
+			user_id,
+			answers
+		}: {
+			task_id: UUID
+			user_id: UUID
+			answers: { question_id: UUID; answer: string }[]
+		}) => {
+			const supabase = createClient()
+
+			// Insert all form data answers
+			if (answers.length > 0) {
+				const { error: formError } = await supabase.from('task_form_data').insert(
+					answers.map((a) => ({
+						task_id,
+						question_id: a.question_id,
+						answer: a.answer
+					}))
+				)
+				if (formError) throw formError
 			}
 
-			// const { error } = await supabase
-			//  .from('tasks')
-			//  .update({ status: 'completed', completed_time: new Date().toISOString() })
-			//  .eq('id', task_id)
-			//  .eq('enclosure_id', enclosure_id)
+			// Mark task as completed
+			const { error: taskError } = await supabase
+				.from('tasks')
+				.update({
+					status: 'completed',
+					completed_time: new Date().toISOString(),
+					completed_by: user_id
+				})
+				.eq('id', task_id)
 
-			// if (error) throw error
+			if (taskError) throw taskError
 		},
-		onSuccess: () => {}
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
+			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
+			toast.success('Task completed!')
+		}
 	})
 }
 
@@ -1281,6 +1451,75 @@ export function useRejectSpeciesRequest() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['allSpeciesRequests'] })
+		}
+	})
+}
+
+export function useToggleScheduleActive() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ scheduleId, is_active }: { scheduleId: UUID; is_active: boolean }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('enclosure_schedules').update({ is_active }).eq('id', scheduleId)
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success(variables.is_active ? 'Schedule activated!' : 'Schedule paused!')
+		}
+	})
+}
+
+export function useDeleteSchedule() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ scheduleId }: { scheduleId: UUID }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('enclosure_schedules').delete().eq('id', scheduleId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success('Schedule deleted!')
+		}
+	})
+}
+
+export function useReassignSchedule() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ scheduleId, memberId }: { scheduleId: UUID; memberId: UUID | null }) => {
+			const supabase = createClient()
+			const { error } = await supabase
+				.from('enclosure_schedules')
+				.update({ assigned_to: memberId })
+				.eq('id', scheduleId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success('Schedule reassigned!')
+		}
+	})
+}
+
+export function useReassignTask() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ taskId, memberId }: { taskId: UUID; memberId: UUID | null }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('tasks').update({ assigned_to: memberId }).eq('id', taskId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById'] })
+			toast.success('Task reassigned!')
 		}
 	})
 }

@@ -1,6 +1,7 @@
 'use client'
 import { type OrgSpecies, type Enclosure, useOrgEnclosuresForSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
+import Image from 'next/image'
 import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -61,10 +62,12 @@ export default function SpeciesRow({
 										isOpen ? 'rotate-90' : ''
 									}`}
 								/>
-								{species.species.picture_url ? (
-									<img
+								{species.species?.picture_url ? (
+									<Image
 										src={species.species.picture_url}
-										alt={species.custom_common_name}
+										alt={species.custom_common_name ?? ''}
+										width={40}
+										height={40}
 										className='h-10 w-10 rounded-md object-cover shrink-0 border'
 									/>
 								) : (
@@ -75,7 +78,7 @@ export default function SpeciesRow({
 								<div className='flex-1 min-w-0'>
 									<div className='flex items-center gap-2'>
 										{sortKey === 'scientific_name' ? (
-											<p className='font-medium text-sm truncate'>{species.species.scientific_name}</p>
+											<p className='font-medium text-sm truncate'>{species.species?.scientific_name}</p>
 										) : (
 											<p className='font-medium text-sm truncate'>{species.custom_common_name}</p>
 										)}
@@ -86,7 +89,7 @@ export default function SpeciesRow({
 									{sortKey === 'scientific_name' ? (
 										<p className='text-xs text-muted-foreground italic truncate'>{species.custom_common_name}</p>
 									) : (
-										<p className='text-xs text-muted-foreground italic truncate'>{species.species.scientific_name}</p>
+										<p className='text-xs text-muted-foreground italic truncate'>{species.species?.scientific_name}</p>
 									)}
 								</div>
 							</button>
@@ -117,7 +120,6 @@ export default function SpeciesRow({
 											<div className='p-1 pb-0 last:pb-2'>
 												<EnclosureCard
 													enclosure={enclosure}
-													species={species}
 													onClick={() => handleEnclosureClick(enclosure)}
 													selectable={selectMode}
 													selected={selectedIds.has(enclosure.id)}
@@ -148,16 +150,18 @@ export default function SpeciesRow({
 
 			<ResponsiveDialogDrawer
 				title={species.custom_common_name}
-				description={species.species.scientific_name}
+				description={species.species?.scientific_name}
 				open={detailsOpen}
 				onOpenChange={setDetailsOpen}
 				trigger={<span className='hidden' />}
 			>
 				<div className='flex flex-col gap-4'>
-					{species.species.picture_url ? (
-						<img
+					{species.species?.picture_url ? (
+						<Image
 							src={species.species.picture_url}
-							alt={species.custom_common_name}
+							alt={species.custom_common_name ?? ''}
+							width={600}
+							height={192}
 							className='rounded-md max-h-48 w-full object-contain mx-auto'
 						/>
 					) : (

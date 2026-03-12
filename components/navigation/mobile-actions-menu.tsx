@@ -1,6 +1,6 @@
 'use client'
 
-import { User, LogOut, Download, Menu } from 'lucide-react'
+import { User, LogOut, Download, Menu, LoaderCircle } from 'lucide-react'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -49,13 +49,14 @@ export function MobileActionsMenu() {
 				<DropdownMenuItem
 					className='cursor-pointer'
 					variant='destructive'
+					disabled={logoutMutation.isPending}
 					onSelect={(e) => {
 						e.preventDefault()
 						logoutMutation.mutate()
 					}}
 				>
-					<LogOut className='size-4' />
-					<span>Log Out</span>
+					{logoutMutation.isPending ? <LoaderCircle className='size-4 animate-spin' /> : <LogOut className='size-4' />}
+					<span>{logoutMutation.isPending ? 'Logging out...' : 'Log Out'}</span>
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
