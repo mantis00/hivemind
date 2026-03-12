@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import { useMemo, useState } from 'react'
-import { PlusIcon, LoaderCircle } from 'lucide-react'
+import { PlusIcon } from 'lucide-react'
 
 import { TasksDataTable } from './tasks-table'
 import { Button } from '../ui/button'
@@ -19,7 +19,6 @@ import {
 	ComboboxItem,
 	ComboboxList
 } from '../ui/combobox'
-import router from 'next/router'
 import { CreateTaskButton } from './create-task-button'
 
 export default function OrgTasksTable() {
