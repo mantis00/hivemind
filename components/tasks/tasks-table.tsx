@@ -16,7 +16,13 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 
-import { useTasksForEnclosures, useTasksForEnclosuresInRange, useOrgMemberProfiles } from '@/lib/react-query/queries'
+import {
+	useTasksForEnclosures,
+	useTasksForEnclosuresInRange,
+	useOrgMemberProfiles,
+	useOrgEnclosures,
+	useOrgSpecies
+} from '@/lib/react-query/queries'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { getDateStr, getDayLabel } from '@/context/task-day'
 import { toLocalDate } from '@/context/to-local-date'
@@ -31,10 +37,27 @@ const MAX_TABLE_HEIGHT_MOBILE = 560
 const TARGET_VISIBLE_ROWS_DESKTOP = 8
 const TARGET_VISIBLE_ROWS_MOBILE = 7
 
-export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgId: UUID }) {
+export function TasksDataTable({
+	enclosureId,
+	orgId,
+	orgEnclosures: isOrgMode = false
+}: {
+	enclosureId?: UUID
+	orgId: UUID
+	orgEnclosures?: boolean
+}) {
 	const isMobile = useIsMobile()
 	const router = useRouter()
 	const { data: members = [] } = useOrgMemberProfiles(orgId)
+
+	// Org-mode data — hooks are always called but only used when isOrgMode
+	const { data: fetchedOrgEnclosures = [] } = useOrgEnclosures(orgId)
+	const { data: fetchedOrgSpecies } = useOrgSpecies(orgId)
+
+	const enclosureIds = React.useMemo(
+		() => (isOrgMode ? fetchedOrgEnclosures.map((e) => e.id) : enclosureId ? [enclosureId] : []),
+		[isOrgMode, fetchedOrgEnclosures, enclosureId]
+	)
 
 	const [dayOffset, setDayOffset] = React.useState(0)
 	const [sorting, setSorting] = React.useState<SortingState>([{ id: 'due_date', desc: false }])
@@ -50,7 +73,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
 	const [isMounted, setIsMounted] = React.useState(false)
 
-	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
+	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange, speciesFilter } = filters
 	const isRangeMode = !!(dateRange?.from && dateRange?.to)
 
 	const MAX_TABLE_HEIGHT = isMobile ? MAX_TABLE_HEIGHT_MOBILE : MAX_TABLE_HEIGHT_DESKTOP
@@ -66,7 +89,12 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 	const measuredRef = React.useRef(false)
 	const stableOrderRef = React.useRef<Map<string, number>>(new Map())
 
-	const hasActiveFilters = priorityFilter.length > 0 || statusFilter.length > 0 || globalFilter !== '' || globalSearch
+	const hasActiveFilters =
+		priorityFilter.length > 0 ||
+		statusFilter.length > 0 ||
+		globalFilter !== '' ||
+		globalSearch ||
+		(isOrgMode && speciesFilter !== '')
 
 	const resetFilters = () => {
 		setFilters({
@@ -80,9 +108,9 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		setPendingGlobalSearch(false)
 	}
 
-	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(isRangeMode ? [] : [enclosureId])
+	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(isRangeMode ? [] : enclosureIds)
 	const { data: rangeTasks, isFetching: rangeFetching } = useTasksForEnclosuresInRange(
-		isRangeMode ? [enclosureId] : [],
+		isRangeMode ? enclosureIds : [],
 		dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
 		dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : ''
 	)
@@ -102,19 +130,61 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 
 	const handleView = React.useCallback(
 		(taskId: UUID) => {
-			router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}/${taskId}`)
+			if (isOrgMode) {
+				const task = (enclosureTasks ?? rangeTasks ?? []).find((t) => t.id === taskId)
+				if (!task) return
+				router.push(`/protected/orgs/${orgId}/enclosures/${task.enclosure_id}/${taskId}`)
+			} else {
+				router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}/${taskId}`)
+			}
 		},
-		[router, orgId, enclosureId]
+		[router, orgId, enclosureId, isOrgMode, enclosureTasks, rangeTasks]
 	)
 
-	const columns = React.useMemo(() => getColumns(isMobile, handleView, members), [isMobile, handleView, members])
+	const handleViewEnclosure = React.useCallback(
+		(enclosureId: UUID) => {
+			router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}`)
+		},
+		[router, orgId]
+	)
+
+	const columns = React.useMemo(
+		() =>
+			getColumns(
+				isMobile,
+				handleView,
+				members,
+				isOrgMode
+					? isMobile
+						? ['enclosure_name', 'name', 'status', 'actions']
+						: ['enclosure_name', 'species', 'name', 'status', 'due_date', 'assigned_to', 'actions']
+					: undefined,
+				isOrgMode ? fetchedOrgEnclosures : undefined,
+				isOrgMode ? (fetchedOrgSpecies ?? undefined) : undefined,
+				isOrgMode ? handleViewEnclosure : undefined
+			),
+		[isMobile, handleView, members, isOrgMode, fetchedOrgEnclosures, fetchedOrgSpecies, handleViewEnclosure]
+	)
 
 	const filteredData = React.useMemo(() => {
 		const targetDate = getDateStr(dayOffset)
 		const todayDate = getDateStr(0)
 		const source = isRangeMode ? (rangeTasks ?? []) : (enclosureTasks ?? [])
 
+		const speciesEnclosureIds =
+			isOrgMode && speciesFilter
+				? new Set(
+						fetchedOrgEnclosures
+							.filter(
+								(e) =>
+									e.species_id === (fetchedOrgSpecies ?? []).find((s) => s.custom_common_name === speciesFilter)?.id
+							)
+							.map((e) => e.id as string)
+					)
+				: null
+
 		const tasks = source.filter((task) => {
+			if (speciesEnclosureIds && !speciesEnclosureIds.has(task.enclosure_id as string)) return false
 			const priorityMatch = priorityFilter.length === 0 || (task.priority && priorityFilter.includes(task.priority))
 			const effectiveStatus = getEffectiveStatus(task)
 			const statusMatch = statusFilter.length === 0 || statusFilter.includes(effectiveStatus)
@@ -162,7 +232,19 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		}
 
 		return tasks
-	}, [enclosureTasks, rangeTasks, priorityFilter, statusFilter, dayOffset, isRangeMode, globalSearch])
+	}, [
+		enclosureTasks,
+		rangeTasks,
+		priorityFilter,
+		statusFilter,
+		dayOffset,
+		isRangeMode,
+		globalSearch,
+		isOrgMode,
+		speciesFilter,
+		fetchedOrgEnclosures,
+		fetchedOrgSpecies
+	])
 
 	const table = useReactTable({
 		data: filteredData,
@@ -228,7 +310,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 			/>
 
 			<TasksFilters
-				enclosureId={enclosureId}
+				enclosureId={isOrgMode ? undefined : enclosureId}
 				orgId={orgId}
 				filters={filters}
 				onFiltersChange={(newFilters) => {
@@ -237,6 +319,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 				}}
 				hasActiveFilters={hasActiveFilters}
 				onReset={resetFilters}
+				showSpeciesFilter={isOrgMode}
 			/>
 
 			{/* Table */}
