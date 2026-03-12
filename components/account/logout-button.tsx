@@ -1,20 +1,16 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { useRouter } from 'next/navigation'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { useState } from 'react'
+import { useLogout } from '@/lib/react-query/auth'
+import { LoaderCircle } from 'lucide-react'
 
 export function LogoutButton() {
-	const router = useRouter()
 	const [open, setOpen] = useState(false)
+	const [loading, setLoading] = useState(false)
 
-	const logout = async () => {
-		const supabase = createClient()
-		await supabase.auth.signOut()
-		router.replace('/auth/login') // replace, makes it so the cant click browser back button to go back to the previous page
-	}
+	const logoutMutation = useLogout()
 
 	return (
 		<ResponsiveDialogDrawer
@@ -28,11 +24,16 @@ export function LogoutButton() {
 				</Button>
 			}
 		>
-			<Button variant='outline' onClick={() => setOpen(false)}>
-				Cancel
-			</Button>
-			<Button variant='destructive' onClick={logout}>
-				Logout
+			<Button
+				variant='destructive'
+				disabled={loading}
+				onClick={(e) => {
+					e.preventDefault()
+					setLoading(true)
+					logoutMutation.mutate()
+				}}
+			>
+				{loading ? <LoaderCircle className='animate-spin' /> : 'Logout'}
 			</Button>
 		</ResponsiveDialogDrawer>
 	)

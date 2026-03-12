@@ -6,14 +6,19 @@ import { toast } from 'sonner'
 export function makeQueryClient() {
 	const queryCache = new QueryCache({
 		onError: (error) => {
-			toast.error(`DB Query Failed: ${error.message}` || 'Failed to load data')
-			// if this error occured becaise the user is unauthenticated, send them to login
-			if (
-				error.message?.toLowerCase().includes('jwt') ||
-				error.message?.toLowerCase().includes('auth') ||
-				error.message?.toLowerCase().includes('unauthorized')
-			) {
-				// Redirect to login
+			if (error?.name === 'AuthSessionMissingError' || error?.name === 'AuthRetryableFetchError') return
+			toast.error(`Query Failed: ${error.message}` || 'Failed to load data')
+			console.error('Query Error:', error)
+			// Only redirect on genuine auth errors (invalid/expired JWT), not network errors,
+			// and only when not already on an auth page
+			const isAuthPage = window.location.pathname.startsWith('/auth')
+			const isRealAuthError =
+				error.name === 'AuthApiError' &&
+				(error.message?.toLowerCase().includes('jwt') ||
+					error.message?.toLowerCase().includes('invalid') ||
+					error.message?.toLowerCase().includes('expired') ||
+					error.message?.toLowerCase().includes('unauthorized'))
+			if (!isAuthPage && isRealAuthError) {
 				window.location.href = '/auth/login'
 			}
 		}
@@ -29,14 +34,19 @@ export function makeQueryClient() {
 			},
 			mutations: {
 				onError: (error) => {
+					// Skip network/retryable errors — these are transient, not auth failures
+					if (error.name === 'AuthRetryableFetchError' || error.name === 'AuthSessionMissingError') return
 					toast.error(`Mutation Failed: ${error.message}` || 'An error occurred')
-					// if this error occured becaise the user is unauthenticated, send them to login
-					if (
-						error.message?.toLowerCase().includes('jwt') ||
-						error.message?.toLowerCase().includes('auth') ||
-						error.message?.toLowerCase().includes('unauthorized')
-					) {
-						// Redirect to login
+					console.error('Mutation Error:', error)
+					// Only redirect on genuine auth errors, and not when already on an auth page
+					const isAuthPage = window.location.pathname.startsWith('/auth')
+					const isRealAuthError =
+						error.name === 'AuthApiError' &&
+						(error.message?.toLowerCase().includes('jwt') ||
+							error.message?.toLowerCase().includes('invalid') ||
+							error.message?.toLowerCase().includes('expired') ||
+							error.message?.toLowerCase().includes('unauthorized'))
+					if (!isAuthPage && isRealAuthError) {
 						window.location.href = '/auth/login'
 					}
 				}

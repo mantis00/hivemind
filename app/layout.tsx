@@ -94,10 +94,8 @@ export default function RootLayout({
 					</QueryProvider>
 					<Toaster
 						closeButton
-						// toast for SIX-SEVEN seconds
-						duration={6500}
+						duration={3000}
 						position='bottom-right'
-						theme='light'
 						richColors
 						expand
 						visibleToasts={4}

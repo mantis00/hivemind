@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { LoaderCircle } from 'lucide-react'
+import Image from 'next/image'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { SpeciesImageDropzone } from '@/components/superadmin/species-image-dropzone'
 import { createClient } from '@/lib/supabase/client'
@@ -98,9 +99,11 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 				{species.picture_url && !previewUrl && (
 					<div className='flex flex-col gap-1.5'>
 						<Label className='text-xs text-muted-foreground'>Current Image</Label>
-						<img
+						<Image
 							src={species.picture_url}
 							alt={species.common_name}
+							width={400}
+							height={144}
 							className='rounded-md max-h-36 w-full object-contain border'
 						/>
 					</div>
@@ -148,15 +151,22 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 					</div>
 				</div>
 
-				<div className='flex gap-2'>
-					<DeleteSpeciesButton species_id={species.id} onDeleted={() => handleOpenChange(false)} />
-					<div className='flex gap-2 ml-auto'>
-						<Button type='button' variant='outline' onClick={() => handleOpenChange(false)} disabled={isPending}>
+				<div className='flex flex-col gap-2'>
+					<Button type='submit' disabled={isPending}>
+						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
+					</Button>
+
+					<div className='flex gap-2'>
+						<Button
+							type='button'
+							variant='outline'
+							onClick={() => handleOpenChange(false)}
+							disabled={isPending}
+							className='flex-1'
+						>
 							Cancel
 						</Button>
-						<Button type='submit' disabled={isPending}>
-							{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
-						</Button>
+						<DeleteSpeciesButton species_id={species.id} onDeleted={() => handleOpenChange(false)} />
 					</div>
 				</div>
 			</form>

@@ -7,24 +7,63 @@ export async function GET(request: NextRequest) {
 	const { searchParams } = new URL(request.url)
 	const token_hash = searchParams.get('token_hash')
 	const type = searchParams.get('type') as EmailOtpType | null
-	const next = searchParams.get('next') ?? '/protected/profile-setup'
+	const code = searchParams.get('code')
+	const next = searchParams.get('next') ?? '/protected/account'
 
-	if (token_hash && type) {
-		const supabase = await createClient()
+	const supabase = await createClient()
 
-		const { error } = await supabase.auth.verifyOtp({
-			type,
-			token_hash
-		})
+	// PKCE flow — the new-address email link goes through Supabase's server first,
+	// which verifies the token there and then redirects here with a `code`.
+	if (code) {
+		const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
 		if (!error) {
-			// redirect user to specified redirect URL or root of app
+			// Sync updated email into public.profiles
+			const user = data.user
+			if (user?.email) {
+				await supabase
+					.from('profiles')
+					.update({ email: user.email, updated_at: new Date().toISOString() })
+					.eq('id', user.id)
+			}
 			redirect(next)
-		} else {
-			// redirect the user to an error page with some instructions
-			redirect(`/auth/error?error=${error?.message}`)
 		}
+
+		// If the PKCE code verifier is missing it means the link was opened in a
+		// different browser/device than the one that initiated the flow. Supabase
+		// already verified and applied the email change server-side before
+		// redirecting here, so the change is done — just redirect silently.
+		if (error.message.toLowerCase().includes('pkce') || error.message.toLowerCase().includes('code verifier')) {
+			redirect(next)
+		}
+
+		redirect(`/auth/error?error=${encodeURIComponent(error.message)}`)
 	}
 
-	// redirect the user to an error page with some instructions
-	redirect(`/auth/error?error=No token hash or type`)
+	// OTP / magic-link flow — old-address confirmation arrives with token_hash + type
+	if (token_hash && type) {
+		const { error } = await supabase.auth.verifyOtp({ type, token_hash })
+
+		if (!error) {
+			if (type === 'email_change') {
+				const {
+					data: { user }
+				} = await supabase.auth.getUser()
+				if (user?.email) {
+					await supabase
+						.from('profiles')
+						.update({ email: user.email, updated_at: new Date().toISOString() })
+						.eq('id', user.id)
+				}
+			}
+			redirect(next)
+		}
+
+		redirect(`/auth/error?error=${encodeURIComponent(error.message)}`)
+	}
+
+	// Old-email confirmation — Supabase verifies the token on their server and
+	// redirects here with no query params (just a #message hash we can't read).
+	// The verification is already done, so redirect silently to the next page.
+	redirect(next)
 }

@@ -64,7 +64,7 @@ export function ResponsiveDialogDrawer({
 		return (
 			<Dialog open={open} onOpenChange={setOpen}>
 				{trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-				<DialogContent className={cn('sm:max-w-[425px] p-6 rounded-2xl', className)}>
+				<DialogContent className={cn('sm:max-w-[425px] p-6 rounded-2xl flex flex-col max-h-[85vh]', className)}>
 					<DialogHeader>
 						<div className='flex items-center gap-2 pr-6'>
 							<DialogTitle className='flex-1'>{title}</DialogTitle>
@@ -90,8 +90,8 @@ export function ResponsiveDialogDrawer({
 					</div>
 					<DrawerDescription>{description}</DrawerDescription>
 				</DrawerHeader>
-				{children}
-				{footer && <DrawerFooter>{footer}</DrawerFooter>}
+				<div className='overflow-y-auto flex-1 flex flex-col gap-2 scrollbar-hide'>{children}</div>
+				{footer && <DrawerFooter className='px-0'>{footer}</DrawerFooter>}
 			</DrawerContent>
 		</Drawer>
 	)
