@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Bell } from 'lucide-react'
-
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Button } from '@/components/ui/button'
-
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useSubscribeToPush } from '@/lib/react-query/mutations'
+import { UUID } from 'crypto'
 
 interface PushOptInPromptProps {
 	open: boolean
@@ -95,7 +94,7 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 
 			await subscribeMutation.mutateAsync({
 				userId: user.id,
-				orgId: orgId as any,
+				orgId: orgId ? (orgId as UUID) : null,
 				endpoint: sub.endpoint,
 				p256dh: sub.keys.p256dh,
 				auth: sub.keys.auth

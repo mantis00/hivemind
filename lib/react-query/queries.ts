@@ -571,9 +571,9 @@ export function useLiveNotificationsRealtime(recipientId: string | undefined) {
 						filter: `recipient_id=eq.${recipientId}`
 					},
 					(payload) => {
-						const newNotification = payload.new
+						const newNotification = payload.new as Notification
 
-						client.setQueryData(['notifications', recipientId], (old: any[] | undefined) => {
+						client.setQueryData(['notifications', recipientId], (old: Notification[] | undefined) => {
 							if (!old) return [newNotification]
 
 							// prepend the new notification to the cache
