@@ -40,11 +40,13 @@ const TARGET_VISIBLE_ROWS_MOBILE = 7
 export function TasksDataTable({
 	enclosureId,
 	orgId,
-	orgEnclosures: isOrgMode = false
+	orgEnclosures: isOrgMode = false,
+	createTaskButton
 }: {
 	enclosureId?: UUID
 	orgId: UUID
 	orgEnclosures?: boolean
+	createTaskButton?: React.ReactNode
 }) {
 	const isMobile = useIsMobile()
 	const router = useRouter()
@@ -156,7 +158,7 @@ export function TasksDataTable({
 				members,
 				isOrgMode
 					? isMobile
-						? ['enclosure_name', 'name', 'status', 'actions']
+						? ['enclosure_name', 'name', 'due_date']
 						: ['enclosure_name', 'species', 'name', 'status', 'due_date', 'assigned_to', 'actions']
 					: undefined,
 				isOrgMode ? fetchedOrgEnclosures : undefined,
@@ -321,6 +323,8 @@ export function TasksDataTable({
 				onReset={resetFilters}
 				showSpeciesFilter={isOrgMode}
 			/>
+
+			{isOrgMode && createTaskButton && <div>{createTaskButton}</div>}
 
 			{/* Table */}
 			<div className='rounded-lg border border-border/50 bg-card overflow-hidden'>
