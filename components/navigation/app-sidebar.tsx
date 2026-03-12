@@ -197,10 +197,10 @@ export function AppSidebar() {
 									</div>
 									<ChevronDown className={cn('size-4 ml-2 transition-transform', caretakingMenuOpen && 'rotate-180')} />
 								</SidebarMenuButton>
-									{caretakingMenuOpen && (
-										<SidebarMenuSub>
-											<SidebarMenuSubItem>
-												<SidebarMenuSubButton asChild>
+								{caretakingMenuOpen && (
+									<SidebarMenuSub>
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild>
 												<Link
 													href={orgId ? `/protected/orgs/${orgId}/enclosures` : '/protected/orgs'}
 													onClick={closeMobileOnNav}

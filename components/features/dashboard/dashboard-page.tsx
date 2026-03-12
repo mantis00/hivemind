@@ -27,14 +27,19 @@ export function DashboardPage({ orgId, data, loadError = null }: DashboardPagePr
 	const generatedAt = new Date(data.generatedAt)
 	const generatedAtLabel = Number.isNaN(generatedAt.getTime()) ? data.generatedAt : generatedAt.toLocaleString()
 	const dashboardIsEmpty = isDashboardEmpty(data)
+	const shortOrgId = orgId.length > 12 ? `${orgId.slice(0, 8)}...${orgId.slice(-4)}` : orgId
+	const completedTodayCount = data.recentActivity.length
+	const atRiskEnclosureCount = data.atRiskEnclosures.length
 
 	return (
-		<div className='w-full space-y-6'>
-			<section className='mx-auto flex w-full max-w-7xl flex-col gap-2'>
-				<h1 className='text-2xl font-semibold'>Organization Dashboard</h1>
-				<p className='text-sm text-muted-foreground'>
-					Org ID: {orgId} | Timezone: {data.timeZone} | Updated: {generatedAtLabel}
-				</p>
+		<div className='w-full space-y-4 sm:space-y-6'>
+			<section className='mx-auto flex w-full max-w-7xl flex-col gap-3'>
+				<h1 className='text-2xl font-semibold tracking-tight sm:text-3xl'>Organization Dashboard</h1>
+				<div className='flex flex-wrap gap-2 text-xs text-muted-foreground sm:text-sm'>
+					<span className='rounded-md border bg-muted/20 px-2.5 py-1'>Org: {shortOrgId}</span>
+					<span className='rounded-md border bg-muted/20 px-2.5 py-1'>Timezone: {data.timeZone}</span>
+					<span className='rounded-md border bg-muted/20 px-2.5 py-1'>Updated: {generatedAtLabel}</span>
+				</div>
 			</section>
 
 			<div className='mx-auto w-full max-w-7xl space-y-6'>
@@ -66,7 +71,7 @@ export function DashboardPage({ orgId, data, loadError = null }: DashboardPagePr
 					</Card>
 				) : null}
 
-				<KpiStrip kpis={data.kpis} />
+				<KpiStrip kpis={data.kpis} completedToday={completedTodayCount} atRiskEnclosures={atRiskEnclosureCount} />
 
 				{dashboardIsEmpty ? (
 					<Card>
@@ -82,10 +87,15 @@ export function DashboardPage({ orgId, data, loadError = null }: DashboardPagePr
 
 				<section className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
 					<AtRiskPanel orgId={orgId} items={data.atRiskEnclosures} timeZone={data.timeZone} />
-					<UpcomingSchedulePanel orgId={orgId} items={data.upcomingSchedule} timeZone={data.timeZone} />
+					<UpcomingSchedulePanel
+						orgId={orgId}
+						items={data.upcomingSchedule}
+						kpis={data.kpis}
+						timeZone={data.timeZone}
+					/>
 				</section>
 
-				<RecentActivityPanel items={data.recentActivity} timeZone={data.timeZone} />
+				<RecentActivityPanel orgId={orgId} items={data.recentActivity} timeZone={data.timeZone} />
 			</div>
 		</div>
 	)

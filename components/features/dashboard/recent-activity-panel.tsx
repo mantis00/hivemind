@@ -1,10 +1,13 @@
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 
 import type { RecentActivityItem } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 type RecentActivityPanelProps = {
+	orgId: string
 	items: RecentActivityItem[]
 	timeZone: string
 }
@@ -42,19 +45,29 @@ function getActivityBadgeLabel(item: RecentActivityItem) {
 	return 'Activity'
 }
 
-export function RecentActivityPanel({ items, timeZone }: RecentActivityPanelProps) {
+export function RecentActivityPanel({ orgId, items, timeZone }: RecentActivityPanelProps) {
+	const visibleItems = items.slice(0, 6)
+
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Recent Activity</CardTitle>
+				<div className='flex items-center justify-between gap-3'>
+					<CardTitle>Recent Activity</CardTitle>
+					<Button asChild variant='ghost' size='sm' className='h-8 px-2 text-xs'>
+						<Link href={`/protected/orgs/${orgId}/tasks`}>
+							Open tasks
+							<ArrowRight className='h-3.5 w-3.5' />
+						</Link>
+					</Button>
+				</div>
 				<CardDescription>Tasks completed today, including overdue/urgent completion context.</CardDescription>
 			</CardHeader>
-			<CardContent>
+			<CardContent className='space-y-2'>
 				{items.length === 0 ? (
 					<p className='text-sm text-muted-foreground'>No tasks have been completed yet today.</p>
 				) : (
-					<div className='max-h-[30rem] space-y-3 overflow-y-auto pr-1'>
-						{items.map((item) => (
+					<div className='space-y-3'>
+						{visibleItems.map((item) => (
 							<Link
 								key={item.id}
 								href={item.href}
@@ -69,6 +82,11 @@ export function RecentActivityPanel({ items, timeZone }: RecentActivityPanelProp
 						))}
 					</div>
 				)}
+				{items.length > visibleItems.length ? (
+					<p className='text-xs text-muted-foreground'>
+						Showing {visibleItems.length} of {items.length} activity items from today.
+					</p>
+				) : null}
 			</CardContent>
 		</Card>
 	)

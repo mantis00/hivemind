@@ -3,39 +3,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 type KpiStripProps = {
 	kpis: DashboardKpis
+	completedToday: number
+	atRiskEnclosures: number
 }
 
-const KPI_ITEMS: Array<{ key: keyof DashboardKpis; label: string; helperText: string }> = [
-	{
-		key: 'activeEnclosures',
-		label: 'Active Enclosures',
-		helperText: 'Currently tracked in this org'
-	},
-	{
-		key: 'tasksDueToday',
-		label: 'Tasks Due Today',
-		helperText: 'Open items due before midnight'
-	},
-	{
-		key: 'upcomingTasks',
-		label: 'Upcoming Tasks',
-		helperText: 'Open items due in the next 7 days'
-	},
-	{
-		key: 'alerts',
-		label: 'Alerts',
-		helperText: 'Overdue or high-priority due soon'
-	}
-]
+export function KpiStrip({ kpis, completedToday, atRiskEnclosures }: KpiStripProps) {
+	const kpiItems = [
+		{
+			key: 'active-enclosures',
+			label: 'Active Enclosures',
+			helperText: 'Currently tracked in this org',
+			value: kpis.activeEnclosures
+		},
+		{
+			key: 'completed-today',
+			label: 'Completed Today',
+			helperText: 'Tasks finished today',
+			value: completedToday
+		},
+		{
+			key: 'at-risk-enclosures',
+			label: 'At-Risk Enclosures',
+			helperText: 'Enclosures with overdue or urgent work',
+			value: atRiskEnclosures
+		},
+		{
+			key: 'attention-needed',
+			label: 'Attention Needed',
+			helperText: 'Overdue or urgent tasks requiring triage',
+			value: kpis.alerts
+		}
+	]
 
-export function KpiStrip({ kpis }: KpiStripProps) {
 	return (
 		<section className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
-			{KPI_ITEMS.map((item) => (
+			{kpiItems.map((item) => (
 				<Card key={item.key} className='py-4'>
 					<CardHeader className='pb-0'>
 						<CardDescription>{item.label}</CardDescription>
-						<CardTitle className='text-3xl tabular-nums'>{kpis[item.key]}</CardTitle>
+						<CardTitle className='text-3xl tabular-nums'>{item.value}</CardTitle>
 					</CardHeader>
 					<CardContent className='text-sm text-muted-foreground'>{item.helperText}</CardContent>
 				</Card>

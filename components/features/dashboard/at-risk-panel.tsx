@@ -1,7 +1,9 @@
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 
 import type { AtRiskEnclosureSummary } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 type AtRiskPanelProps = {
@@ -31,14 +33,22 @@ export function AtRiskPanel({ orgId, items, timeZone }: AtRiskPanelProps) {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>At-Risk Enclosures</CardTitle>
+				<div className='flex items-center justify-between gap-3'>
+					<CardTitle>At-Risk Enclosures</CardTitle>
+					<Button asChild variant='ghost' size='sm' className='h-8 px-2 text-xs'>
+						<Link href={`/protected/orgs/${orgId}/enclosures`}>
+							All enclosures
+							<ArrowRight className='h-3.5 w-3.5' />
+						</Link>
+					</Button>
+				</div>
 				<CardDescription>Highest-risk enclosures based on overdue and urgent open tasks.</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{items.length === 0 ? (
 					<p className='text-sm text-muted-foreground'>No at-risk enclosures right now.</p>
 				) : (
-					<div className='max-h-[30rem] space-y-3 overflow-y-auto pr-1'>
+					<div className='space-y-3'>
 						{items.map((item) => (
 							<Link
 								key={item.enclosureId}
