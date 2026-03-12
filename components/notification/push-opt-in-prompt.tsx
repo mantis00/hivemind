@@ -7,6 +7,7 @@ import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Button } from '@/components/ui/button'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useSubscribeToPush } from '@/lib/react-query/mutations'
+import { toaster } from '@/components/ui/sonner'
 import { UUID } from 'crypto'
 
 interface PushOptInPromptProps {
@@ -19,7 +20,8 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 	const subscribeMutation = useSubscribeToPush()
 	const pathname = usePathname()
 
-	const [isSupported, setIsSupported] = useState(false)
+	const [canEnablePush, setCanEnablePush] = useState(false)
+	const [requiresInstall, setRequiresInstall] = useState(false)
 	const [dismissed, setDismissed] = useState(false)
 
 	const orgMatch = pathname?.match(/^\/protected\/orgs\/([0-9a-fA-F-]{36})/)
@@ -31,8 +33,16 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 		if (typeof window === 'undefined') return
 
 		const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+		const ua = navigator.userAgent || ''
+		const isAppleMobile = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document)
+		const iosStandalone = isAppleMobile && !!(window.navigator as Navigator & { standalone?: boolean }).standalone
+		const displayStandalone =
+			typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches
+		const installed = iosStandalone || displayStandalone
+		const needsInstall = isAppleMobile && !installed
 
-		setIsSupported(supported)
+		setRequiresInstall(needsInstall)
+		setCanEnablePush(supported && !needsInstall)
 
 		if (sessionStorage.getItem('pushPromptDismissed') === 'true') {
 			setDismissed(true)
@@ -50,7 +60,16 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 	/* Enable notifications*/
 
 	const handleEnable = async () => {
-		if (!user || !isSupported) return
+		if (!user) return
+
+		if (requiresInstall) {
+			toaster.info(
+				'On iPhone/iPad, install Hivemind to your Home Screen first, then enable notifications from the app.'
+			)
+			return
+		}
+
+		if (!canEnablePush) return
 
 		try {
 			/* Request permission */
@@ -103,17 +122,27 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 			dismiss()
 		} catch (err) {
 			console.error('Push subscription failed:', err)
+			if (err instanceof Error && err.name === 'NotAllowedError') {
+				toaster.error('Notifications are blocked. Enable notifications in browser/site settings and try again.')
+				return
+			}
+
+			toaster.error('Could not enable notifications on this device yet. Please try again.')
 		}
 	}
 
 	/* Render guard*/
 
-	if (!isSupported || !open || dismissed) return null
+	if ((!canEnablePush && !requiresInstall) || !open || dismissed) return null
 
 	return (
 		<ResponsiveDialogDrawer
 			title='Enable Notifications'
-			description='Get alerts, invites, and important updates delivered to your device.'
+			description={
+				requiresInstall
+					? 'On iPhone/iPad, web push only works after installing Hivemind to your Home Screen and opening it there.'
+					: 'Get alerts, invites, and important updates delivered to your device.'
+			}
 			trigger={null}
 			open={open}
 			onOpenChange={onOpenChange}
@@ -122,8 +151,8 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 				Not now
 			</Button>
 
-			<Button onClick={handleEnable} disabled={subscribeMutation.isPending}>
-				{subscribeMutation.isPending ? 'Enabling...' : 'Enable notifications'}
+			<Button onClick={handleEnable} disabled={subscribeMutation.isPending || !canEnablePush}>
+				{subscribeMutation.isPending ? 'Enabling...' : requiresInstall ? 'Install app first' : 'Enable notifications'}
 				<Bell className='ml-2 size-4' />
 			</Button>
 		</ResponsiveDialogDrawer>
