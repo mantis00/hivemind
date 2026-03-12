@@ -1,4 +1,4 @@
-import type { DashboardData } from '@/lib/dashboard/types'
+import type { DashboardData } from '@/lib/react-query/queries'
 import { KpiStrip } from '@/components/features/dashboard/kpi-strip'
 import { AtRiskPanel } from '@/components/features/dashboard/at-risk-panel'
 import { UpcomingSchedulePanel } from '@/components/features/dashboard/upcoming-schedule-panel'

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import type { AtRiskEnclosureSummary } from '@/lib/dashboard/types'
+import type { AtRiskEnclosureSummary } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 

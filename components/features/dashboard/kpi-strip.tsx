@@ -1,4 +1,4 @@
-import type { DashboardKpis } from '@/lib/dashboard/types'
+import type { DashboardKpis } from '@/lib/react-query/queries'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 type KpiStripProps = {

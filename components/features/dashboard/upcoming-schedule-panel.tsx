@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import type { UpcomingScheduleItem } from '@/lib/dashboard/types'
+import type { UpcomingScheduleItem } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
