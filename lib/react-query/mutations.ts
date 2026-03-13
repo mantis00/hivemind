@@ -35,14 +35,16 @@ export function useCreateOrg() {
 			}
 
 			// Add all other existing superadmins to the org
-			const { data: superadmins } = await supabase
+			const { data: superadmins, error: superadminsError } = await supabase
 				.from('profiles')
 				.select('id')
 				.eq('is_superadmin', true)
 				.neq('id', userId)
 
+			if (superadminsError) throw superadminsError
+
 			if (superadmins && superadmins.length > 0) {
-				await supabase.from('user_org_role').upsert(
+				const { error: upsertError } = await supabase.from('user_org_role').upsert(
 					superadmins.map((s) => ({
 						user_id: s.id,
 						org_id: org.org_id,
@@ -50,6 +52,7 @@ export function useCreateOrg() {
 					})),
 					{ onConflict: 'user_id,org_id' }
 				)
+				if (upsertError) throw upsertError
 			}
 		},
 		onSuccess: (data, variables) => {
