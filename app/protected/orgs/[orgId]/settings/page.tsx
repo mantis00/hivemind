@@ -1,5 +1,4 @@
 import { OrgSettingsSection } from '@/components/org/org-settings-section'
-import { BackToOrgs } from '@/components/navigation/back-to-orgs'
 
 export default async function Page() {
 	return (
