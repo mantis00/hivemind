@@ -1,20 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+export async function POST(request: Request, context: { params: Promise<{ orgId: string }> }) {
+	const { orgId } = await context.params
+	const { enclosureIds } = await request.json()
 
+	const supabase = await createClient()
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ orgId: string }> }
-) {
-  const { orgId } = await context.params
-  const { enclosureIds } = await request.json()
-
-  const supabase = await createClient()
-
-  const { data, error } = await supabase
-    .from('enclosures')
-    .select(`
+	const { data, error } = await supabase
+		.from('enclosures')
+		.select(
+			`
       id,
       alpha_code,
       printed,
@@ -25,72 +21,62 @@ export async function POST(
           common_name
         )
       )
-    `)
-    .in('id', enclosureIds)
-    .eq('org_id', orgId)
+    `
+		)
+		.in('id', enclosureIds)
+		.eq('org_id', orgId)
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+	if (error) {
+		return NextResponse.json({ error: error.message }, { status: 500 })
+	}
 
-  if (!data || data.length === 0) {
-    return NextResponse.json({ error: 'No enclosures found' }, { status: 404 })
-  }
+	if (!data || data.length === 0) {
+		return NextResponse.json({ error: 'No enclosures found' }, { status: 404 })
+	}
 
-  // Update printed column
-  const enclosureIdsToUpdate = data.map((enc: any) => enc.id)
-  const batchSize = 200
+	// Update printed column
+	const enclosureIdsToUpdate = data.map((enc: any) => enc.id)
+	const batchSize = 200
 
-  for (let i = 0; i < enclosureIdsToUpdate.length; i += batchSize) {
-    const batch = enclosureIdsToUpdate.slice(i, i + batchSize)
+	for (let i = 0; i < enclosureIdsToUpdate.length; i += batchSize) {
+		const batch = enclosureIdsToUpdate.slice(i, i + batchSize)
 
-    const { error: updateError } = await supabase
-      .from('enclosures')
-      .update({ printed: true })
-      .in('id', batch)
+		const { error: updateError } = await supabase.from('enclosures').update({ printed: true }).in('id', batch)
 
-    if (updateError) {
-      console.error('Batch update error:', updateError)
-    }
-  }
+		if (updateError) {
+			console.error('Batch update error:', updateError)
+		}
+	}
 
-  // Helper functions
-  const getScientificName = (enc: any) =>
-    enc.org_species?.species?.scientific_name ?? ''
+	// Helper functions
+	const getScientificName = (enc: any) => enc.org_species?.species?.scientific_name ?? ''
 
-  const getCommonName = (enc: any) =>
-    enc.org_species?.custom_common_name ||
-    enc.org_species?.species?.common_name ||
-    ''
+	const getCommonName = (enc: any) => enc.org_species?.custom_common_name || enc.org_species?.species?.common_name || ''
 
-  // SAME URL logic as GET
-  const baseUrl = new URL(request.url).origin
+	// SAME URL logic as GET
+	const baseUrl = new URL(request.url).origin
 
-  const headers = ['alpha_code', 'common_name', 'scientific_name', 'url']
+	const headers = ['alpha_code', 'common_name', 'scientific_name', 'url']
 
-  const rows = data.map((enc: any) => {
-    const alpha = enc.alpha_code
-    const scientificName = getScientificName(enc)
-    const commonName = getCommonName(enc)
+	const rows = data.map((enc: any) => {
+		const alpha = enc.alpha_code
+		const scientificName = getScientificName(enc)
+		const commonName = getCommonName(enc)
 
-    const url = `${baseUrl}/protected/orgs/${orgId}/enclosures/${enc.id}`
+		const url = `${baseUrl}/protected/orgs/${orgId}/enclosures/${enc.id}`
 
-    return [alpha, `"${commonName}"`, `"${scientificName}"`, url]
-  })
+		return [alpha, `"${commonName}"`, `"${scientificName}"`, url]
+	})
 
-  const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
+	const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
 
-  return new NextResponse(csv, {
-    headers: {
-      'Content-Type': 'text/csv',
-      'Content-Disposition': 'attachment; filename="enclosures.csv"',
-    },
-  })
+	return new NextResponse(csv, {
+		headers: {
+			'Content-Type': 'text/csv',
+			'Content-Disposition': 'attachment; filename="enclosures.csv"'
+		}
+	})
 }
-
-
-
-
 
 export async function GET(request: Request, context: { params: Promise<{ orgId: string }> }) {
 	const { orgId } = await context.params

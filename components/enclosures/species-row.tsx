@@ -16,7 +16,13 @@ import { UUID } from 'crypto'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 
-export default function SpeciesRow({ species, onSelectChange }: { species: OrgSpecies; onSelectChange?: (id: string, checked: boolean) => void }) {
+export default function SpeciesRow({
+	species,
+	onSelectChange
+}: {
+	species: OrgSpecies
+	onSelectChange?: (id: string, checked: boolean) => void
+}) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const router = useRouter()
@@ -179,10 +185,9 @@ export default function SpeciesRow({ species, onSelectChange }: { species: OrgSp
 													onClick={() => handleEnclosureClick(enclosure)}
 													selectable={selectMode}
 													selected={selectedIds.has(enclosure.id)}
-													
 													onSelectChange={(checked) => {
-													  	handleSelectChange(enclosure.id, checked)
-  														onSelectChange?.(enclosure.id, checked)
+														handleSelectChange(enclosure.id, checked)
+														onSelectChange?.(enclosure.id, checked)
 													}}
 												/>
 											</div>

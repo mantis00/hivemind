@@ -69,16 +69,16 @@ export default function EnclosureGrid() {
 	}, [sortUp])
 
 	const handleSelectionChange = (id: string, checked: boolean) => {
-	setSelectedEnclosures((prev) => {
-		const next = new Set(prev)
+		setSelectedEnclosures((prev) => {
+			const next = new Set(prev)
 
-		if (checked) {
-			next.add(id)
-		} else {
-			next.delete(id)
-		}
+			if (checked) {
+				next.add(id)
+			} else {
+				next.delete(id)
+			}
 
-		return next
+			return next
 		})
 	}
 
@@ -86,17 +86,17 @@ export default function EnclosureGrid() {
 		if (selectedEnclosures.size === 0) return
 
 		const response = await fetch(`/api/orgs/${orgId}/exportQR`, {
-  		method: 'POST',
-  		headers: {
-    		'Content-Type': 'application/json'
-  		},
-  		body: JSON.stringify({
-    		enclosureIds: Array.from(selectedEnclosures)
-  		  })
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				enclosureIds: Array.from(selectedEnclosures)
+			})
 		})
 
 		if (!response.ok) {
-			console.error("CSV export failed")
+			console.error('CSV export failed')
 			return
 		}
 
@@ -268,10 +268,8 @@ export default function EnclosureGrid() {
 				</div>
 
 				{selectedEnclosures.size > 0 && (
-					<div className="mb-3 flex justify-end">
-						<Button onClick={exportSelected}>
-							Export {selectedEnclosures.size} Selected enclosures to CSV
-						</Button>
+					<div className='mb-3 flex justify-end'>
+						<Button onClick={exportSelected}>Export {selectedEnclosures.size} Selected enclosures to CSV</Button>
 					</div>
 				)}
 
@@ -316,10 +314,7 @@ export default function EnclosureGrid() {
 								itemContent={(index, sp) => (
 									<div className='p-2 pb-0 last:pb-2'>
 										{/* <SpeciesRow species={sp} /> */}
-										<SpeciesRow
-											species={sp}
-											onSelectChange={handleSelectionChange}
-										/>
+										<SpeciesRow species={sp} onSelectChange={handleSelectionChange} />
 									</div>
 								)}
 							/>
