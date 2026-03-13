@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, ArrowRight } from 'lucide-react'
@@ -14,6 +14,7 @@ import { useNotificationsWithProfiles } from '@/context/notifications-with-profi
 import { useMarkNotificationAsViewed, useMarkAllNotificationsAsViewed } from '@/lib/react-query/mutations'
 import { NotificationRow } from '@/components/notification/notification-row'
 import { PushOptInPrompt } from '@/components/notification/push-opt-in-prompt'
+import { getOrgIdFromPathname } from '@/context/push-subscription'
 
 // ─── NotificationsDropdown ───────────────────────────────
 
@@ -25,11 +26,7 @@ export function NotificationDropdown() {
 	const notificationsWithProfiles = useNotificationsWithProfiles(notifications)
 
 	const pathname = usePathname()
-
-	const orgId = useMemo(() => {
-		const match = pathname?.match(/^\/protected\/orgs\/([0-9a-fA-F-]{36})/)
-		return match?.[1] ?? null
-	}, [pathname])
+	const orgId = getOrgIdFromPathname(pathname)
 
 	const [open, setOpen] = useState(false)
 	const [showPushPrompt, setShowPushPrompt] = useState(false)

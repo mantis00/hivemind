@@ -8,7 +8,13 @@ import { Button } from '@/components/ui/button'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useSubscribeToPush } from '@/lib/react-query/mutations'
 import { toaster } from '@/components/ui/sonner'
-import { UUID } from 'crypto'
+import {
+	ensurePushSubscription,
+	getCurrentPushSubscription,
+	getOrgIdFromPathname,
+	getPushCapability,
+	requestPushPermission
+} from '@/context/push-subscription'
 
 interface PushOptInPromptProps {
 	open: boolean
@@ -24,22 +30,14 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 	const [requiresInstall, setRequiresInstall] = useState(false)
 	const [dismissed, setDismissed] = useState(false)
 
-	const orgMatch = pathname?.match(/^\/protected\/orgs\/([0-9a-fA-F-]{36})/)
-	const orgId = orgMatch?.[1] ?? null
+	const orgId = getOrgIdFromPathname(pathname)
 
 	/* Check browser support*/
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return
 
-		const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
-		const ua = navigator.userAgent || ''
-		const isAppleMobile = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document)
-		const iosStandalone = isAppleMobile && !!(window.navigator as Navigator & { standalone?: boolean }).standalone
-		const displayStandalone =
-			typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches
-		const installed = iosStandalone || displayStandalone
-		const needsInstall = isAppleMobile && !installed
+		const { supported, requiresInstall: needsInstall } = getPushCapability()
 
 		setRequiresInstall(needsInstall)
 		setCanEnablePush(supported && !needsInstall)
@@ -58,10 +56,7 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 		const suppressIfAlreadyEnabled = async () => {
 			if (Notification.permission !== 'granted') return
 
-			const registration = await navigator.serviceWorker.getRegistration()
-			if (!registration) return
-
-			const existingSubscription = await registration.pushManager.getSubscription()
+			const existingSubscription = await getCurrentPushSubscription()
 			if (!existingSubscription || isCancelled) return
 
 			sessionStorage.setItem('pushPromptDismissed', 'true')
@@ -100,40 +95,22 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 
 		if (!canEnablePush) return
 
+		/* Request permission */
+
+		const permission = await requestPushPermission()
+
+		if (permission !== 'granted') {
+			dismiss()
+			return
+		}
+
+		/* Get existing service worker */
+
 		try {
-			/* Request permission */
+			const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+			if (!vapidKey) throw new Error('Missing VAPID public key')
 
-			let permission = Notification.permission
-
-			if (permission === 'default') {
-				permission = await Notification.requestPermission()
-			}
-
-			if (permission !== 'granted') {
-				dismiss()
-				return
-			}
-
-			/* Get existing service worker */
-
-			const registration = await navigator.serviceWorker.ready
-
-			/* Check for existing subscription */
-
-			let subscription = await registration.pushManager.getSubscription()
-
-			if (!subscription) {
-				const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-				const supabaseURL = process.env.NEXT_PUBLIC_SUPABASE_URL
-				console.log('Supabase URL:', supabaseURL)
-				console.log('Subscribing to push with VAPID key:', vapidKey)
-				if (!vapidKey) throw new Error('Missing VAPID public key')
-
-				subscription = await registration.pushManager.subscribe({
-					userVisibleOnly: true,
-					applicationServerKey: urlBase64ToUint8Array(vapidKey)
-				})
-			}
+			const subscription = await ensurePushSubscription(vapidKey)
 
 			/* Send subscription to backend */
 
@@ -145,7 +122,7 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 
 			await subscribeMutation.mutateAsync({
 				userId: user.id,
-				orgId: orgId ? (orgId as UUID) : null,
+				orgId,
 				endpoint: sub.endpoint,
 				p256dh: sub.keys.p256dh,
 				auth: sub.keys.auth
@@ -154,6 +131,7 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 			dismiss()
 		} catch (err) {
 			console.error('Push subscription failed:', err)
+
 			if (err instanceof Error && err.name === 'NotAllowedError') {
 				toaster.error('Notifications are blocked. Enable notifications in browser/site settings and try again.')
 				return
@@ -189,14 +167,4 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 			</Button>
 		</ResponsiveDialogDrawer>
 	)
-}
-
-/* VAPID helper*/
-
-function urlBase64ToUint8Array(base64String: string) {
-	const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-	const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-
-	const rawData = window.atob(base64)
-	return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)))
 }

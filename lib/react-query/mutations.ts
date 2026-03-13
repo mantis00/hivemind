@@ -1536,7 +1536,7 @@ export function useSubscribeToPush() {
 			auth
 		}: {
 			userId: string
-			orgId: UUID | null
+			orgId: string | null
 			endpoint: string
 			p256dh: string
 			auth: string
