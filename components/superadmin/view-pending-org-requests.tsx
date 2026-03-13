@@ -31,13 +31,14 @@ export function ViewPendingRequests() {
 	const approveMutation = useApproveOrgRequest()
 	const rejectMutation = useRejectOrgRequest()
 	const [pendingRequestId, setPendingRequestId] = useState<UUID | null>(null)
+	const [now] = useState(() => Date.now())
 
 	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 	const visibleRequests =
 		requests?.filter((r) => {
 			if (r.status === 'pending') return true
 			const lastUpdated = new Date(r.reviewed_at ?? r.created_at).getTime()
-			return Date.now() <= lastUpdated + SEVEN_DAYS_MS
+			return now <= lastUpdated + SEVEN_DAYS_MS
 		}) ?? []
 	const pendingRequests = visibleRequests.filter((r) => r.status === 'pending')
 	const requesterIds = [...new Set(visibleRequests.map((r) => r.requester_id))]
@@ -56,14 +57,14 @@ export function ViewPendingRequests() {
 	}
 
 	return (
-		<Collapsible defaultOpen>
+		<Collapsible>
 			<CollapsibleTrigger asChild>
 				<button
 					type='button'
 					className='group flex w-full items-center justify-between py-3 text-left transition-opacity hover:opacity-70'
 				>
 					<div className='flex items-center gap-3'>
-						<h3 className='text-sm font-medium text-foreground'>Pending Requests</h3>
+						<h3 className='text-sm font-medium text-foreground'>Organization Requests</h3>
 						<span className='text-xs text-muted-foreground'>
 							{visibleRequests.length}
 							{pendingRequests.length !== visibleRequests.length && ` (${pendingRequests.length} pending)`}

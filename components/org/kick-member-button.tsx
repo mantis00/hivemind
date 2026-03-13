@@ -8,10 +8,21 @@ import { useKickMember } from '@/lib/react-query/mutations'
 import { UUID } from 'crypto'
 import { useParams } from 'next/navigation'
 
-export function KickMemberButton({ memberUserId }: { memberUserId: string }) {
+export function KickMemberButton({
+	memberUserId,
+	open: controlledOpen,
+	onOpenChange: controlledOnOpenChange
+}: {
+	memberUserId: string
+	open?: boolean
+	onOpenChange?: (open: boolean) => void
+}) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
-	const [open, setOpen] = useState(false)
+	const isControlled = controlledOpen !== undefined
+	const [internalOpen, setInternalOpen] = useState(false)
+	const open = isControlled ? (controlledOpen ?? false) : internalOpen
+	const setOpen = isControlled ? (controlledOnOpenChange ?? (() => {})) : setInternalOpen
 	const kickMemberMutation = useKickMember()
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -31,12 +42,14 @@ export function KickMemberButton({ memberUserId }: { memberUserId: string }) {
 			title='Kick Member'
 			description='Are you sure you want to kick this member?'
 			trigger={
-				<Button variant='destructive'>
-					Kick Member <UserRoundX />
-				</Button>
+				isControlled ? null : (
+					<Button variant='destructive'>
+						Kick Member <UserRoundX />
+					</Button>
+				)
 			}
 			open={open}
-			onOpenChange={(isOpen) => setOpen(isOpen)}
+			onOpenChange={setOpen}
 		>
 			<form onSubmit={handleSubmit}>
 				<Button type='submit' variant='destructive' className='w-full'>

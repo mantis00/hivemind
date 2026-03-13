@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { CheckIcon, XIcon, LoaderCircle, ChevronDownIcon } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { usePendingInvites } from '@/lib/react-query/queries'
+import { useMemberProfiles, usePendingInvites } from '@/lib/react-query/queries'
 import { useAcceptInvite, useRejectInvite } from '@/lib/react-query/mutations'
 import getAccessLevelName from '@/context/access-levels'
 import { formatDate } from '@/context/format-date'
@@ -18,6 +18,10 @@ export default function PendingInvites() {
 	const acceptMutation = useAcceptInvite()
 	const rejectMutation = useRejectInvite()
 	const [pendingInviteId, setPendingInviteId] = useState<UUID | null>(null)
+	const { data: userProfile } = useMemberProfiles(user?.id ? [user.id] : [])
+	const isSuperadmin = userProfile?.some((profile) => profile.is_superadmin === true)
+
+	if (isSuperadmin) return null
 
 	const handleAccept = (inviteId: UUID) => {
 		if (!user?.id) return
@@ -32,7 +36,7 @@ export default function PendingInvites() {
 	}
 
 	return (
-		<Collapsible defaultOpen>
+		<Collapsible>
 			<CollapsibleTrigger asChild>
 				<button
 					type='button'
@@ -51,7 +55,9 @@ export default function PendingInvites() {
 						<LoaderCircle className='animate-spin' />
 					</div>
 				) : !invites || invites.length === 0 ? (
-					<p className='py-2 text-sm text-muted-foreground text-center'>No pending invites.</p>
+					<p className='py-2 text-sm text-muted-foreground text-center'>
+						No pending invites. Here is where you can view your pending organization invites.
+					</p>
 				) : (
 					<div className='divide-y divide-border'>
 						{invites.map((invite) => (

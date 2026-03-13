@@ -1,30 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
 import { InputGroup, InputGroupAddon, InputGroupButton } from '../ui/input-group'
 import TextareaAutosize from 'react-textarea-autosize'
 import { useCreateEnclosureNote } from '@/lib/react-query/mutations'
-import { createClient } from '@/lib/supabase/client'
-import { User } from '@supabase/supabase-js'
+import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { LoaderCircle } from 'lucide-react'
 import { UUID } from 'crypto'
 
 export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID }) {
 	const [noteText, setNoteText] = useState('')
 	const createEnclosureNoteMutation = useCreateEnclosureNote()
-	const [user, setUser] = useState<User | null>(null)
-	const supabase = createClient()
+	const { data: user } = useCurrentClientUser()
 	const [loading, setLoading] = useState(false)
-
-	useEffect(() => {
-		const fetchUser = async () => {
-			const {
-				data: { user }
-			} = await supabase.auth.getUser()
-			setUser(user)
-			setLoading(false)
-		}
-
-		fetchUser()
-	}, [])
+	const textareaRef = useRef<HTMLTextAreaElement>(null)
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -46,10 +33,14 @@ export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID
 			<form onSubmit={handleSubmit} className='grid w-full gap-6 pt-1 mx-auto focus'>
 				<InputGroup>
 					<TextareaAutosize
+						ref={textareaRef}
 						data-slot='input-group-control'
-						className='flex field-sizing-content min-h-16 w-full resize-none rounded-md bg-transparent px-3 py-2.5 text-base transition-[color,box-shadow] outline-none md:text-sm'
+						className='flex field-sizing-content min-h-4 w-full resize-none rounded-md bg-transparent px-3 py-2.5 text-base transition-[color,box-shadow] outline-none md:text-sm'
 						placeholder='New note...'
 						value={noteText}
+						onFocus={() =>
+							setTimeout(() => textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300)
+						}
 						onChange={(e) => {
 							setNoteText(e.target.value)
 						}}

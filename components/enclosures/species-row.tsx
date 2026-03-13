@@ -1,11 +1,13 @@
 'use client'
+
 import { type OrgSpecies, type Enclosure, useOrgEnclosuresForSpecies } from '@/lib/react-query/queries'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
+import Image from 'next/image'
 import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Card, CardContent } from '../ui/card'
-import { Bug, ChevronRight, EyeIcon, ListChecks, TrashIcon, X } from 'lucide-react'
+import { Bug, ChevronRight, EyeIcon } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { EnclosureCard } from './enclosure-card'
@@ -13,33 +15,33 @@ import { Virtuoso } from 'react-virtuoso'
 import { EnclosureDialog } from './enclosure-dialog'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { UUID } from 'crypto'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 
 export default function SpeciesRow({
 	species,
-	onSelectChange
+	onDetailsOpenChange,
+	sortKey,
+	selectMode,
+	selectedIds,
+	onSelectChange, // optional, for CSV export
 }: {
 	species: OrgSpecies
-	onSelectChange?: (id: string, checked: boolean) => void
+	onDetailsOpenChange: () => void
+	sortKey: string
+	selectMode: boolean
+	selectedIds: Set<UUID>
+	onSelectChange?: (id: UUID, checked: boolean) => void
 }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
-	const router = useRouter()
-	const isMobile = useIsMobile()
 
 	const { data: enclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
 
 	const [isOpen, setIsOpen] = useState(false)
 	const [selectedEnclosure, setSelectedEnclosure] = useState<Enclosure | null>(null)
 	const [dialogOpen, setDialogOpen] = useState(false)
-	const [selectMode, setSelectMode] = useState(false)
-	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
 	const [detailsOpen, setDetailsOpen] = useState(false)
 
-	const batchDeleteMutation = useBatchDeleteEnclosures()
-
-	// Derive the latest enclosure data from the passed list so the dialog always shows fresh data
+	// Always show fresh enclosure data in dialog
 	const currentEnclosure = selectedEnclosure
 		? (enclosures?.find((e) => e.id === selectedEnclosure.id) ?? selectedEnclosure)
 		: null
@@ -49,46 +51,10 @@ export default function SpeciesRow({
 		setDialogOpen(true)
 	}
 
-	const handleSelectChange = (enclosureId: UUID, checked: boolean) => {
-		setSelectedIds((prev) => {
-			const next = new Set(prev)
-			if (checked) {
-				next.add(enclosureId)
-			} else {
-				next.delete(enclosureId)
-			}
-			return next
-		})
-	}
-
-	const handleDelete = () => {
-		if (selectedIds.size === 0 || !orgId) return
-
-		const confirmed = window.confirm(
-			`Are you sure you want to delete ${selectedIds.size} enclosure${selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.`
-		)
-		if (!confirmed) return
-
-		batchDeleteMutation.mutate(
-			{ ids: Array.from(selectedIds), orgId },
-			{
-				onSuccess: () => {
-					setSelectedIds(new Set())
-					setSelectMode(false)
-				},
-				onError: (err) => {
-					console.error('Failed to delete enclosures:', err)
-					alert('Failed to delete enclosures')
-				}
-			}
-		)
-	}
-
-	const toggleSelectMode = () => {
-		setSelectMode((prev) => !prev)
-		if (selectMode) {
-			setSelectedIds(new Set())
-		}
+	const handleSelectChange = (id: UUID, checked: boolean) => {
+		// Update selectedIds is handled in parent
+		// CSV export also called via onSelectChange prop
+		onSelectChange?.(id, checked)
 	}
 
 	return (
@@ -103,10 +69,12 @@ export default function SpeciesRow({
 										isOpen ? 'rotate-90' : ''
 									}`}
 								/>
-								{species.species.picture_url ? (
-									<img
+								{species.species?.picture_url ? (
+									<Image
 										src={species.species.picture_url}
-										alt={species.custom_common_name}
+										alt={species.custom_common_name ?? ''}
+										width={40}
+										height={40}
 										className='h-10 w-10 rounded-md object-cover shrink-0 border'
 									/>
 								) : (
@@ -116,12 +84,20 @@ export default function SpeciesRow({
 								)}
 								<div className='flex-1 min-w-0'>
 									<div className='flex items-center gap-2'>
-										<p className='font-medium text-sm truncate'>{species.custom_common_name}</p>
+										{sortKey === 'scientific_name' ? (
+											<p className='font-medium text-sm truncate'>{species.species?.scientific_name}</p>
+										) : (
+											<p className='font-medium text-sm truncate'>{species.custom_common_name}</p>
+										)}
 										<Badge variant='outline' className='shrink-0 text-xs'>
 											{enclosures?.length} {enclosures?.length === 1 ? 'enclosure' : 'enclosures'}
 										</Badge>
 									</div>
-									<p className='text-xs text-muted-foreground italic truncate'>{species.species.scientific_name}</p>
+									{sortKey === 'scientific_name' ? (
+										<p className='text-xs text-muted-foreground italic truncate'>{species.custom_common_name}</p>
+									) : (
+										<p className='text-xs text-muted-foreground italic truncate'>{species.species?.scientific_name}</p>
+									)}
 								</div>
 							</button>
 						</CollapsibleTrigger>
@@ -130,7 +106,7 @@ export default function SpeciesRow({
 							className='gap-1.5 h-7 text-xs shrink-0 mr-1'
 							onClick={(e) => {
 								e.stopPropagation()
-								setDetailsOpen(true)
+								onDetailsOpenChange()
 							}}
 						>
 							<EyeIcon className='h-3.5 w-3.5' />
@@ -139,55 +115,25 @@ export default function SpeciesRow({
 
 					<CollapsibleContent>
 						<div className='border-t bg-muted/30 p-2'>
-							{/* Select mode controls */}
-							<div className='flex items-center gap-2 mb-3'>
-								<Button
-									variant={selectMode ? 'secondary' : 'outline'}
-									size='sm'
-									className='gap-1.5 text-xs'
-									onClick={toggleSelectMode}
-								>
-									{selectMode ? <X className='h-3.5 w-3.5' /> : <ListChecks className='h-3.5 w-3.5' />}
-									{selectMode ? (isMobile ? 'Cancel' : 'Cancel Selection') : isMobile ? 'Select' : 'Select Enclosures'}
-								</Button>
-								{selectMode && selectedIds.size >= 1 && (
-									<div className='flex w-full items-center gap-2'>
-										<div className='text-muted-foreground text-xs ml-auto'>Selected: {selectedIds.size}</div>
-										<div>
-											<Button
-												size='sm'
-												variant='destructive'
-												className='gap-1.5 text-xs'
-												onClick={handleDelete}
-												disabled={batchDeleteMutation.isPending}
-											>
-												<TrashIcon className='h-3.5 w-3.5' />
-												{batchDeleteMutation.isPending ? 'Deleting...' : 'Delete'}
-											</Button>
-										</div>
-									</div>
-								)}
-							</div>
-
-							{/* Enclosures Virtuoso list */}
 							{enclosures?.length && enclosures?.length > 0 ? (
 								<div className='rounded-md border bg-background'>
 									<Virtuoso
 										style={{
-											height: enclosures?.length && enclosures?.length <= 4 ? `${enclosures?.length * 114}px` : '352px'
+											height:
+												enclosures?.length && enclosures?.length <= 4
+													? `${enclosures?.length * 114}px`
+													: '352px',
 										}}
 										data={enclosures}
 										itemContent={(index, enclosure) => (
 											<div className='p-1 pb-0 last:pb-2'>
 												<EnclosureCard
 													enclosure={enclosure}
-													species={species}
 													onClick={() => handleEnclosureClick(enclosure)}
 													selectable={selectMode}
 													selected={selectedIds.has(enclosure.id)}
 													onSelectChange={(checked) => {
 														handleSelectChange(enclosure.id, checked)
-														onSelectChange?.(enclosure.id, checked)
 													}}
 												/>
 											</div>
@@ -215,16 +161,18 @@ export default function SpeciesRow({
 
 			<ResponsiveDialogDrawer
 				title={species.custom_common_name}
-				description={species.species.scientific_name}
+				description={species.species?.scientific_name}
 				open={detailsOpen}
 				onOpenChange={setDetailsOpen}
 				trigger={<span className='hidden' />}
 			>
 				<div className='flex flex-col gap-4'>
-					{species.species.picture_url ? (
-						<img
+					{species.species?.picture_url ? (
+						<Image
 							src={species.species.picture_url}
-							alt={species.custom_common_name}
+							alt={species.custom_common_name ?? ''}
+							width={600}
+							height={192}
 							className='rounded-md max-h-48 w-full object-contain mx-auto'
 						/>
 					) : (

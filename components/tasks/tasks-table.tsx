@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import {
-	ColumnDef,
 	SortingState,
 	flexRender,
 	getCoreRowModel,
@@ -11,285 +10,211 @@ import {
 	useReactTable
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
-import {
-	ArrowUpDown,
-	CheckCircle2,
-	ChevronDown,
-	ChevronLeft,
-	ChevronRight,
-	LoaderCircle,
-	PlayCircle,
-	PlusIcon,
-	X
-} from 'lucide-react'
-
-import { Button } from '@/components/ui/button'
-import {
-	DropdownMenu,
-	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
-	DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
-import type { Task } from '@/lib/react-query/queries'
-import { useTasksForEnclosures } from '@/lib/react-query/queries'
-import { useCompleteTask, useStartTask } from '@/lib/react-query/mutations'
+import { LoaderCircle } from 'lucide-react'
 import { UUID } from 'crypto'
-import getPriorityLevelStatus from '@/context/priority-levels'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { format } from 'date-fns'
+
+import {
+	useTasksForEnclosures,
+	useTasksForEnclosuresInRange,
+	useOrgMemberProfiles,
+	useOrgEnclosures,
+	useOrgSpecies
+} from '@/lib/react-query/queries'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import { createClient } from '@/lib/supabase/client'
-import { User } from '@supabase/supabase-js'
-import { useEffect, useState } from 'react'
-import { CreateTaskButton } from './create-task-button'
+import { getDateStr, getDayLabel } from '@/context/task-day'
+import { toLocalDate } from '@/context/to-local-date'
+import { formatDate } from '@/context/format-date'
+import { getEffectiveStatus, MOBILE_COL_WIDTHS } from '@/context/task-status'
+import { getColumns } from './tasks-columns'
+import { DayNavigator } from './day-navigator'
+import { TasksFilters, type TaskFilters } from './tasks-filters'
 
-const priorityConfig: Record<string, { color: string }> = {
-	low: { color: 'bg-blue-100 text-blue-800' },
-	medium: { color: 'bg-yellow-100 text-yellow-800' },
-	high: { color: 'bg-red-100 text-red-800' }
-}
+const MAX_TABLE_HEIGHT_DESKTOP = 680
+const MAX_TABLE_HEIGHT_MOBILE = 560
+const TARGET_VISIBLE_ROWS_DESKTOP = 8
+const TARGET_VISIBLE_ROWS_MOBILE = 7
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-	pending: { label: 'Pending', color: 'bg-gray-100 text-gray-800' },
-	'in-progress': { label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
-	completed: { label: 'Completed', color: 'bg-green-100 text-green-800' }
-}
-
-const MOBILE_COL_WIDTHS: Record<string, number> = {
-	name: 130,
-	priority: 84,
-	status: 100
-}
-
-function getColumns(
-	isMobile: boolean,
-	onStart: (taskId: UUID) => void,
-	onComplete: (taskId: UUID) => void
-): ColumnDef<Task>[] {
-	const all: ColumnDef<Task>[] = [
-		{
-			accessorKey: 'name',
-			header: ({ column }) => (
-				<Button
-					variant='ghost'
-					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='h-8 p-0'
-				>
-					Task Name
-					<ArrowUpDown className='ml-2 h-4 w-4' />
-				</Button>
-			),
-			cell: ({ row }) => <div className='font-medium truncate'>{row.getValue('name')}</div>
-		},
-		{
-			id: 'description',
-			accessorKey: 'description',
-			header: 'Description',
-			cell: ({ row }) => (
-				<div className='max-w-xs truncate text-sm text-muted-foreground'>{row.getValue('description')}</div>
-			)
-		},
-		{
-			accessorKey: 'priority',
-			header: ({ column }) => (
-				<Button
-					variant='ghost'
-					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='h-8 p-0'
-				>
-					Priority
-					<ArrowUpDown className='ml-2 h-4 w-4' />
-				</Button>
-			),
-			cell: ({ row }) => {
-				const priority = row.getValue('priority') as string
-				const config = priorityConfig[priority] || { color: 'bg-gray-100 text-gray-800' }
-				const label = getPriorityLevelStatus(priority) ?? priority
-				return (
-					<div className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${config.color}`}>{label}</div>
-				)
-			}
-		},
-		{
-			accessorKey: 'status',
-			header: ({ column }) => (
-				<Button
-					variant='ghost'
-					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='h-8 p-0'
-				>
-					Status
-					<ArrowUpDown className='ml-2 h-4 w-4' />
-				</Button>
-			),
-			cell: ({ row }) => {
-				const status = row.getValue('status') as string
-				const config = statusConfig[status] || { label: status, color: 'bg-gray-100 text-gray-800' }
-				return (
-					<div className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${config.color}`}>
-						{config.label}
-					</div>
-				)
-			}
-		},
-		{
-			id: 'actions',
-			header: '',
-			cell: ({ row }) => {
-				const status = row.original.status
-				const isCompleted = status === 'completed'
-				const isInProgress = status === 'in_progress'
-				return (
-					<div className='flex items-center gap-1'>
-						<Button
-							variant='ghost'
-							size='icon'
-							className='h-10 w-10 text-muted-foreground hover:text-blue-500'
-							disabled={isCompleted || isInProgress}
-							title='Start task'
-							onClick={() => onStart(row.original.id as UUID)}
-						>
-							<PlayCircle className='h-6 w-6' />
-						</Button>
-						{isInProgress && (
-							<Button
-								variant='ghost'
-								size='icon'
-								className='h-10 w-10 text-muted-foreground hover:text-green-500'
-								title='Mark complete'
-								onClick={() => onComplete(row.original.id as UUID)}
-							>
-								<CheckCircle2 className='h-8 w-8' />
-							</Button>
-						)}
-					</div>
-				)
-			}
-		}
-	]
-	return isMobile ? all.filter((col) => col.id !== 'description' && col.id !== 'actions') : all
-}
-
-const TARGET_VISIBLE_ROWS_MOBILE = 15
-const TARGET_VISIBLE_ROWS_DESKTOP = 20
-
-/** Returns a YYYY-MM-DD string for a date offset from today */
-function getDateStr(dayOffset: number): string {
-	const d = new Date()
-	d.setDate(d.getDate() + dayOffset)
-	return d.toISOString().slice(0, 10)
-}
-
-function getDayLabel(dayOffset: number): string {
-	if (dayOffset === 0) return 'Today'
-	if (dayOffset === -1) return 'Yesterday'
-	if (dayOffset === 1) return 'Tomorrow'
-	const d = new Date()
-	d.setDate(d.getDate() + dayOffset)
-	return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-}
-
-export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgId: UUID }) {
+export function TasksDataTable({
+	enclosureId,
+	orgId,
+	orgEnclosures: isOrgMode = false,
+	createTaskButton
+}: {
+	enclosureId?: UUID
+	orgId: UUID
+	orgEnclosures?: boolean
+	createTaskButton?: React.ReactNode
+}) {
 	const isMobile = useIsMobile()
+	const router = useRouter()
+	const { data: members = [] } = useOrgMemberProfiles(orgId)
+
+	// Org-mode data — hooks are always called but only used when isOrgMode
+	const { data: fetchedOrgEnclosures = [] } = useOrgEnclosures(orgId)
+	const { data: fetchedOrgSpecies } = useOrgSpecies(orgId)
+
+	const enclosureIds = React.useMemo(
+		() => (isOrgMode ? fetchedOrgEnclosures.map((e) => e.id) : enclosureId ? [enclosureId] : []),
+		[isOrgMode, fetchedOrgEnclosures, enclosureId]
+	)
+
 	const [dayOffset, setDayOffset] = React.useState(0)
-	const [sorting, setSorting] = React.useState<SortingState>([])
-	const [globalFilter, setGlobalFilter] = React.useState('')
-	const [priorityFilter, setPriorityFilter] = React.useState<string[]>([])
-	const [statusFilter, setStatusFilter] = React.useState<string[]>([])
-	const TARGET_VISIBLE_ROWS = isMobile ? TARGET_VISIBLE_ROWS_MOBILE : TARGET_VISIBLE_ROWS_DESKTOP
-	const ESTIMATED_ROW_HEIGHT = isMobile ? 73 : 46
+	const [sorting, setSorting] = React.useState<SortingState>([{ id: 'due_date', desc: false }])
+	const [filters, setFilters] = React.useState<TaskFilters>({
+		globalFilter: '',
+		globalSearch: false,
+		priorityFilter: [],
+		statusFilter: [],
+		dateRange: undefined,
+		speciesFilter: ''
+	})
+	const [pendingGlobalSearch, setPendingGlobalSearch] = React.useState(false)
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
-	const [selectedTask, setSelectedTask] = React.useState<Task | null>(null)
-	const [taskDrawerOpen, setTaskDrawerOpen] = React.useState(false)
-	const [user, setUser] = useState<User | null>(null)
 	const [isMounted, setIsMounted] = React.useState(false)
-	const supabase = createClient()
-	const [createTaskOpen, setCreateTaskOpen] = useState(false)
+
+	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange, speciesFilter } = filters
+	const isRangeMode = !!(dateRange?.from && dateRange?.to)
+
+	const MAX_TABLE_HEIGHT = isMobile ? MAX_TABLE_HEIGHT_MOBILE : MAX_TABLE_HEIGHT_DESKTOP
+	const TARGET_VISIBLE_ROWS = isMobile ? TARGET_VISIBLE_ROWS_MOBILE : TARGET_VISIBLE_ROWS_DESKTOP
+	const HEADER_HEIGHT = 49
+	const ESTIMATED_ROW_HEIGHT = isMobile ? 73 : 57.8
 
 	useEffect(() => {
 		setIsMounted(true)
 	}, [])
 
-	useEffect(() => {
-		const fetchUser = async () => {
-			const {
-				data: { user }
-			} = await supabase.auth.getUser()
-			setUser(user)
-		}
-
-		fetchUser()
-	}, [])
-
 	const rowRef = React.useRef<HTMLTableRowElement | null>(null)
 	const measuredRef = React.useRef(false)
-	// Stable order map: task id → position. Only updated when the set of IDs changes,
-	// so status mutations (start/complete) don't reorder rows.
 	const stableOrderRef = React.useRef<Map<string, number>>(new Map())
-	// Last known non-zero row count — prevents tableHeight from flashing to ~49px
-	const stableRowCountRef = React.useRef(0)
 
-	const hasActiveFilters = priorityFilter.length > 0 || statusFilter.length > 0 || globalFilter !== ''
+	const hasActiveFilters =
+		priorityFilter.length > 0 ||
+		statusFilter.length > 0 ||
+		globalFilter !== '' ||
+		globalSearch ||
+		(isOrgMode && speciesFilter !== '')
 
 	const resetFilters = () => {
-		setPriorityFilter([])
-		setStatusFilter([])
-		setGlobalFilter('')
+		setFilters({
+			globalFilter: '',
+			globalSearch: false,
+			priorityFilter: [],
+			statusFilter: [],
+			dateRange: undefined,
+			speciesFilter: ''
+		})
+		setPendingGlobalSearch(false)
 	}
 
-	const { data: enclosureTasks, isLoading: tasksLoading } = useTasksForEnclosures([enclosureId])
-	const startTask = useStartTask()
-	const completeTask = useCompleteTask()
-
-	// Holds latest mutation objects so callbacks stay stable across mutation state changes
-	const startTaskRef = React.useRef(startTask)
-	startTaskRef.current = startTask
-	const completeTaskRef = React.useRef(completeTask)
-	completeTaskRef.current = completeTask
-
-	const handleStart = React.useCallback(
-		(taskId: UUID) => startTaskRef.current.mutate({ task_id: taskId, enclosure_id: enclosureId }),
-		[enclosureId]
+	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(isRangeMode ? [] : enclosureIds)
+	const { data: rangeTasks, isFetching: rangeFetching } = useTasksForEnclosuresInRange(
+		isRangeMode ? enclosureIds : [],
+		dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
+		dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : ''
 	)
 
-	const handleComplete = React.useCallback(
-		(taskId: UUID) =>
-			completeTaskRef.current.mutate({ task_id: taskId, enclosure_id: enclosureId, user_id: user?.id as UUID }),
-		[enclosureId, user?.id]
+	const todayCounts = React.useMemo(() => {
+		if (isRangeMode) return null
+		const source = enclosureTasks ?? []
+		const todayDate = getDateStr(0)
+		const dueToday = source.filter(
+			(t) => t.due_date && t.due_date.slice(0, 10) === todayDate && t.status !== 'completed'
+		).length
+		const late = source.filter((t) => getEffectiveStatus(t) === 'late').length
+		return { dueToday, late }
+	}, [enclosureTasks, isRangeMode])
+
+	const activeLoading = pendingGlobalSearch || (isRangeMode ? rangeFetching : tasksFetching)
+
+	const handleView = React.useCallback(
+		(taskId: UUID) => {
+			if (isOrgMode) {
+				const task = (enclosureTasks ?? rangeTasks ?? []).find((t) => t.id === taskId)
+				if (!task) return
+				router.push(`/protected/orgs/${orgId}/enclosures/${task.enclosure_id}/${taskId}`)
+			} else {
+				router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}/${taskId}`)
+			}
+		},
+		[router, orgId, enclosureId, isOrgMode, enclosureTasks, rangeTasks]
+	)
+
+	const handleViewEnclosure = React.useCallback(
+		(enclosureId: UUID) => {
+			router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}`)
+		},
+		[router, orgId]
 	)
 
 	const columns = React.useMemo(
-		() => getColumns(isMobile, handleStart, handleComplete),
-		[isMobile, handleStart, handleComplete]
+		() =>
+			getColumns(
+				isMobile,
+				handleView,
+				members,
+				isOrgMode
+					? isMobile
+						? ['enclosure_name', 'name', 'due_date']
+						: ['enclosure_name', 'species', 'name', 'status', 'due_date', 'assigned_to', 'actions']
+					: undefined,
+				isOrgMode ? fetchedOrgEnclosures : undefined,
+				isOrgMode ? (fetchedOrgSpecies ?? undefined) : undefined,
+				isOrgMode ? handleViewEnclosure : undefined
+			),
+		[isMobile, handleView, members, isOrgMode, fetchedOrgEnclosures, fetchedOrgSpecies, handleViewEnclosure]
 	)
 
 	const filteredData = React.useMemo(() => {
 		const targetDate = getDateStr(dayOffset)
 		const todayDate = getDateStr(0)
+		const source = isRangeMode ? (rangeTasks ?? []) : (enclosureTasks ?? [])
 
-		const tasks = (enclosureTasks || []).filter((task) => {
+		const speciesEnclosureIds =
+			isOrgMode && speciesFilter
+				? new Set(
+						fetchedOrgEnclosures
+							.filter(
+								(e) =>
+									e.species_id === (fetchedOrgSpecies ?? []).find((s) => s.custom_common_name === speciesFilter)?.id
+							)
+							.map((e) => e.id as string)
+					)
+				: null
+
+		const tasks = source.filter((task) => {
+			if (speciesEnclosureIds && !speciesEnclosureIds.has(task.enclosure_id as string)) return false
 			const priorityMatch = priorityFilter.length === 0 || (task.priority && priorityFilter.includes(task.priority))
-			const statusMatch = statusFilter.length === 0 || (task.status && statusFilter.includes(task.status))
+			const effectiveStatus = getEffectiveStatus(task)
+			const statusMatch = statusFilter.length === 0 || statusFilter.includes(effectiveStatus)
 			if (!priorityMatch || !statusMatch) return false
+
+			if (globalSearch) return true
+			if (isRangeMode) return true
 
 			const dueDateStr = task.due_date ? task.due_date.slice(0, 10) : null
 
 			if (dayOffset === 0) {
-				// Today: due today + overdue (past due, not completed) + high priority not completed
-				// + tasks completed today (shown at bottom)
 				const dueToday = dueDateStr === todayDate
 				const overdue = dueDateStr !== null && dueDateStr < todayDate && task.status !== 'completed'
-				const urgent = task.priority === 'high' && task.status !== 'completed'
 				const completedToday =
-					task.status === 'completed' && task.completed_time != null && task.completed_time.slice(0, 10) === todayDate
-				return dueToday || overdue || urgent || completedToday
+					task.status === 'completed' && task.completed_time != null && toLocalDate(task.completed_time) === todayDate
+				return dueToday || overdue || completedToday
 			}
 
-			// Past or future days: only show tasks due on that exact date
-			return dueDateStr === targetDate
+			const completedOnDay =
+				task.status === 'completed' && task.completed_time != null && toLocalDate(task.completed_time) === targetDate
+
+			if (targetDate < todayDate) {
+				return (dueDateStr === targetDate && task.status === 'completed') || completedOnDay
+			}
+
+			return dueDateStr === targetDate || completedOnDay
 		})
 
-		// Update stable order for any task IDs not yet seen
 		tasks.forEach((task) => {
 			const id = task.id as string
 			if (!stableOrderRef.current.has(id)) {
@@ -297,8 +222,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 			}
 		})
 
-		if (dayOffset === 0) {
-			// Sort: non-completed in stable order, completed at the bottom in stable order
+		if (!isRangeMode && dayOffset === 0) {
 			return [...tasks].sort((a, b) => {
 				const aCompleted = a.status === 'completed' ? 1 : 0
 				const bCompleted = b.status === 'completed' ? 1 : 0
@@ -310,7 +234,19 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		}
 
 		return tasks
-	}, [enclosureTasks, priorityFilter, statusFilter, dayOffset])
+	}, [
+		enclosureTasks,
+		rangeTasks,
+		priorityFilter,
+		statusFilter,
+		dayOffset,
+		isRangeMode,
+		globalSearch,
+		isOrgMode,
+		speciesFilter,
+		fetchedOrgEnclosures,
+		fetchedOrgSpecies
+	])
 
 	const table = useReactTable({
 		data: filteredData,
@@ -320,21 +256,17 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
 		globalFilterFn: 'includesString',
-		state: {
-			sorting,
-			globalFilter
-		},
-		onGlobalFilterChange: setGlobalFilter
+		state: { sorting, globalFilter },
+		onGlobalFilterChange: (value) => setFilters((prev) => ({ ...prev, globalFilter: value as string }))
 	})
 
 	const { rows } = table.getRowModel()
+	const rowH = measuredRowHeight ?? ESTIMATED_ROW_HEIGHT
+	const naturalHeight = rows.length * rowH + HEADER_HEIGHT
+	const cappedHeight = Math.min(TARGET_VISIBLE_ROWS * rowH + HEADER_HEIGHT, MAX_TABLE_HEIGHT)
+	const tableHeight = rows.length <= TARGET_VISIBLE_ROWS ? naturalHeight : cappedHeight
 
-	if (rows.length > 0) stableRowCountRef.current = rows.length
-	const displayRowCount = rows.length > 0 ? rows.length : stableRowCountRef.current
-	const tableHeight =
-		Math.ceil((measuredRowHeight ?? ESTIMATED_ROW_HEIGHT) * Math.min(displayRowCount, TARGET_VISIBLE_ROWS)) + 49 // +49 for header row
-
-	// Measure a single row's height and refine the table height
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	React.useLayoutEffect(() => {
 		if (rowRef.current && !measuredRef.current) {
 			const rowHeight = rowRef.current.getBoundingClientRect().height
@@ -345,137 +277,123 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 		}
 	})
 
-	// Reset stable order when the day changes (different task set)
 	React.useEffect(() => {
 		stableOrderRef.current = new Map()
+		measuredRef.current = false
+		setMeasuredRowHeight(null)
 	}, [dayOffset])
 
-	// Reset measurement when sort order changes so height recomputes
+	React.useEffect(() => {
+		stableOrderRef.current = new Map()
+		measuredRef.current = false
+		setMeasuredRowHeight(null)
+	}, [dateRange])
+
 	React.useEffect(() => {
 		measuredRef.current = false
 	}, [sorting])
 
-	if (!isMounted || tasksLoading) {
-		return (
-			<div className='flex items-center justify-center h-48 w-full'>
-				<LoaderCircle className='h-8 w-8 animate-spin text-muted-foreground' />
-			</div>
-		)
-	}
+	React.useEffect(() => {
+		if (pendingGlobalSearch && !tasksFetching) setPendingGlobalSearch(false)
+	}, [pendingGlobalSearch, tasksFetching])
+
+	if (!isMounted) return null
 
 	return (
 		<div className='w-full space-y-4'>
-			{/* Day Navigator */}
-			<div className='flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2'>
-				<Button
-					variant='ghost'
-					size='sm'
-					onClick={() => setDayOffset((d) => d - 1)}
-					disabled={dayOffset <= -2}
-					className='gap-1'
-				>
-					<ChevronLeft className='h-4 w-4' />
-					{getDayLabel(dayOffset - 1)}
-				</Button>
-				<div className='text-center'>
-					<p className='text-sm font-semibold'>{getDayLabel(dayOffset)}</p>
-					<p className='text-xs text-muted-foreground'>{getDateStr(dayOffset)}</p>
-					{dayOffset === 0 && (
-						<p className='text-xs text-muted-foreground mt-0.5'>
-							Due today · Overdue · High priority · Completed today
-						</p>
-					)}
-				</div>
-				<Button variant='ghost' size='sm' onClick={() => setDayOffset((d) => d + 1)} className='gap-1'>
-					{getDayLabel(dayOffset + 1)}
-					<ChevronRight className='h-4 w-4' />
-				</Button>
-			</div>
+			<DayNavigator
+				dayOffset={dayOffset}
+				onDayChange={setDayOffset}
+				isRangeMode={isRangeMode}
+				globalSearch={globalSearch}
+				dateRange={dateRange}
+				rowCount={rows.length}
+				todayCounts={todayCounts}
+			/>
 
-			{/* Filters */}
-			<div className='flex flex-col gap-4 md:flex-row md:items-center'>
-				{isMobile && <CreateTaskButton />}
-				<Input
-					placeholder='Search tasks...'
-					value={globalFilter}
-					onChange={(e) => setGlobalFilter(e.target.value)}
-					className='max-w-sm'
-				/>
+			<TasksFilters
+				enclosureId={isOrgMode ? undefined : enclosureId}
+				orgId={orgId}
+				filters={filters}
+				onFiltersChange={(newFilters) => {
+					if (newFilters.globalSearch && !globalSearch) setPendingGlobalSearch(true)
+					setFilters(newFilters)
+				}}
+				hasActiveFilters={hasActiveFilters}
+				onReset={resetFilters}
+				showSpeciesFilter={isOrgMode}
+			/>
 
-				<div className='flex flex-wrap gap-2 w-full'>
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant='outline' className='gap-2'>
-								Priority {priorityFilter.length > 0 && `(${priorityFilter.length})`}
-								<ChevronDown className='h-4 w-4' />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align='end'>
-							{(['low', 'medium', 'high'] as const).map((priority) => (
-								<DropdownMenuCheckboxItem
-									key={priority}
-									checked={priorityFilter.includes(priority)}
-									onSelect={(e) => e.preventDefault()}
-									onCheckedChange={(checked) => {
-										setPriorityFilter((prev) => (checked ? [...prev, priority] : prev.filter((p) => p !== priority)))
-									}}
-								>
-									{getPriorityLevelStatus(priority)}
-								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
+			{isOrgMode && createTaskButton && <div>{createTaskButton}</div>}
 
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant='outline' className='gap-2'>
-								Status {statusFilter.length > 0 && `(${statusFilter.length})`}
-								<ChevronDown className='h-4 w-4' />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align='end'>
-							{['pending', 'in-progress', 'completed'].map((status) => (
-								<DropdownMenuCheckboxItem
-									key={status}
-									checked={statusFilter.includes(status)}
-									onSelect={(e) => e.preventDefault()}
-									onCheckedChange={(checked) => {
-										setStatusFilter((prev) => (checked ? [...prev, status] : prev.filter((s) => s !== status)))
-									}}
-								>
-									{statusConfig[status].label}
-								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
-					{hasActiveFilters && (
-						<Button
-							variant='ghost'
-							onClick={resetFilters}
-							className='gap-1.5 text-muted-foreground hover:text-foreground'
-						>
-							{isMobile ? '' : 'Reset'}
-							<X className='h-4 w-4' />
-						</Button>
-					)}
-					{!isMobile && (
-						<div className='ml-auto'>
-							<CreateTaskButton />
-						</div>
-					)}
-				</div>
-			</div>
-
-			{/* Virtuoso Table */}
+			{/* Table */}
 			<div className='rounded-lg border border-border/50 bg-card overflow-hidden'>
-				{rows.length === 0 ? (
-					<div className='flex items-center justify-center h-24 text-muted-foreground text-sm'>
-						No tasks for {getDayLabel(dayOffset).toLowerCase()}.
+				{activeLoading ? (
+					<div className='flex flex-col items-center justify-center h-48 w-full gap-2'>
+						<LoaderCircle className='h-8 w-8 animate-spin text-muted-foreground' />
 					</div>
+				) : rows.length === 0 ? (
+					<div className='flex items-center justify-center h-24 text-muted-foreground text-sm'>
+						{isRangeMode
+							? `No tasks between ${formatDate(dateRange!.from!.toISOString(), false)} and ${formatDate(dateRange!.to!.toISOString())}.`
+							: globalSearch
+								? 'No tasks match your search across all dates.'
+								: `No tasks for ${getDayLabel(dayOffset).toLowerCase()}.`}
+					</div>
+				) : rows.length <= TARGET_VISIBLE_ROWS ? (
+					<table
+						style={{ width: '100%', borderCollapse: 'collapse', ...(isMobile ? { tableLayout: 'fixed' } : {}) }}
+						className='w-full caption-bottom text-sm'
+					>
+						<thead className='[&_tr]:border-b'>
+							{table.getHeaderGroups().map((headerGroup) => (
+								<tr key={headerGroup.id} className='border-b bg-muted shadow-sm'>
+									{headerGroup.headers.map((header) => (
+										<th
+											key={header.id}
+											style={
+												isMobile && MOBILE_COL_WIDTHS[header.id]
+													? { width: MOBILE_COL_WIDTHS[header.id], minWidth: MOBILE_COL_WIDTHS[header.id] }
+													: undefined
+											}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0`}
+										>
+											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+										</th>
+									))}
+								</tr>
+							))}
+						</thead>
+						<tbody className='[&_tr:last-child]:border-0'>
+							{rows.map((row, index) => (
+								<tr
+									key={row.id}
+									ref={index === 0 ? rowRef : undefined}
+									className={`border-b transition-colors hover:bg-muted/30 cursor-pointer active:bg-muted ${index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}`}
+									onClick={() => handleView(row.original.id as UUID)}
+								>
+									{row.getVisibleCells().map((cell) => (
+										<td
+											key={cell.id}
+											style={
+												isMobile && MOBILE_COL_WIDTHS[cell.column.id]
+													? { width: MOBILE_COL_WIDTHS[cell.column.id], minWidth: MOBILE_COL_WIDTHS[cell.column.id] }
+													: undefined
+											}
+											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0`}
+										>
+											{flexRender(cell.column.columnDef.cell, cell.getContext())}
+										</td>
+									))}
+								</tr>
+							))}
+						</tbody>
+					</table>
 				) : (
 					<TableVirtuoso
 						style={{ height: tableHeight, overflowX: 'hidden' }}
 						totalCount={rows.length}
+						className='scrollbar-no-track'
 						components={{
 							Table: ({ style, ...props }) => (
 								<table
@@ -495,18 +413,14 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 							TableRow: ({ style, ...props }) => {
 								const index = props['data-index'] as number
 								const row = rows[index]
+								const isEven = index % 2 === 0
 								return (
 									<tr
 										{...props}
 										ref={index === 0 ? rowRef : undefined}
 										style={style}
-										className={`border-b transition-colors hover:bg-muted/50 ${isMobile ? 'cursor-pointer active:bg-muted' : ''}`}
-										onClick={() => {
-											if (isMobile) {
-												setSelectedTask(row.original)
-												setTaskDrawerOpen(true)
-											}
-										}}
+										className={`border-b transition-colors hover:bg-muted cursor-pointer active:bg-muted ${isEven ? 'bg-background' : 'bg-muted/70'}`}
+										onClick={() => handleView(row.original.id as UUID)}
 									>
 										{row.getVisibleCells().map((cell) => (
 											<td
@@ -530,7 +444,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 						}}
 						fixedHeaderContent={() =>
 							table.getHeaderGroups().map((headerGroup) => (
-								<tr key={headerGroup.id} className='border-b bg-card shadow-sm'>
+								<tr key={headerGroup.id} className='border-b bg-muted shadow-sm'>
 									{headerGroup.headers.map((header) => (
 										<th
 											key={header.id}
@@ -551,68 +465,7 @@ export function TasksDataTable({ enclosureId, orgId }: { enclosureId: UUID; orgI
 				)}
 			</div>
 
-			{/* Row count */}
 			<div className='text-sm text-muted-foreground'>{rows.length} tasks</div>
-
-			{/* Mobile task detail drawer */}
-			{selectedTask && (
-				<ResponsiveDialogDrawer
-					title={selectedTask.name ?? 'Task'}
-					description={selectedTask.description ?? ''}
-					trigger={null}
-					open={taskDrawerOpen}
-					onOpenChange={(open) => {
-						setTaskDrawerOpen(open)
-						if (!open) setSelectedTask(null)
-					}}
-				>
-					<div className='flex flex-col gap-4 pt-2'>
-						<div className='flex items-center gap-3'>
-							{(() => {
-								const p = selectedTask.priority ?? ''
-								const cfg = priorityConfig[p] || { color: 'bg-gray-100 text-gray-800' }
-								return (
-									<span className={`px-3 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
-										{getPriorityLevelStatus(p) ?? p}
-									</span>
-								)
-							})()}
-							{(() => {
-								const s = selectedTask.status ?? ''
-								const cfg = statusConfig[s] || { label: s, color: 'bg-gray-100 text-gray-800' }
-								return <span className={`px-3 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>{cfg.label}</span>
-							})()}
-						</div>
-						{selectedTask.description && (
-							<div className='rounded-md bg-muted p-3'>
-								<p className='text-xs font-medium text-muted-foreground mb-1'>Description</p>
-								<p className='text-sm leading-relaxed'>{selectedTask.description}</p>
-							</div>
-						)}
-						{selectedTask.due_date && (
-							<p className='text-xs text-muted-foreground'>Due: {selectedTask.due_date.slice(0, 10)}</p>
-						)}
-						<div className='flex gap-2 pt-2'>
-							{selectedTask.status !== 'completed' && selectedTask.status !== 'in_progress' && (
-								<Button
-									className='flex-1 gap-2'
-									onClick={() => {
-										handleStart(selectedTask.id as UUID)
-										setTaskDrawerOpen(false)
-									}}
-								>
-									<PlayCircle className='h-5 w-5' /> Start Task
-								</Button>
-							)}
-							{selectedTask.status === 'in_progress' && (
-								<Button className='flex-1 gap-2' variant='secondary'>
-									<CheckCircle2 className='h-5 w-5' /> Mark Complete
-								</Button>
-							)}
-						</div>
-					</div>
-				</ResponsiveDialogDrawer>
-			)}
 		</div>
 	)
 }

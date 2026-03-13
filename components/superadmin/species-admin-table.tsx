@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Virtuoso } from 'react-virtuoso'
-import { useAllSpecies, type Species } from '@/lib/react-query/queries'
+import { useAllSpecies } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowDownIcon, ArrowUpIcon, Search, XIcon } from 'lucide-react'
@@ -18,77 +18,58 @@ const ROW_HEIGHT = 74
 export function SpeciesAdminTable() {
 	const { data: allSpecies, isLoading } = useAllSpecies()
 	const [search, setSearch] = useState('')
-	const [searchCount, setSearchCount] = useState(0)
-	const [displayedSpecies, setDisplayedSpecies] = useState<Species[]>([])
+	const [activeSearch, setActiveSearch] = useState('')
 	const [sortKey, setSortKey] = useState<string>('')
 	const [sortUp, setSortUp] = useState(true)
-	const [isSorted, setIsSorted] = useState(false)
 
-	useEffect(() => {
-		if (allSpecies && search.trim() === '') {
-			setDisplayedSpecies(allSpecies)
+	const isSorted = sortKey !== ''
+
+	const displayedSpecies = useMemo(() => {
+		let list = allSpecies ?? []
+		if (activeSearch.trim()) {
+			const val = activeSearch.trim().toLowerCase()
+			list = list.filter(
+				(s) => s.common_name?.toLowerCase().includes(val) || s.scientific_name?.toLowerCase().includes(val)
+			)
 		}
-	}, [allSpecies, search])
+		if (sortKey) {
+			list = [...list].sort((a, b) => {
+				const na = (sortKey === 'common_name' ? a.common_name : a.scientific_name) ?? ''
+				const nb = (sortKey === 'common_name' ? b.common_name : b.scientific_name) ?? ''
+				return na.localeCompare(nb)
+			})
+			if (!sortUp) list = list.toReversed()
+		}
+		return list
+	}, [allSpecies, activeSearch, sortKey, sortUp])
 
-	const applySortToList = (list: Species[], key: string, up: boolean): Species[] => {
-		if (!key) return list
-		const sorted = [...list].sort((a, b) => {
-			const na = (key === 'common_name' ? a.common_name : a.scientific_name) ?? ''
-			const nb = (key === 'common_name' ? b.common_name : b.scientific_name) ?? ''
-			return na.localeCompare(nb)
-		})
-		return up ? sorted : sorted.toReversed()
-	}
+	const searchCount = activeSearch ? displayedSpecies.length : 0
 
 	const handleSortChange = (value: string) => {
 		if (value === 'reset') {
 			setSortKey('')
-			setIsSorted(false)
 			setSortUp(true)
-			setDisplayedSpecies(allSpecies ?? [])
 			return
 		}
 		setSortKey(value)
-		setIsSorted(true)
-		setDisplayedSpecies(applySortToList(displayedSpecies, value, sortUp))
 	}
 
 	const handleToggleDirection = () => {
-		const next = !sortUp
-		setSortUp(next)
-		if (isSorted) setDisplayedSpecies((prev) => [...prev].toReversed())
+		setSortUp((prev) => !prev)
 	}
 
 	const handleSearch = () => {
-		if (!search.trim()) {
-			const base = allSpecies ?? []
-			setDisplayedSpecies(sortKey ? applySortToList(base, sortKey, sortUp) : base)
-			setSearchCount(0)
-			return
-		}
-		const val = search.trim().toLowerCase()
-		const results = (allSpecies ?? []).filter(
-			(s) => s.common_name?.toLowerCase().includes(val) || s.scientific_name?.toLowerCase().includes(val)
-		)
-		const sorted = sortKey ? applySortToList(results, sortKey, sortUp) : results
-		setDisplayedSpecies(sorted)
-		setSearchCount(sorted.length)
+		setActiveSearch(search)
 	}
 
 	const handleSearchChange = (val: string) => {
 		setSearch(val)
-		if (val.trim() === '') {
-			const base = allSpecies ?? []
-			setDisplayedSpecies(sortKey ? applySortToList(base, sortKey, sortUp) : base)
-			setSearchCount(0)
-		}
+		if (val.trim() === '') setActiveSearch('')
 	}
 
 	const handleClearSearch = () => {
 		setSearch('')
-		const base = allSpecies ?? []
-		setDisplayedSpecies(sortKey ? applySortToList(base, sortKey, sortUp) : base)
-		setSearchCount(0)
+		setActiveSearch('')
 	}
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -98,7 +79,8 @@ export function SpeciesAdminTable() {
 		}
 	}
 
-	const containerHeight = Math.min((displayedSpecies.length || 1) * ROW_HEIGHT + 8, MAX_HEIGHT)
+	const [listHeight, setListHeight] = useState(ROW_HEIGHT)
+	const containerHeight = Math.min(listHeight, MAX_HEIGHT)
 
 	return (
 		<div className='space-y-3'>
@@ -184,9 +166,10 @@ export function SpeciesAdminTable() {
 					<Virtuoso
 						style={{ height: `${containerHeight}px` }}
 						data={displayedSpecies}
+						totalListHeightChanged={setListHeight}
 						itemContent={(_, species) => (
 							<div className='p-2 pb-0 last:pb-2'>
-								<SpeciesAdminRow species={species} />
+								<SpeciesAdminRow key={species.id} species={species} />
 							</div>
 						)}
 					/>

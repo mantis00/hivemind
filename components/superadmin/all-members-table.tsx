@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
 import { useAllProfiles, type AllProfile } from '@/lib/react-query/queries'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -12,16 +12,18 @@ import getAccessLevelName from '@/context/access-levels'
 
 // Defined outside the component so the references are stable across renders
 const tableComponents: TableComponents<AllProfile> = {
-	Table: ({ style, ...props }) => <Table style={style} {...props} />,
-	TableHead: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>((props, ref) => (
-		<TableHeader ref={ref} {...props} />
-	)),
-	TableRow: ({ item: _item, ...props }: { item: AllProfile } & React.HTMLAttributes<HTMLTableRowElement>) => (
-		<TableRow {...props} />
+	Table: ({ style, ...props }) => <table style={style} className='w-full caption-bottom text-sm' {...props} />,
+	TableHead: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
+		function TableHeadWrapper(props, ref) {
+			return <TableHeader ref={ref} className='sticky top-0 z-10 bg-card [&_tr]:border-b' {...props} />
+		}
 	),
-	TableBody: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>((props, ref) => (
-		<TableBody ref={ref} {...props} />
-	))
+	TableRow: (props: { item: AllProfile } & React.HTMLAttributes<HTMLTableRowElement>) => <TableRow {...props} />,
+	TableBody: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
+		function TableBodyWrapper(props, ref) {
+			return <TableBody ref={ref} {...props} />
+		}
+	)
 }
 
 const HEADER_HEIGHT = 40
@@ -108,18 +110,23 @@ export function AllMembersTable() {
 						)}
 						itemContent={(index, profile) => (
 							<>
-								<TableCell ref={index === 0 ? measuredCellRef : undefined} className='font-medium'>
+								<TableCell
+									ref={index === 0 ? measuredCellRef : undefined}
+									className={`font-medium ${index % 2 === 1 ? 'bg-muted/40' : ''}`}
+								>
 									{profile.full_name || '—'}
 								</TableCell>
-								<TableCell className='text-muted-foreground'>{profile.email}</TableCell>
-								<TableCell className='text-center'>
+								<TableCell className={`text-muted-foreground ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+									{profile.email}
+								</TableCell>
+								<TableCell className={`text-center ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
 									{profile.is_superadmin ? (
 										<Badge variant='default'>Superadmin</Badge>
 									) : (
 										<Badge variant='secondary'>User</Badge>
 									)}
 								</TableCell>
-								<TableCell className='text-center'>
+								<TableCell className={`text-center ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
 									{profile.user_org_role?.length > 0 ? (
 										<div className='flex flex-wrap gap-1 justify-center'>
 											<TooltipProvider>
@@ -141,7 +148,7 @@ export function AllMembersTable() {
 										<span className='text-muted-foreground text-sm'>No orgs</span>
 									)}
 								</TableCell>
-								<TableCell className='text-muted-foreground text-sm'>
+								<TableCell className={`text-muted-foreground text-sm ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
 									{profile.updated_at
 										? new Date(profile.updated_at).toLocaleDateString(undefined, {
 												year: 'numeric',
