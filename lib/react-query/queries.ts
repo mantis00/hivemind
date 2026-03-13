@@ -1034,7 +1034,7 @@ export function usePushSubscriptionsForUser(userId: string | undefined) {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('push_subscriptions')
-				.select('id, endpoint, is_active, created_at, updated_at')
+				.select('*')
 				.eq('user_id', userId)
 				.eq('is_active', true)) as { data: PushSubscription[] | null; error: PostgrestError | null }
 			if (error) throw error
