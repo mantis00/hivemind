@@ -5,6 +5,18 @@ import { toast } from 'sonner'
 import { Species } from './queries'
 import { PostgrestError } from '@supabase/supabase-js'
 
+export async function markEnclosuresPrinted(supabase: SupabaseClient, enclosureIds: string[]) {
+	const batchSize = 200
+
+	for (let i = 0; i < enclosureIds.length; i += batchSize) {
+		const batch = enclosureIds.slice(i, i + batchSize)
+
+		const { error } = await supabase.from('enclosures').update({ printed: true }).in('id', batch)
+
+		if (error) throw error
+	}
+}
+
 export function useCreateOrg() {
 	const queryClient = useQueryClient()
 

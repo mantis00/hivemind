@@ -1,4 +1,5 @@
 'use client'
+
 import { type OrgSpecies, type Enclosure, useOrgEnclosuresForSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
@@ -21,14 +22,14 @@ export default function SpeciesRow({
 	sortKey,
 	selectMode,
 	selectedIds,
-	onSelectChange
+	onSelectChange, // optional, for CSV export
 }: {
 	species: OrgSpecies
 	onDetailsOpenChange: () => void
 	sortKey: string
 	selectMode: boolean
 	selectedIds: Set<UUID>
-	onSelectChange: (enclosureId: UUID, checked: boolean) => void
+	onSelectChange?: (id: UUID, checked: boolean) => void
 }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
@@ -40,7 +41,7 @@ export default function SpeciesRow({
 	const [dialogOpen, setDialogOpen] = useState(false)
 	const [detailsOpen, setDetailsOpen] = useState(false)
 
-	// Derive the latest enclosure data from the passed list so the dialog always shows fresh data
+	// Always show fresh enclosure data in dialog
 	const currentEnclosure = selectedEnclosure
 		? (enclosures?.find((e) => e.id === selectedEnclosure.id) ?? selectedEnclosure)
 		: null
@@ -48,6 +49,12 @@ export default function SpeciesRow({
 	const handleEnclosureClick = (enclosure: Enclosure) => {
 		setSelectedEnclosure(enclosure)
 		setDialogOpen(true)
+	}
+
+	const handleSelectChange = (id: UUID, checked: boolean) => {
+		// Update selectedIds is handled in parent
+		// CSV export also called via onSelectChange prop
+		onSelectChange?.(id, checked)
 	}
 
 	return (
@@ -108,12 +115,14 @@ export default function SpeciesRow({
 
 					<CollapsibleContent>
 						<div className='border-t bg-muted/30 p-2'>
-							{/* Enclosures Virtuoso list */}
 							{enclosures?.length && enclosures?.length > 0 ? (
 								<div className='rounded-md border bg-background'>
 									<Virtuoso
 										style={{
-											height: enclosures?.length && enclosures?.length <= 4 ? `${enclosures?.length * 114}px` : '352px'
+											height:
+												enclosures?.length && enclosures?.length <= 4
+													? `${enclosures?.length * 114}px`
+													: '352px',
 										}}
 										data={enclosures}
 										itemContent={(index, enclosure) => (
@@ -123,7 +132,9 @@ export default function SpeciesRow({
 													onClick={() => handleEnclosureClick(enclosure)}
 													selectable={selectMode}
 													selected={selectedIds.has(enclosure.id)}
-													onSelectChange={(checked) => onSelectChange(enclosure.id, checked)}
+													onSelectChange={(checked) => {
+														handleSelectChange(enclosure.id, checked)
+													}}
 												/>
 											</div>
 										)}
