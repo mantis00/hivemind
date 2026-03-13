@@ -12,7 +12,7 @@ export default async function Page({ params }: { params: { orgId: string } }) {
 				</div>
 				<div className='flex flex-col gap-4'>
 					<p className='text-sm text-muted-foreground'>Manage your organization&apos;s enclosures and details</p>
-					<ExportQR orgId={params.orgId} />
+					{/* <ExportQR orgId={params.orgId} /> */}
 					<EnclosureGrid />
 				</div>
 			</div>

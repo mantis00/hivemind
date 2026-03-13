@@ -27,6 +27,8 @@ export default function EnclosureGrid() {
 	const [isSorted, setIsSorted] = useState(false)
 	const [sortKey, setSortKey] = useState('')
 
+	const [selectedEnclosures, setSelectedEnclosures] = useState<Set<String>>(new Set())
+
 	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>([])
 	const [itemHeight, setItemHeight] = useState<number>(114)
 	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
@@ -65,6 +67,50 @@ export default function EnclosureGrid() {
 			setDisplayedSpecies(temp)
 		}
 	}, [sortUp])
+
+	const handleSelectionChange = (id: string, checked: boolean) => {
+	setSelectedEnclosures((prev) => {
+		const next = new Set(prev)
+
+		if (checked) {
+			next.add(id)
+		} else {
+			next.delete(id)
+		}
+
+		return next
+		})
+	}
+
+	const exportSelected = async () => {
+		if (selectedEnclosures.size === 0) return
+
+		const response = await fetch(`/api/orgs/${orgId}/exportQR`, {
+  		method: 'POST',
+  		headers: {
+    		'Content-Type': 'application/json'
+  		},
+  		body: JSON.stringify({
+    		enclosureIds: Array.from(selectedEnclosures)
+  		  })
+		})
+
+		if (!response.ok) {
+			console.error("CSV export failed")
+			return
+		}
+
+		const blob = await response.blob()
+
+		const url = window.URL.createObjectURL(blob)
+
+		const a = document.createElement('a')
+		a.href = url
+		a.download = 'selected-enclosures.csv'
+		a.click()
+
+		window.URL.revokeObjectURL(url)
+	}
 
 	const handleSortChange = (sortOn: string) => {
 		if (!displayedSpecies?.length) return
@@ -221,6 +267,14 @@ export default function EnclosureGrid() {
 					</InputGroup>
 				</div>
 
+				{selectedEnclosures.size > 0 && (
+					<div className="mb-3 flex justify-end">
+						<Button onClick={exportSelected}>
+							Export {selectedEnclosures.size} Selected enclosures to CSV
+						</Button>
+					</div>
+				)}
+
 				{/* Species Virtuoso Table */}
 				{isLoading ? (
 					<div className='rounded-lg border bg-card p-2 space-y-2'>
@@ -261,7 +315,11 @@ export default function EnclosureGrid() {
 								totalListHeightChanged={handleTotalListHeightChanged}
 								itemContent={(index, sp) => (
 									<div className='p-2 pb-0 last:pb-2'>
-										<SpeciesRow species={sp} />
+										{/* <SpeciesRow species={sp} /> */}
+										<SpeciesRow
+											species={sp}
+											onSelectChange={handleSelectionChange}
+										/>
 									</div>
 								)}
 							/>
