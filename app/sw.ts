@@ -67,7 +67,20 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
 	event.notification.close()
 
-	const url = event.notification.data?.url || '/'
+	const urlData = event.notification.data?.url
+	let url = '/'
+
+	if (typeof urlData === 'string' && urlData.trim() !== '') {
+		try {
+			const parsed = new URL(urlData, self.location.origin)
+
+			if (parsed.origin === self.location.origin) {
+				url = parsed.pathname + parsed.search + parsed.hash
+			}
+		} catch {
+			// If parsing fails, keep the safe default '/'
+		}
+	}
 
 	event.waitUntil(
 		self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
