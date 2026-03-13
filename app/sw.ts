@@ -13,6 +13,26 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope
 
+type PushPayload = {
+	title?: string
+	body?: string
+	id?: string
+	url?: string
+}
+
+function toPushPayload(value: unknown): PushPayload {
+	if (!value || typeof value !== 'object') return {}
+
+	const payload = value as Record<string, unknown>
+
+	return {
+		title: typeof payload.title === 'string' ? payload.title : undefined,
+		body: typeof payload.body === 'string' ? payload.body : undefined,
+		id: typeof payload.id === 'string' ? payload.id : undefined,
+		url: typeof payload.url === 'string' ? payload.url : undefined
+	}
+}
+
 const serwist = new Serwist({
 	precacheEntries: self.__SW_MANIFEST,
 	skipWaiting: true,
@@ -33,9 +53,9 @@ const serwist = new Serwist({
 self.addEventListener('push', (event) => {
 	if (!event.data) return
 
-	let data: any
+	let data: PushPayload
 	try {
-		data = event.data.json()
+		data = toPushPayload(event.data.json())
 	} catch {
 		try {
 			const text = event.data.text()
