@@ -1036,7 +1036,13 @@ type DashboardTaskRow = {
 	enclosures: { id: UUID; name: string | null } | { id: UUID; name: string | null }[] | null
 }
 
-type DashboardTaskSummary = Pick<Task, 'name' | 'description' | 'due_date' | 'completed_time' | 'priority'>
+type DashboardTaskSummary = {
+	name: string | null
+	description: string | null
+	due_date: string | null
+	completed_time: string | null
+	priority: string | null
+}
 
 function getServerDayBounds(reference: Date = new Date()) {
 	const start = new Date(
@@ -1078,7 +1084,7 @@ function isValidDate(value: string | null) {
 	return !Number.isNaN(new Date(value).getTime())
 }
 
-function isHighPriority(priority: Task['priority']) {
+function isHighPriority(priority: string | null) {
 	if (typeof priority !== 'string') {
 		return false
 	}
