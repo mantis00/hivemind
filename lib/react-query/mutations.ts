@@ -1027,7 +1027,8 @@ export function useCreateSchedule() {
 			priority,
 			time_window,
 			end_date,
-			max_occurrences
+			max_occurrences,
+			advance_task_count
 		}: {
 			enclosure_id: UUID
 			template_id: UUID | null
@@ -1040,6 +1041,7 @@ export function useCreateSchedule() {
 			time_window: string
 			end_date: string | null
 			max_occurrences: number | null
+			advance_task_count?: number
 		}) => {
 			const supabase = createClient()
 
@@ -1057,6 +1059,7 @@ export function useCreateSchedule() {
 					time_window,
 					end_date,
 					max_occurrences,
+					advance_task_count,
 					is_active: true
 				})
 				.select()

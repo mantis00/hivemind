@@ -70,6 +70,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 	const [flexEndCount, setFlexEndCount] = useState('10')
 
 	// Fixed recurring
+	const [advanceTaskCount, setAdvanceTaskCount] = useState('7')
 	const [fixedSelectedDays, setFixedSelectedDays] = useState<number[]>([])
 	const [fixedEnds, setFixedEnds] = useState<EndsType>('never')
 	const [fixedEndDate, setFixedEndDate] = useState<Date | undefined>(undefined)
@@ -118,6 +119,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 		setFlexEnds('never')
 		setFlexEndDate(undefined)
 		setFlexEndCount('10')
+		setAdvanceTaskCount('')
 		setFixedSelectedDays([])
 		setFixedEnds('never')
 		setFixedEndDate(undefined)
@@ -193,6 +195,11 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 				toast.error('Please select at least one weekday.')
 				return
 			}
+			const parsedAdvanceCount = parseInt(advanceTaskCount, 10)
+			if (!parsedAdvanceCount || parsedAdvanceCount < 1) {
+				toast.error('Advance task count must be at least 1.')
+				return
+			}
 			createSchedule.mutate(
 				{
 					enclosure_id: enclosureId,
@@ -205,7 +212,8 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 					priority,
 					time_window: timeWindow,
 					end_date: fixedEnds === 'on-date' && fixedEndDate ? fixedEndDate.toISOString() : null,
-					max_occurrences: fixedEnds === 'after-x' ? parseInt(fixedEndCount, 10) || null : null
+					max_occurrences: fixedEnds === 'after-x' ? parseInt(fixedEndCount, 10) || null : null,
+					advance_task_count: parsedAdvanceCount
 				},
 				{ onSuccess }
 			)
@@ -396,6 +404,29 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 						onFixedEndCountChange={setFixedEndCount}
 					/>
 				</div>
+
+				{/* ── Advance Task Count (fixed schedules only) ── */}
+				{scheduleType === 'fixed' && (
+					<div className='space-y-1'>
+						<div className='flex items-center justify-between'>
+							<Label className='text-sm'>
+								Advance Task Count <span className='text-destructive'>*</span>
+							</Label>
+							<span className='text-xs text-muted-foreground'>tasks to generate ahead</span>
+						</div>
+						<Input
+							type='number'
+							min={1}
+							placeholder='e.g. 7'
+							value={advanceTaskCount}
+							onChange={(e) => setAdvanceTaskCount(e.target.value)}
+							className='w-32'
+						/>
+						<p className='text-xs text-muted-foreground'>
+							How many future tasks to generate at a time for this schedule.
+						</p>
+					</div>
+				)}
 			</div>
 		</ResponsiveDialogDrawer>
 	)

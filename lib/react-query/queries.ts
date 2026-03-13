@@ -169,6 +169,7 @@ export type EnclosureSchedule = {
 	end_date: string | null
 	max_occurrences: number | null
 	occurrence_count: number
+	advance_task_count: number
 }
 
 export type TaskFormData = {
