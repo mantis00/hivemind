@@ -33,7 +33,23 @@ const serwist = new Serwist({
 self.addEventListener('push', (event) => {
 	if (!event.data) return
 
-	const data = event.data.json()
+	let data: any
+	try {
+		data = event.data.json()
+	} catch {
+		try {
+			const text = event.data.text()
+			data = {
+				title: 'Notification',
+				body: text
+			}
+		} catch {
+			data = {
+				title: 'Notification',
+				body: ''
+			}
+		}
+	}
 
 	event.waitUntil(
 		self.registration.showNotification(data.title ?? 'Notification', {
