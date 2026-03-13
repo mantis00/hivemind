@@ -14,8 +14,7 @@ import {
 	getCurrentPushSubscription,
 	getOrgIdFromPathname,
 	getPushCapability,
-	requestPushPermission,
-	unsubscribeCurrentPushSubscription
+	requestPushPermission
 } from '@/context/push-subscription'
 
 export function NotificationsSection() {
@@ -122,22 +121,8 @@ export function NotificationsSection() {
 		if (!user) return
 
 		try {
-			let endpointToDisable: string | null | undefined = null
-
-			// First, try to unsubscribe at the browser/service worker level and
-			// capture the endpoint that was unsubscribed.
-			try {
-				endpointToDisable = await unsubscribeCurrentPushSubscription()
-			} catch (err) {
-				console.error('Browser push unsubscribe failed:', err)
-			}
-
-			// If we didn't get an endpoint from the browser-level unsubscribe,
-			// fall back to any existing subscription or the last known device endpoint.
-			if (!endpointToDisable) {
-				const existingSubscription = await getCurrentPushSubscription()
-				endpointToDisable = existingSubscription?.endpoint ?? deviceEndpoint
-			}
+			const existingSubscription = await getCurrentPushSubscription()
+			const endpointToDisable = existingSubscription?.endpoint ?? deviceEndpoint
 
 			if (!endpointToDisable) {
 				toaster.info('No active push subscription found on this device.')
