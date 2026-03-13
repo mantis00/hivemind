@@ -884,29 +884,33 @@ export function useUpdateTaskTemplate() {
 	})
 }
 
-export function useDeleteTaskTemplate() {
+export function useToggleTaskTemplate() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ templateId }: { templateId: UUID; speciesId: UUID }) => {
+		mutationFn: async ({ templateId, is_active }: { templateId: UUID; speciesId: UUID; is_active: boolean }) => {
 			const supabase = createClient()
 
-			const { error: deleteQuestionsError } = await supabase
-				.from('question_templates')
-				.delete()
-				.eq('task_template_id', templateId)
-
-			if (deleteQuestionsError) throw deleteQuestionsError
-
-			const { error } = await supabase.from('task_templates').delete().eq('id', templateId)
+			const { error } = await supabase.from('task_templates').update({ is_active }).eq('id', templateId)
 			if (error) throw error
+
+			// When disabling a template, also disable any schedules that reference it
+			if (!is_active) {
+				const { error: scheduleError } = await supabase
+					.from('enclosure_schedules')
+					.update({ is_active: false })
+					.eq('template_id', templateId)
+					.eq('is_active', true)
+				if (scheduleError) throw scheduleError
+			}
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
 			queryClient.invalidateQueries({ queryKey: ['taskTemplatesForOrgSpecies'] })
-			toast.success('Template deleted!')
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success(variables.is_active ? 'Template enabled!' : 'Template disabled!')
 		}
 	})
 }
@@ -1468,6 +1472,32 @@ export function useToggleScheduleActive() {
 	return useMutation({
 		mutationFn: async ({ scheduleId, is_active }: { scheduleId: UUID; is_active: boolean }) => {
 			const supabase = createClient()
+
+			// When re-enabling, check if the linked template is still active
+			if (is_active) {
+				const { data: schedule, error: scheduleError } = await supabase
+					.from('enclosure_schedules')
+					.select('template_id')
+					.eq('id', scheduleId)
+					.single()
+				if (scheduleError) throw scheduleError
+
+				if (schedule.template_id) {
+					const { data: template, error: templateError } = await supabase
+						.from('task_templates')
+						.select('is_active')
+						.eq('id', schedule.template_id)
+						.single()
+					if (templateError) throw templateError
+
+					if (!template.is_active) {
+						throw new Error(
+							'A superadmin has disabled the task template for this schedule. It cannot be re-enabled until the template is re-enabled.'
+						)
+					}
+				}
+			}
+
 			const { error } = await supabase.from('enclosure_schedules').update({ is_active }).eq('id', scheduleId)
 			if (error) throw error
 		},
