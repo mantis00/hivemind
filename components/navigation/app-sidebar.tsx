@@ -209,7 +209,7 @@ export function AppSidebar() {
 													<span>Enclosures</span>
 												</Link>
 											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
+										</SidebarMenuSubItem>{' '}
 										<SidebarMenuSubItem>
 											<SidebarMenuSubButton asChild>
 												<Link
@@ -220,7 +220,7 @@ export function AppSidebar() {
 													<span>Tasks</span>
 												</Link>
 											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
+										</SidebarMenuSubItem>{' '}
 										<SidebarMenuSubItem>
 											<SidebarMenuSubButton asChild>
 												<Link
@@ -231,7 +231,7 @@ export function AppSidebar() {
 													<span>Task Schedules</span>
 												</Link>
 											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
+										</SidebarMenuSubItem>{' '}
 									</SidebarMenuSub>
 								)}
 							</SidebarMenuItem>
