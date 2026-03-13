@@ -15,6 +15,10 @@ import { Skeleton } from '../ui/skeleton'
 import { UUID } from 'crypto'
 import { useIsMobile } from '@/hooks/use-mobile'
 
+import { getEnclosuresByIds } from '@/lib/react-query/queries'
+import { markEnclosuresPrinted } from '@/lib/react-query/mutations'
+import { createClient } from '@/lib/supabase/client'
+
 export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
@@ -83,33 +87,51 @@ export default function EnclosureGrid() {
 	}
 
 	const exportSelected = async () => {
-		if (selectedEnclosures.size === 0) return
+		try {
+			const supabase = createClient()
 
-		const response = await fetch(`/api/orgs/${orgId}/exportQR`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				enclosureIds: Array.from(selectedEnclosures)
+			const enclosureIds = Array.from(selectedEnclosures)
+
+			if (enclosureIds.length === 0) {
+				console.warn('No enclosures selected')
+				return
+			}
+
+			const data = await getEnclosuresByIds(supabase, orgId, enclosureIds)
+
+			if (!data) return
+
+			await markEnclosuresPrinted(supabase, enclosureIds)
+
+			const baseUrl = window.location.origin
+
+			const headers = ['alpha_code', 'common_name', 'scientific_name', 'url']
+
+			const rows = data.map((enc: any) => {
+				const scientific = enc.org_species?.species?.scientific_name ?? ''
+
+				const common = enc.org_species?.custom_common_name || enc.org_species?.species?.common_name || ''
+
+				const url = `${baseUrl}/protected/orgs/${orgId}/enclosures/${enc.id}`
+
+				return [enc.alpha_code, `"${common}"`, `"${scientific}"`, url]
 			})
-		})
 
-		if (!response.ok) {
-			console.error('CSV export failed')
-			return
+			const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
+
+			const blob = new Blob([csv], { type: 'text/csv' })
+
+			const url = URL.createObjectURL(blob)
+
+			const a = document.createElement('a')
+			a.href = url
+			a.download = 'enclosures.csv'
+			a.click()
+
+			URL.revokeObjectURL(url)
+		} catch (err) {
+			console.error('CSV export failed', err)
 		}
-
-		const blob = await response.blob()
-
-		const url = window.URL.createObjectURL(blob)
-
-		const a = document.createElement('a')
-		a.href = url
-		a.download = 'selected-enclosures.csv'
-		a.click()
-
-		window.URL.revokeObjectURL(url)
 	}
 
 	const handleSortChange = (sortOn: string) => {

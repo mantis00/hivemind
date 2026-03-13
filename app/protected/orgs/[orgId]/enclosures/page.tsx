@@ -1,6 +1,6 @@
 import EnclosureGrid from '@/components/enclosures/enclosure-grid'
 import { Warehouse } from 'lucide-react'
-import ExportQR from './exportQR'
+import ExportQR from '@/components/enclosures/exportQR'
 
 export default async function Page({ params }: { params: { orgId: string } }) {
 	return (

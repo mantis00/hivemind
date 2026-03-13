@@ -3,6 +3,18 @@ import { createClient } from '@/lib/supabase/client'
 import { UUID } from 'crypto'
 import { toast } from 'sonner'
 
+export async function markEnclosuresPrinted(supabase: SupabaseClient, enclosureIds: string[]) {
+	const batchSize = 200
+
+	for (let i = 0; i < enclosureIds.length; i += batchSize) {
+		const batch = enclosureIds.slice(i, i + batchSize)
+
+		const { error } = await supabase.from('enclosures').update({ printed: true }).in('id', batch)
+
+		if (error) throw error
+	}
+}
+
 export function useCreateOrg() {
 	const queryClient = useQueryClient()
 

@@ -145,6 +145,39 @@ export type Task = {
 	time_to_completion: string | null
 }
 
+export async function getEnclosuresByIds(supabase: SupabaseClient, orgId: string, enclosureIds: string[]) {
+	const { data, error } = await supabase
+		.from('enclosures')
+		.select(
+			`
+      id,
+      alpha_code,
+      printed,
+      org_species:species_id (
+        custom_common_name,
+        species:master_species_id (
+          scientific_name,
+          common_name
+        )
+      )
+    `
+		)
+		.in('id', enclosureIds)
+		.eq('org_id', orgId)
+
+	if (error) throw error
+
+	return data
+}
+
+export async function getEnclosuresForExport(
+	supabase: SupabaseClient,
+	orgId: string,
+	sort: string,
+	printed: string,
+	limit: number
+)
+
 export function useUserOrgs(userId: string) {
 	return useQuery({
 		queryKey: ['orgs', userId],
