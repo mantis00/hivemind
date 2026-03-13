@@ -24,13 +24,13 @@ export function KpiStrip({ kpis, completedToday, atRiskEnclosures }: KpiStripPro
 		{
 			key: 'at-risk-enclosures',
 			label: 'At-Risk Enclosures',
-			helperText: 'Enclosures with overdue or urgent work',
+			helperText: 'Enclosures with overdue or high-priority work',
 			value: atRiskEnclosures
 		},
 		{
 			key: 'attention-needed',
 			label: 'Attention Needed',
-			helperText: 'Overdue or urgent tasks requiring triage',
+			helperText: 'Overdue or high-priority tasks requiring triage',
 			value: kpis.alerts
 		}
 	]

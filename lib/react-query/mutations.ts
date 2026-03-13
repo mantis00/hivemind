@@ -393,6 +393,7 @@ export function useCreateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure created!')
 		}
 	})
@@ -420,6 +421,7 @@ export function useDeleteEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure deleted.')
 		}
 	})
@@ -447,6 +449,7 @@ export function useBatchDeleteEnclosures() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosures deleted.')
 		}
 	})
@@ -516,6 +519,7 @@ export function useUpdateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure updated!')
 		}
 	})
@@ -919,17 +923,20 @@ export function useStartTask() {
 				throw new Error('Task ID missing!')
 			}
 
+			// Start-time tracking is intentionally disabled for now.
 			const { error } = await supabase
 				.from('tasks')
-				.update({ status: 'in_progress', start_time: new Date().toISOString() })
+				.select('id')
 				.eq('id', task_id)
 				.eq('enclosure_id', enclosure_id)
+				.single()
 
 			if (error) throw error
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 		}
 	})
 }
@@ -956,6 +963,7 @@ export function useCompleteTask() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 		}
 	})
 }
@@ -1007,6 +1015,7 @@ export function useCreateTask() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Task created!')
 		}
 	})
@@ -1068,6 +1077,7 @@ export function useCreateSchedule() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Recurring schedule created!')
 		}
 	})
@@ -1117,6 +1127,7 @@ export function useSubmitTaskForm() {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Task completed!')
 		}
 	})
@@ -1363,6 +1374,7 @@ export function useDeleteSpeciesFromOrg() {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Species removed from organization')
 		}
 	})
@@ -1412,6 +1424,7 @@ export function useDeleteBatchSpeciesFromOrg() {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Removed species from organization')
 		}
 	})

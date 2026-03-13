@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { UUID } from 'crypto'
-import { useMemo } from 'react'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 
 export type Org = {
@@ -272,6 +271,11 @@ export type DashboardData = {
 	upcomingSchedule: UpcomingScheduleItem[]
 	recentActivity: RecentActivityItem[]
 	warnings: DashboardWarning[]
+}
+
+export type DashboardAtRiskData = {
+	items: AtRiskEnclosureSummary[]
+	attentionNeededCount: number
 }
 
 export function useUserOrgs(userId: string) {
@@ -1016,57 +1020,38 @@ export function useSchedulesForEnclosures(enclosureIds: UUID[]) {
 	})
 }
 
-const DASHBOARD_OPEN_TASK_STATUSES = new Set(['pending', 'in_progress', 'in-progress'])
-const DASHBOARD_CLOSED_TASK_STATUS = 'completed'
-const DASHBOARD_DEFAULT_TIME_ZONE = 'UTC'
+export const DASHBOARD_SERVER_TIME_ZONE = 'UTC'
+const DASHBOARD_MAX_AT_RISK_ITEMS = 5
 const DASHBOARD_MAX_RECENT_ACTIVITY_ITEMS = 10
 
-function createEmptyDashboardData(timeZone: string): DashboardData {
-	return {
-		generatedAt: new Date().toISOString(),
-		timeZone,
-		kpis: {
-			activeEnclosures: 0,
-			tasksDueToday: 0,
-			upcomingTasks: 0,
-			alerts: 0
-		},
-		atRiskEnclosures: [],
-		upcomingSchedule: [],
-		recentActivity: [],
-		warnings: []
-	}
+type DashboardTaskRow = {
+	id: UUID
+	enclosure_id: UUID | null
+	name: string | null
+	description: string | null
+	due_date: string | null
+	priority: string | null
+	status: string | null
+	completed_time: string | null
+	enclosures: { id: UUID; name: string | null } | { id: UUID; name: string | null }[] | null
 }
 
-function isValidTimeZone(timeZone: string) {
-	try {
-		new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date())
-		return true
-	} catch {
-		return false
-	}
+type DashboardTaskSummary = Pick<Task, 'name' | 'description' | 'due_date' | 'completed_time' | 'priority'>
+
+function getServerDayBounds(reference: Date = new Date()) {
+	const start = new Date(
+		Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), reference.getUTCDate(), 0, 0, 0, 0)
+	)
+	const end = new Date(start)
+	end.setUTCDate(end.getUTCDate() + 1)
+	return { start, end }
 }
 
-function getClientTimeZone() {
-	if (typeof window === 'undefined') {
-		return DASHBOARD_DEFAULT_TIME_ZONE
+function getDashboardTaskEnclosure(task: DashboardTaskRow) {
+	if (!task.enclosures) {
+		return null
 	}
-
-	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-	if (typeof timeZone === 'string' && timeZone.length > 0 && isValidTimeZone(timeZone)) {
-		return timeZone
-	}
-
-	return DASHBOARD_DEFAULT_TIME_ZONE
-}
-
-function getDateKeyInTimeZone(date: Date, timeZone: string) {
-	return new Intl.DateTimeFormat('en-CA', {
-		timeZone,
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit'
-	}).format(date)
+	return Array.isArray(task.enclosures) ? (task.enclosures[0] ?? null) : task.enclosures
 }
 
 function compareNullableIsoDatesAsc(a: string | null, b: string | null) {
@@ -1093,28 +1078,6 @@ function isValidDate(value: string | null) {
 	return !Number.isNaN(new Date(value).getTime())
 }
 
-function isTaskOpen(task: Task) {
-	if (task.completed_time) {
-		return false
-	}
-
-	if (!task.status) {
-		return true
-	}
-
-	const normalized = task.status.trim().toLowerCase()
-	if (normalized === DASHBOARD_CLOSED_TASK_STATUS) {
-		return false
-	}
-
-	if (DASHBOARD_OPEN_TASK_STATUSES.has(normalized)) {
-		return true
-	}
-
-	// Keep unknown statuses visible so old/test rows do not disappear silently.
-	return true
-}
-
 function isHighPriority(priority: Task['priority']) {
 	if (typeof priority !== 'string') {
 		return false
@@ -1122,7 +1085,7 @@ function isHighPriority(priority: Task['priority']) {
 	return priority.trim().toLowerCase() === 'high'
 }
 
-function getTaskTitle(task: Task) {
+function getTaskTitle(task: DashboardTaskSummary) {
 	if (task.name && task.name.trim().length > 0) {
 		return task.name.trim()
 	}
@@ -1132,225 +1095,244 @@ function getTaskTitle(task: Task) {
 	return 'Task'
 }
 
-function wasTaskOverdueWhenCompleted(task: Task) {
+function wasTaskOverdueWhenCompleted(task: DashboardTaskSummary) {
 	if (!isValidDate(task.completed_time) || !isValidDate(task.due_date)) {
 		return false
 	}
 	return new Date(task.completed_time!).getTime() > new Date(task.due_date!).getTime()
 }
 
-function getCompletionStateLabels(task: Task) {
+function getCompletionStateLabels(task: DashboardTaskSummary) {
 	const labels: string[] = []
 	if (wasTaskOverdueWhenCompleted(task)) {
 		labels.push('overdue when completed')
 	}
 	if (isHighPriority(task.priority)) {
-		labels.push('urgent when completed')
+		labels.push('high priority when completed')
 	}
 	return labels
 }
 
-function getErrorMessage(error: unknown) {
-	if (error instanceof Error && error.message) {
-		return error.message
-	}
-	return 'Unknown query error'
+export function useDashboardActiveEnclosureCount(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'activeEnclosureCount', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { count, error } = await supabase
+				.from('enclosures')
+				.select('id', { count: 'exact', head: true })
+				.eq('org_id', orgId as UUID)
+				.eq('is_active', true)
+			if (error) throw error
+			return count ?? 0
+		},
+		enabled: !!orgId
+	})
 }
 
-export function useDashboardData(orgId: UUID | undefined) {
-	const timeZone = useMemo(() => getClientTimeZone(), [])
-
-	const {
-		data: enclosureCount,
-		isLoading: isCountLoading,
-		error: enclosureCountError
-	} = useOrgEnclosureCount(orgId as UUID)
-	const { data: enclosures, isLoading: isEnclosuresLoading, error: enclosuresError } = useOrgEnclosures(orgId as UUID)
-	const enclosureIds = useMemo(() => (enclosures ?? []).map((enclosure) => enclosure.id as UUID), [enclosures])
-	const { data: tasks, isLoading: isTasksLoading, error: tasksError } = useTasksForEnclosures(enclosureIds)
-
-	const data = useMemo(() => {
-		const dashboardData = createEmptyDashboardData(timeZone)
-		const warnings = dashboardData.warnings
-
-		if (enclosureCountError) {
-			warnings.push({
-				stage: 'enclosures.count',
-				message: `Unable to load enclosure count (${getErrorMessage(enclosureCountError)}).`
-			})
-		}
-		if (enclosuresError) {
-			warnings.push({
-				stage: 'enclosures.select',
-				message: `Unable to load enclosure details (${getErrorMessage(enclosuresError)}).`
-			})
-		}
-		if (tasksError) {
-			warnings.push({
-				stage: 'tasks.select',
-				message: `Task metrics may be incomplete (${getErrorMessage(tasksError)}).`
-			})
-		}
-
-		const activeEnclosures = enclosureCount ?? 0
-		dashboardData.kpis.activeEnclosures = activeEnclosures
-
-		const enclosureRows = enclosures ?? []
-		if (activeEnclosures === 0 || enclosureRows.length === 0) {
-			return dashboardData
-		}
-
-		const orgIdString = orgId ? String(orgId) : ''
-		const enclosureNameById = new Map(
-			enclosureRows.map((enclosure) => [String(enclosure.id), enclosure.name ?? String(enclosure.id)])
-		)
-		const taskRows = tasks ?? []
-		const openTaskRows = taskRows.filter(isTaskOpen)
-		const now = new Date()
-		const todayKey = getDateKeyInTimeZone(now, timeZone)
-		const upcomingDateKeys = new Set<string>()
-		for (let dayOffset = 1; dayOffset <= 7; dayOffset += 1) {
-			const futureDate = new Date(now)
-			futureDate.setDate(futureDate.getDate() + dayOffset)
-			upcomingDateKeys.add(getDateKeyInTimeZone(futureDate, timeZone))
-		}
-
-		const highPrioritySoonThreshold = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-		const alertTaskIds = new Set<string>()
-		const riskByEnclosure = new Map<string, { overdueCount: number; highPriorityCount: number }>()
-		const nextDueByEnclosure = new Map<string, string>()
-
-		for (const task of openTaskRows) {
-			const enclosureId = task.enclosure_id ? String(task.enclosure_id) : null
-			if (!enclosureId || !isValidDate(task.due_date)) {
-				continue
+export function useDashboardAtRiskEnclosures(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'atRiskEnclosures', orgId],
+		queryFn: async (): Promise<DashboardAtRiskData> => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('tasks')
+				.select(
+					'id, enclosure_id, due_date, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
+				)
+				.eq('enclosures.org_id', orgId as UUID)
+				.eq('enclosures.is_active', true)
+				.is('completed_time', null)
+				.or('status.is.null,status.eq.pending,status.eq.late')) as {
+				data: DashboardTaskRow[] | null
+				error: PostgrestError | null
 			}
+			if (error) throw error
 
-			const dueDate = new Date(task.due_date!)
-			const dueDateKey = getDateKeyInTimeZone(dueDate, timeZone)
-			const dueDateIso = dueDate.toISOString()
-			const previousNextDue = nextDueByEnclosure.get(enclosureId)
-			if (!previousNextDue || compareNullableIsoDatesAsc(dueDateIso, previousNextDue) < 0) {
-				nextDueByEnclosure.set(enclosureId, dueDateIso)
-			}
+			const now = new Date()
+			const byEnclosure = new Map<string, AtRiskEnclosureSummary>()
+			const attentionTaskIds = new Set<string>()
 
-			if (dueDateKey === todayKey) {
-				dashboardData.kpis.tasksDueToday += 1
-			}
-			if (upcomingDateKeys.has(dueDateKey)) {
-				dashboardData.kpis.upcomingTasks += 1
-			}
+			for (const task of data ?? []) {
+				const enclosure = getDashboardTaskEnclosure(task)
+				const enclosureId = task.enclosure_id ? String(task.enclosure_id) : enclosure ? String(enclosure.id) : null
+				if (!enclosureId) {
+					continue
+				}
 
-			const isOverdue = dueDate < now
-			const hasHighPriority = isHighPriority(task.priority)
-			const isHighPrioritySoon = hasHighPriority && dueDate <= highPrioritySoonThreshold
+				const hasHighPriority = isHighPriority(task.priority)
+				const hasValidDueDate = isValidDate(task.due_date)
+				const isOverdue = hasValidDueDate ? new Date(task.due_date!).getTime() < now.getTime() : false
 
-			if (isOverdue || isHighPrioritySoon) {
-				alertTaskIds.add(String(task.id))
-			}
+				if (!isOverdue && !hasHighPriority) {
+					continue
+				}
 
-			if (isOverdue || hasHighPriority) {
-				const currentStats = riskByEnclosure.get(enclosureId) ?? { overdueCount: 0, highPriorityCount: 0 }
+				attentionTaskIds.add(String(task.id))
+
+				const existing = byEnclosure.get(enclosureId) ?? {
+					enclosureId,
+					enclosureName: enclosure?.name ?? enclosureId,
+					overdueCount: 0,
+					highPriorityCount: 0,
+					nextDueAt: null
+				}
+
 				if (isOverdue) {
-					currentStats.overdueCount += 1
+					existing.overdueCount += 1
 				}
 				if (hasHighPriority) {
-					currentStats.highPriorityCount += 1
+					existing.highPriorityCount += 1
 				}
-				riskByEnclosure.set(enclosureId, currentStats)
-			}
-		}
+				if (hasValidDueDate && compareNullableIsoDatesAsc(task.due_date, existing.nextDueAt) < 0) {
+					existing.nextDueAt = task.due_date
+				}
 
-		dashboardData.kpis.alerts = alertTaskIds.size
-		dashboardData.atRiskEnclosures = Array.from(riskByEnclosure.entries())
-			.map(([enclosureId, stats]) => ({
-				enclosureId,
-				enclosureName: enclosureNameById.get(enclosureId) ?? enclosureId,
-				overdueCount: stats.overdueCount,
-				highPriorityCount: stats.highPriorityCount,
-				nextDueAt: nextDueByEnclosure.get(enclosureId) ?? null
-			}))
-			.sort((a, b) => {
-				if (b.overdueCount !== a.overdueCount) {
-					return b.overdueCount - a.overdueCount
-				}
-				if (b.highPriorityCount !== a.highPriorityCount) {
-					return b.highPriorityCount - a.highPriorityCount
-				}
-				return compareNullableIsoDatesAsc(a.nextDueAt, b.nextDueAt)
-			})
-			.slice(0, 5)
-
-		dashboardData.upcomingSchedule = openTaskRows
-			.filter((task) => {
-				if (!task.enclosure_id || !isValidDate(task.due_date)) {
-					return false
-				}
-				const dueDateKey = getDateKeyInTimeZone(new Date(task.due_date!), timeZone)
-				return dueDateKey === todayKey
-			})
-			.sort((a, b) => {
-				const aUrgentSortOrder = isHighPriority(a.priority) ? 0 : 1
-				const bUrgentSortOrder = isHighPriority(b.priority) ? 0 : 1
-				if (aUrgentSortOrder !== bUrgentSortOrder) {
-					return aUrgentSortOrder - bUrgentSortOrder
-				}
-				return compareNullableIsoDatesAsc(a.due_date, b.due_date)
-			})
-			.map((task) => {
-				const enclosureId = String(task.enclosure_id)
-				return {
-					taskId: String(task.id),
-					enclosureId,
-					enclosureName: enclosureNameById.get(enclosureId) ?? enclosureId,
-					taskTitle: getTaskTitle(task),
-					dueAt: task.due_date,
-					priority: typeof task.priority === 'string' ? task.priority : null
-				}
-			})
-
-		const recentActivityCandidates: RecentActivityItem[] = []
-		for (const task of taskRows) {
-			const enclosureId = task.enclosure_id ? String(task.enclosure_id) : null
-			const enclosureName = enclosureId ? (enclosureNameById.get(enclosureId) ?? 'Enclosure') : 'Enclosure'
-			const taskTitle = getTaskTitle(task)
-			const href = enclosureId
-				? `/protected/orgs/${orgIdString}/enclosures/${enclosureId}`
-				: `/protected/orgs/${orgIdString}`
-
-			if (!isValidDate(task.completed_time)) {
-				continue
+				byEnclosure.set(enclosureId, existing)
 			}
 
-			const completedAt = task.completed_time!
-			const completedDateKey = getDateKeyInTimeZone(new Date(completedAt), timeZone)
-			if (completedDateKey !== todayKey) {
-				continue
+			const items = Array.from(byEnclosure.values())
+				.sort((a, b) => {
+					if (b.overdueCount !== a.overdueCount) {
+						return b.overdueCount - a.overdueCount
+					}
+					if (b.highPriorityCount !== a.highPriorityCount) {
+						return b.highPriorityCount - a.highPriorityCount
+					}
+					return compareNullableIsoDatesAsc(a.nextDueAt, b.nextDueAt)
+				})
+				.slice(0, DASHBOARD_MAX_AT_RISK_ITEMS)
+
+			return {
+				items,
+				attentionNeededCount: attentionTaskIds.size
+			}
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useDashboardTasksDueToday(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'tasksDueToday', orgId],
+		queryFn: async (): Promise<UpcomingScheduleItem[]> => {
+			const supabase = createClient()
+			const { start, end } = getServerDayBounds()
+			const { data, error } = (await supabase
+				.from('tasks')
+				.select(
+					'id, enclosure_id, name, description, due_date, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
+				)
+				.eq('enclosures.org_id', orgId as UUID)
+				.eq('enclosures.is_active', true)
+				.is('completed_time', null)
+				.or('status.is.null,status.eq.pending,status.eq.late')
+				.gte('due_date', start.toISOString())
+				.lt('due_date', end.toISOString())
+				.order('due_date', { ascending: true })) as { data: DashboardTaskRow[] | null; error: PostgrestError | null }
+			if (error) throw error
+
+			return (data ?? [])
+				.sort((a, b) => {
+					const aPrioritySort = isHighPriority(a.priority) ? 0 : 1
+					const bPrioritySort = isHighPriority(b.priority) ? 0 : 1
+					if (aPrioritySort !== bPrioritySort) {
+						return aPrioritySort - bPrioritySort
+					}
+					return compareNullableIsoDatesAsc(a.due_date, b.due_date)
+				})
+				.map((task) => {
+					const enclosure = getDashboardTaskEnclosure(task)
+					const enclosureId = task.enclosure_id ? String(task.enclosure_id) : enclosure ? String(enclosure.id) : ''
+					return {
+						taskId: String(task.id),
+						enclosureId,
+						enclosureName: enclosure?.name ?? enclosureId,
+						taskTitle: getTaskTitle(task),
+						dueAt: task.due_date,
+						priority: typeof task.priority === 'string' ? task.priority : null
+					}
+				})
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useDashboardUpcomingTaskCount(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'upcomingTaskCount', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { end: tomorrowStart } = getServerDayBounds()
+			const sevenDaysOut = new Date(tomorrowStart)
+			sevenDaysOut.setUTCDate(sevenDaysOut.getUTCDate() + 7)
+
+			const { count, error } = await supabase
+				.from('tasks')
+				.select('id, enclosures!inner(org_id, is_active)', { count: 'exact', head: true })
+				.eq('enclosures.org_id', orgId as UUID)
+				.eq('enclosures.is_active', true)
+				.is('completed_time', null)
+				.or('status.is.null,status.eq.pending,status.eq.late')
+				.gte('due_date', tomorrowStart.toISOString())
+				.lt('due_date', sevenDaysOut.toISOString())
+			if (error) throw error
+			return count ?? 0
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useDashboardRecentActivity(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'recentActivity', orgId],
+		queryFn: async (): Promise<RecentActivityItem[]> => {
+			const supabase = createClient()
+			const { start, end } = getServerDayBounds()
+			const { data, error } = (await supabase
+				.from('tasks')
+				.select(
+					'id, enclosure_id, name, description, due_date, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
+				)
+				.eq('enclosures.org_id', orgId as UUID)
+				.eq('enclosures.is_active', true)
+				.eq('status', 'completed')
+				.gte('completed_time', start.toISOString())
+				.lt('completed_time', end.toISOString())
+				.order('completed_time', { ascending: false })
+				.limit(DASHBOARD_MAX_RECENT_ACTIVITY_ITEMS)) as {
+				data: DashboardTaskRow[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+
+			const orgIdString = orgId ? String(orgId) : ''
+			const items: RecentActivityItem[] = []
+			for (const task of data ?? []) {
+				if (!isValidDate(task.completed_time)) {
+					continue
+				}
+
+				const enclosure = getDashboardTaskEnclosure(task)
+				const enclosureId = task.enclosure_id ? String(task.enclosure_id) : enclosure ? String(enclosure.id) : null
+				const enclosureName = enclosure?.name ?? 'Enclosure'
+				const href = enclosureId
+					? `/protected/orgs/${orgIdString}/enclosures/${enclosureId}`
+					: `/protected/orgs/${orgIdString}`
+				const completionStateLabels = getCompletionStateLabels(task)
+				const completionStateSuffix = completionStateLabels.length > 0 ? ` (${completionStateLabels.join(', ')})` : ''
+
+				items.push({
+					id: `task-completed-${task.id}`,
+					type: 'task_completed',
+					label: `${getTaskTitle(task)} completed in ${enclosureName}${completionStateSuffix}`,
+					occurredAt: task.completed_time!,
+					href
+				})
 			}
 
-			const completionStateLabels = getCompletionStateLabels(task)
-			const completionStateSuffix = completionStateLabels.length > 0 ? ` (${completionStateLabels.join(', ')})` : ''
-
-			recentActivityCandidates.push({
-				id: `task-completed-${task.id}`,
-				type: 'task_completed',
-				label: `${taskTitle} completed in ${enclosureName}${completionStateSuffix}`,
-				occurredAt: completedAt,
-				href
-			})
-		}
-
-		dashboardData.recentActivity = recentActivityCandidates
-			.sort((a, b) => compareIsoDatesDesc(a.occurredAt, b.occurredAt))
-			.slice(0, DASHBOARD_MAX_RECENT_ACTIVITY_ITEMS)
-
-		dashboardData.generatedAt = now.toISOString()
-		return dashboardData
-	}, [enclosureCount, enclosures, tasks, orgId, timeZone, enclosureCountError, enclosuresError, tasksError])
-
-	const criticalError = enclosureCountError ?? enclosuresError
-	const loadError = criticalError ? getErrorMessage(criticalError) : null
-	const isLoading = isCountLoading || isEnclosuresLoading || ((enclosures?.length ?? 0) > 0 && isTasksLoading)
-
-	return { data, isLoading, loadError }
+			return items.sort((a, b) => compareIsoDatesDesc(a.occurredAt, b.occurredAt))
+		},
+		enabled: !!orgId
+	})
 }

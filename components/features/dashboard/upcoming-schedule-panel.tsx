@@ -45,7 +45,7 @@ function StatItem({ label, value }: StatItemProps) {
 }
 
 export function UpcomingSchedulePanel({ orgId, items, kpis, timeZone }: UpcomingSchedulePanelProps) {
-	const urgentDueToday = items.filter((item) => item.priority?.toLowerCase() === 'high').length
+	const highPriorityDueToday = items.filter((item) => item.priority?.toLowerCase() === 'high').length
 	const previewItems = items.slice(0, 4)
 
 	return (
@@ -57,7 +57,7 @@ export function UpcomingSchedulePanel({ orgId, items, kpis, timeZone }: Upcoming
 			<CardContent className='space-y-4'>
 				<div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
 					<StatItem label='Due Today' value={kpis.tasksDueToday} />
-					<StatItem label='Urgent Today' value={urgentDueToday} />
+					<StatItem label='High Priority Today' value={highPriorityDueToday} />
 					<StatItem label='Next 7 Days' value={kpis.upcomingTasks} />
 					<StatItem label='Alerts' value={kpis.alerts} />
 				</div>
@@ -115,7 +115,7 @@ export function UpcomingSchedulePanel({ orgId, items, kpis, timeZone }: Upcoming
 									</div>
 									<div className='flex shrink-0 flex-col items-end gap-1'>
 										<Badge variant={item.priority?.toLowerCase() === 'high' ? 'destructive' : 'outline'}>
-											{item.priority?.toLowerCase() === 'high' ? 'Urgent' : (item.priority ?? 'Unspecified')}
+											{item.priority?.toLowerCase() === 'high' ? 'High Priority' : (item.priority ?? 'Unspecified')}
 										</Badge>
 										<p className='text-xs text-muted-foreground'>{formatDateTime(item.dueAt, timeZone)}</p>
 									</div>

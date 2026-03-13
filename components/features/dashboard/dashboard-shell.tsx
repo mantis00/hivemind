@@ -5,12 +5,104 @@ import type { UUID } from 'crypto'
 
 import { DashboardPage } from '@/components/features/dashboard/dashboard-page'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useDashboardData } from '@/lib/react-query/queries'
+import {
+	DASHBOARD_SERVER_TIME_ZONE,
+	type DashboardData,
+	useDashboardActiveEnclosureCount,
+	useDashboardAtRiskEnclosures,
+	useDashboardRecentActivity,
+	useDashboardTasksDueToday,
+	useDashboardUpcomingTaskCount
+} from '@/lib/react-query/queries'
+
+function getErrorMessage(error: unknown) {
+	if (error instanceof Error && error.message) {
+		return error.message
+	}
+	return 'Unknown dashboard query error'
+}
 
 export function DashboardShell() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
-	const { data, isLoading, loadError } = useDashboardData(orgId)
+
+	const {
+		data: activeEnclosures = 0,
+		isLoading: isActiveEnclosuresLoading,
+		error: activeEnclosuresError
+	} = useDashboardActiveEnclosureCount(orgId)
+	const { data: atRiskData, isLoading: isAtRiskLoading, error: atRiskError } = useDashboardAtRiskEnclosures(orgId)
+	const {
+		data: dueTodayTasks = [],
+		isLoading: isDueTodayLoading,
+		error: dueTodayError
+	} = useDashboardTasksDueToday(orgId)
+	const {
+		data: upcomingTasksCount = 0,
+		isLoading: isUpcomingTasksLoading,
+		error: upcomingTasksError
+	} = useDashboardUpcomingTaskCount(orgId)
+	const {
+		data: recentActivity = [],
+		isLoading: isRecentActivityLoading,
+		error: recentActivityError
+	} = useDashboardRecentActivity(orgId)
+
+	const warnings = [
+		activeEnclosuresError
+			? {
+					stage: 'dashboard.activeEnclosures',
+					message: `Unable to load active enclosure count (${getErrorMessage(activeEnclosuresError)}).`
+				}
+			: null,
+		atRiskError
+			? {
+					stage: 'dashboard.atRisk',
+					message: `Unable to load at-risk enclosure data (${getErrorMessage(atRiskError)}).`
+				}
+			: null,
+		dueTodayError
+			? {
+					stage: 'dashboard.tasksDueToday',
+					message: `Unable to load tasks due today (${getErrorMessage(dueTodayError)}).`
+				}
+			: null,
+		upcomingTasksError
+			? {
+					stage: 'dashboard.upcomingTaskCount',
+					message: `Unable to load upcoming task count (${getErrorMessage(upcomingTasksError)}).`
+				}
+			: null,
+		recentActivityError
+			? {
+					stage: 'dashboard.recentActivity',
+					message: `Unable to load recent activity (${getErrorMessage(recentActivityError)}).`
+				}
+			: null
+	].filter(Boolean) as DashboardData['warnings']
+
+	const data: DashboardData = {
+		generatedAt: new Date().toISOString(),
+		timeZone: DASHBOARD_SERVER_TIME_ZONE,
+		kpis: {
+			activeEnclosures,
+			tasksDueToday: dueTodayTasks.length,
+			upcomingTasks: upcomingTasksCount,
+			alerts: atRiskData?.attentionNeededCount ?? 0
+		},
+		atRiskEnclosures: atRiskData?.items ?? [],
+		upcomingSchedule: dueTodayTasks,
+		recentActivity,
+		warnings
+	}
+
+	const isLoading =
+		isActiveEnclosuresLoading ||
+		isAtRiskLoading ||
+		isDueTodayLoading ||
+		isUpcomingTasksLoading ||
+		isRecentActivityLoading
+	const loadError = activeEnclosuresError ? getErrorMessage(activeEnclosuresError) : null
 
 	if (isLoading) {
 		return (

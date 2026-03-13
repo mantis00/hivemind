@@ -60,7 +60,7 @@ export function RecentActivityPanel({ orgId, items, timeZone }: RecentActivityPa
 						</Link>
 					</Button>
 				</div>
-				<CardDescription>Tasks completed today, including overdue/urgent completion context.</CardDescription>
+				<CardDescription>Tasks completed today, including overdue/high-priority completion context.</CardDescription>
 			</CardHeader>
 			<CardContent className='space-y-2'>
 				{items.length === 0 ? (

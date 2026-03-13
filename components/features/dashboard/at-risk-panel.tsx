@@ -42,7 +42,7 @@ export function AtRiskPanel({ orgId, items, timeZone }: AtRiskPanelProps) {
 						</Link>
 					</Button>
 				</div>
-				<CardDescription>Highest-risk enclosures based on overdue and urgent open tasks.</CardDescription>
+				<CardDescription>Highest-risk enclosures based on overdue and high-priority open tasks.</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{items.length === 0 ? (
@@ -59,7 +59,7 @@ export function AtRiskPanel({ orgId, items, timeZone }: AtRiskPanelProps) {
 									<p className='font-medium'>{item.enclosureName}</p>
 									<div className='flex items-center gap-2'>
 										<Badge variant='destructive'>{item.overdueCount} overdue</Badge>
-										<Badge variant='secondary'>{item.highPriorityCount} urgent</Badge>
+										<Badge variant='secondary'>{item.highPriorityCount} high priority</Badge>
 									</div>
 								</div>
 								<p className='text-sm text-muted-foreground'>
