@@ -124,6 +124,8 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 
 			if (!subscription) {
 				const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+				const supabaseURL = process.env.NEXT_PUBLIC_SUPABASE_URL
+				console.log('Supabase URL:', supabaseURL)
 				console.log('Subscribing to push with VAPID key:', vapidKey)
 				if (!vapidKey) throw new Error('Missing VAPID public key')
 
