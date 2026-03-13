@@ -402,31 +402,10 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 						onFixedEndDateChange={setFixedEndDate}
 						fixedEndCount={fixedEndCount}
 						onFixedEndCountChange={setFixedEndCount}
+						advanceTaskCount={advanceTaskCount}
+						onAdvanceTaskCountChange={setAdvanceTaskCount}
 					/>
 				</div>
-
-				{/* ── Advance Task Count (fixed schedules only) ── */}
-				{scheduleType === 'fixed' && (
-					<div className='space-y-1'>
-						<div className='flex items-center justify-between'>
-							<Label className='text-sm'>
-								Advance Task Count <span className='text-destructive'>*</span>
-							</Label>
-							<span className='text-xs text-muted-foreground'>tasks to generate ahead</span>
-						</div>
-						<Input
-							type='number'
-							min={1}
-							placeholder='e.g. 7'
-							value={advanceTaskCount}
-							onChange={(e) => setAdvanceTaskCount(e.target.value)}
-							className='w-32'
-						/>
-						<p className='text-xs text-muted-foreground'>
-							How many future tasks to generate at a time for this schedule.
-						</p>
-					</div>
-				)}
 			</div>
 		</ResponsiveDialogDrawer>
 	)

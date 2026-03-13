@@ -56,6 +56,8 @@ export interface TaskScheduleSectionProps {
 	onFixedEndDateChange: (v: Date | undefined) => void
 	fixedEndCount: string
 	onFixedEndCountChange: (v: string) => void
+	advanceTaskCount: string
+	onAdvanceTaskCountChange: (v: string) => void
 }
 
 // ─── TaskScheduleSection ─────────────────────────────────────────────────────
@@ -84,7 +86,9 @@ export function TaskScheduleSection({
 	fixedEndDate,
 	onFixedEndDateChange,
 	fixedEndCount,
-	onFixedEndCountChange
+	onFixedEndCountChange,
+	advanceTaskCount,
+	onAdvanceTaskCountChange
 }: TaskScheduleSectionProps) {
 	return (
 		<div className='space-y-4'>
@@ -225,6 +229,25 @@ export function TaskScheduleSection({
 						endCount={fixedEndCount}
 						onEndCountChange={onFixedEndCountChange}
 					/>
+
+					<div className='space-y-1'>
+						<div className='flex items-center justify-between'>
+							<Label className='text-sm'>
+								Advance Task Count <span className='text-destructive'>*</span>
+							</Label>
+						</div>
+						<Input
+							type='number'
+							min={1}
+							placeholder='e.g. 7'
+							value={advanceTaskCount}
+							onChange={(e) => onAdvanceTaskCountChange(e.target.value)}
+							className='w-32'
+						/>
+						<p className='text-xs text-muted-foreground'>
+							How many future tasks to generate at a time for this schedule.
+						</p>
+					</div>
 
 					<TimeWindowField value={timeWindow} onChange={onTimeWindowChange} />
 				</div>

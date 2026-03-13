@@ -1072,6 +1072,7 @@ export function useCreateSchedule() {
 			return data
 		},
 		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			toast.success('Recurring schedule created!')
