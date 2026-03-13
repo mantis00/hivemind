@@ -1542,20 +1542,65 @@ export function useSubscribeToPush() {
 			auth: string
 		}) => {
 			const supabase = createClient()
+			const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : null
+			const now = new Date().toISOString()
 
-			const { error } = await supabase.from('push_subscriptions').upsert(
-				{
-					user_id: userId,
-					org_id: orgId,
-					endpoint,
-					p256dh,
-					auth,
-					user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-					last_used_at: new Date().toISOString(),
-					is_active: true
-				},
-				{ onConflict: 'endpoint' }
-			)
+			const payload = {
+				user_id: userId,
+				org_id: orgId,
+				endpoint,
+				p256dh,
+				auth,
+				user_agent: userAgent,
+				last_used_at: now,
+				is_active: true
+			}
+
+			const { data: endpointRow, error: endpointLookupError } = await supabase
+				.from('push_subscriptions')
+				.select('id')
+				.eq('user_id', userId)
+				.eq('endpoint', endpoint)
+				.maybeSingle()
+
+			if (endpointLookupError) throw endpointLookupError
+
+			if (endpointRow?.id) {
+				const { error: reactivateError } = await supabase
+					.from('push_subscriptions')
+					.update(payload)
+					.eq('id', endpointRow.id)
+				if (reactivateError) throw reactivateError
+				return
+			}
+
+			let reusableQuery = supabase
+				.from('push_subscriptions')
+				.select('id')
+				.eq('user_id', userId)
+				.eq('is_active', false)
+				.order('last_used_at', { ascending: false, nullsFirst: false })
+				.order('created_at', { ascending: false })
+				.limit(1)
+
+			reusableQuery = orgId ? reusableQuery.eq('org_id', orgId) : reusableQuery.is('org_id', null)
+
+			if (userAgent) {
+				reusableQuery = reusableQuery.eq('user_agent', userAgent)
+			}
+
+			const { data: reusableRows, error: reusableLookupError } = await reusableQuery
+
+			if (reusableLookupError) throw reusableLookupError
+
+			const reusableId = reusableRows?.[0]?.id
+			if (reusableId) {
+				const { error: reuseError } = await supabase.from('push_subscriptions').update(payload).eq('id', reusableId)
+				if (reuseError) throw reuseError
+				return
+			}
+
+			const { error } = await supabase.from('push_subscriptions').upsert(payload, { onConflict: 'endpoint' })
 
 			if (error) throw error
 		},
