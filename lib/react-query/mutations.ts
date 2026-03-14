@@ -923,20 +923,17 @@ export function useStartTask() {
 				throw new Error('Task ID missing!')
 			}
 
-			// Start-time tracking is intentionally disabled for now.
 			const { error } = await supabase
 				.from('tasks')
-				.select('id')
+				.update({ status: 'in_progress', start_time: new Date().toISOString() })
 				.eq('id', task_id)
 				.eq('enclosure_id', enclosure_id)
-				.single()
 
 			if (error) throw error
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
-			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 		}
 	})
 }

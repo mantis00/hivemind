@@ -3,6 +3,18 @@ import { createClient } from '@/lib/supabase/client'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { UUID } from 'crypto'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
+import {
+	DASHBOARD_MAX_AT_RISK_ITEMS,
+	DASHBOARD_MAX_RECENT_ACTIVITY_ITEMS,
+	compareIsoDatesDesc,
+	compareNullableIsoDatesAsc,
+	getCompletionStateLabels,
+	getDashboardTaskEnclosure,
+	getServerDayBounds,
+	getTaskTitle,
+	isHighPriority,
+	isValidDate
+} from '@/components/features/dashboard/dashboard-helpers'
 
 export type Org = {
 	org_id: UUID
@@ -276,6 +288,18 @@ export type DashboardData = {
 export type DashboardAtRiskData = {
 	items: AtRiskEnclosureSummary[]
 	attentionNeededCount: number
+}
+
+type DashboardTaskRow = {
+	id: UUID
+	enclosure_id: UUID | null
+	name: string | null
+	description: string | null
+	due_date: string | null
+	priority: string | null
+	status: string | null
+	completed_time: string | null
+	enclosures: { id: UUID; name: string | null } | { id: UUID; name: string | null }[] | null
 }
 
 export function useUserOrgs(userId: string) {
@@ -1018,105 +1042,6 @@ export function useSchedulesForEnclosures(enclosureIds: UUID[]) {
 		},
 		enabled: enclosureIds.length > 0
 	})
-}
-
-export const DASHBOARD_SERVER_TIME_ZONE = 'UTC'
-const DASHBOARD_MAX_AT_RISK_ITEMS = 5
-const DASHBOARD_MAX_RECENT_ACTIVITY_ITEMS = 10
-
-type DashboardTaskRow = {
-	id: UUID
-	enclosure_id: UUID | null
-	name: string | null
-	description: string | null
-	due_date: string | null
-	priority: string | null
-	status: string | null
-	completed_time: string | null
-	enclosures: { id: UUID; name: string | null } | { id: UUID; name: string | null }[] | null
-}
-
-type DashboardTaskSummary = {
-	name: string | null
-	description: string | null
-	due_date: string | null
-	completed_time: string | null
-	priority: string | null
-}
-
-function getServerDayBounds(reference: Date = new Date()) {
-	const start = new Date(
-		Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), reference.getUTCDate(), 0, 0, 0, 0)
-	)
-	const end = new Date(start)
-	end.setUTCDate(end.getUTCDate() + 1)
-	return { start, end }
-}
-
-function getDashboardTaskEnclosure(task: DashboardTaskRow) {
-	if (!task.enclosures) {
-		return null
-	}
-	return Array.isArray(task.enclosures) ? (task.enclosures[0] ?? null) : task.enclosures
-}
-
-function compareNullableIsoDatesAsc(a: string | null, b: string | null) {
-	if (!a && !b) {
-		return 0
-	}
-	if (!a) {
-		return 1
-	}
-	if (!b) {
-		return -1
-	}
-	return new Date(a).getTime() - new Date(b).getTime()
-}
-
-function compareIsoDatesDesc(a: string, b: string) {
-	return new Date(b).getTime() - new Date(a).getTime()
-}
-
-function isValidDate(value: string | null) {
-	if (!value) {
-		return false
-	}
-	return !Number.isNaN(new Date(value).getTime())
-}
-
-function isHighPriority(priority: string | null) {
-	if (typeof priority !== 'string') {
-		return false
-	}
-	return priority.trim().toLowerCase() === 'high'
-}
-
-function getTaskTitle(task: DashboardTaskSummary) {
-	if (task.name && task.name.trim().length > 0) {
-		return task.name.trim()
-	}
-	if (task.description && task.description.trim().length > 0) {
-		return task.description.trim()
-	}
-	return 'Task'
-}
-
-function wasTaskOverdueWhenCompleted(task: DashboardTaskSummary) {
-	if (!isValidDate(task.completed_time) || !isValidDate(task.due_date)) {
-		return false
-	}
-	return new Date(task.completed_time!).getTime() > new Date(task.due_date!).getTime()
-}
-
-function getCompletionStateLabels(task: DashboardTaskSummary) {
-	const labels: string[] = []
-	if (wasTaskOverdueWhenCompleted(task)) {
-		labels.push('overdue when completed')
-	}
-	if (isHighPriority(task.priority)) {
-		labels.push('high priority when completed')
-	}
-	return labels
 }
 
 export function useDashboardActiveEnclosureCount(orgId: UUID | undefined) {
