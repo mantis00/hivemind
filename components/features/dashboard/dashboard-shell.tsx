@@ -106,23 +106,27 @@ export function DashboardShell() {
 
 	if (isLoading) {
 		return (
-			<div className='mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
-				{['Active Enclosures', 'Tasks Due Today', 'Upcoming Tasks', 'Alerts'].map((title) => (
-					<section key={title} className='min-h-[136px] animate-pulse rounded-xl border bg-muted/20' />
-				))}
+			<div className='space-y-4 w-full justify-center items-center'>
+				<div className='mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
+					{['Active Enclosures', 'Tasks Due Today', 'Upcoming Tasks', 'Alerts'].map((title) => (
+						<section key={title} className='min-h-[136px] animate-pulse rounded-xl border bg-muted/20' />
+					))}
+				</div>
 			</div>
 		)
 	}
 
 	if (!orgId) {
 		return (
-			<Card className='mx-auto w-full max-w-7xl border-destructive/30'>
-				<CardHeader>
-					<CardTitle>Dashboard Could Not Load</CardTitle>
-					<CardDescription>Organization context is missing for this route.</CardDescription>
-				</CardHeader>
-				<CardContent className='text-sm text-muted-foreground'>Missing `orgId` route parameter.</CardContent>
-			</Card>
+			<div className='space-y-4 w-full justify-center items-center'>
+				<Card className='mx-auto w-full max-w-5xl border-destructive/30'>
+					<CardHeader>
+						<CardTitle>Dashboard Could Not Load</CardTitle>
+						<CardDescription>Organization context is missing for this route.</CardDescription>
+					</CardHeader>
+					<CardContent className='text-sm text-muted-foreground'>Missing `orgId` route parameter.</CardContent>
+				</Card>
+			</div>
 		)
 	}
 
