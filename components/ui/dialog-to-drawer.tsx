@@ -80,7 +80,7 @@ export function ResponsiveDialogDrawer({
 	}
 
 	return (
-		<Drawer open={open} onOpenChange={setOpen}>
+		<Drawer open={open} onOpenChange={setOpen} repositionInputs={false}>
 			{trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
 			<DrawerContent className={cn('w-full px-4 pb-6', className)}>
 				<DrawerHeader className='text-left pt-5 pb-2'>
