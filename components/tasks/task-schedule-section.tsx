@@ -163,10 +163,13 @@ export function TaskScheduleSection({
 					</div>{' '}
 					<div className='flex gap-3 items-end'>
 						<div className='space-y-1'>
-							<Label className='text-sm'>Repeat every</Label>
+							<Label className='text-sm'>
+								Repeat every <span className='text-destructive'>*</span>
+							</Label>
 							<Input
 								type='number'
 								min='1'
+								placeholder='e.g. 1'
 								value={flexInterval}
 								onChange={(e) => onFlexIntervalChange(e.target.value)}
 								className='w-20'
@@ -323,7 +326,7 @@ function EndsSection({
 				<div className='flex items-center gap-2 flex-wrap'>
 					<RadioGroupItem value='on-date' id={`${id}-ends-on-date`} />
 					<Label htmlFor={`${id}-ends-on-date`} className='text-sm font-normal cursor-pointer'>
-						On date
+						On date {value === 'on-date' && <span className='text-destructive'>*</span>}
 					</Label>
 					{value === 'on-date' && (
 						<DatePicker
@@ -338,14 +341,15 @@ function EndsSection({
 				<div className='flex items-center gap-2 flex-wrap'>
 					<RadioGroupItem value='after-x' id={`${id}-ends-after-x`} />
 					<Label htmlFor={`${id}-ends-after-x`} className='text-sm font-normal cursor-pointer'>
-						After
+						After {value === 'after-x' && <span className='text-destructive'>*</span>}
 					</Label>
 					{value === 'after-x' && (
 						<>
 							<Input
 								type='number'
 								min='1'
-								className='h-8 text-sm w-20'
+								placeholder='e.g. 10'
+								className='h-8 text-sm w-24'
 								value={endCount}
 								onChange={(e) => onEndCountChange(e.target.value)}
 							/>

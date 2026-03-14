@@ -63,19 +63,19 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 	const [timeWindow, setTimeWindow] = useState<TimeWindow>('Any')
 
 	// Flexible recurring
-	const [flexInterval, setFlexInterval] = useState('1')
+	const [flexInterval, setFlexInterval] = useState('')
 	const [flexUnit, setFlexUnit] = useState<'days' | 'weeks' | 'months'>('days')
 	const [flexStartDate, setFlexStartDate] = useState<Date | undefined>(new Date())
 	const [flexEnds, setFlexEnds] = useState<EndsType>('never')
 	const [flexEndDate, setFlexEndDate] = useState<Date | undefined>(undefined)
-	const [flexEndCount, setFlexEndCount] = useState('10')
+	const [flexEndCount, setFlexEndCount] = useState('')
 
 	// Fixed recurring
 	const [advanceTaskCount, setAdvanceTaskCount] = useState('')
 	const [fixedSelectedDays, setFixedSelectedDays] = useState<number[]>([])
 	const [fixedEnds, setFixedEnds] = useState<EndsType>('never')
 	const [fixedEndDate, setFixedEndDate] = useState<Date | undefined>(undefined)
-	const [fixedEndCount, setFixedEndCount] = useState('10')
+	const [fixedEndCount, setFixedEndCount] = useState('')
 
 	// Data
 	const { data: enclosure } = useEnclosureById(enclosureId, orgId)
@@ -103,7 +103,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 		return new RRule(opts).toString()
 	}
 
-	const buildFlexScheduleRule = (): string => `${parseInt(flexInterval, 10) || 1} ${flexUnit}`
+	const buildFlexScheduleRule = (): string => `${parseInt(flexInterval, 10)} ${flexUnit}`
 
 	const reset = () => {
 		setTaskType('template')
@@ -115,17 +115,17 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 		setScheduleType('one-time')
 		setDueDate(new Date())
 		setTimeWindow('Any')
-		setFlexInterval('1')
+		setFlexInterval('')
 		setFlexUnit('days')
 		setFlexStartDate(new Date())
 		setFlexEnds('never')
 		setFlexEndDate(undefined)
-		setFlexEndCount('10')
+		setFlexEndCount('')
 		setAdvanceTaskCount('')
 		setFixedSelectedDays([])
 		setFixedEnds('never')
 		setFixedEndDate(undefined)
-		setFixedEndCount('10')
+		setFixedEndCount('')
 	}
 
 	const handleOpenChange = (isOpen: boolean) => {
@@ -187,6 +187,22 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 				toast.error('Please pick a start date.')
 				return
 			}
+			const parsedFlexInterval = parseInt(flexInterval, 10)
+			if (!parsedFlexInterval || parsedFlexInterval < 1) {
+				toast.error('Repeat every must be at least 1.')
+				return
+			}
+			if (flexEnds === 'on-date' && !flexEndDate) {
+				toast.error('Please pick an end date.')
+				return
+			}
+			if (flexEnds === 'after-x') {
+				const parsedFlexEndCount = parseInt(flexEndCount, 10)
+				if (!parsedFlexEndCount || parsedFlexEndCount < 1) {
+					toast.error('Occurrences must be at least 1.')
+					return
+				}
+			}
 			createSchedule.mutate(
 				{
 					enclosure_id: enclosureId,
@@ -213,6 +229,17 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 			if (!parsedAdvanceCount || parsedAdvanceCount < 1) {
 				toast.error('Advance task count must be at least 1.')
 				return
+			}
+			if (fixedEnds === 'on-date' && !fixedEndDate) {
+				toast.error('Please pick an end date.')
+				return
+			}
+			if (fixedEnds === 'after-x') {
+				const parsedFixedEndCount = parseInt(fixedEndCount, 10)
+				if (!parsedFixedEndCount || parsedFixedEndCount < 1) {
+					toast.error('Occurrences must be at least 1.')
+					return
+				}
 			}
 			createSchedule.mutate(
 				{
