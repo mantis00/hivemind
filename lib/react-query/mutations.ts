@@ -1047,7 +1047,7 @@ export function useCreateSchedule() {
 			assigned_to: UUID | null
 			priority: string
 			time_window: string
-			start_date: string | null
+			start_date?: string
 			end_date: string | null
 			max_occurrences: number | null
 			advance_task_count?: number
