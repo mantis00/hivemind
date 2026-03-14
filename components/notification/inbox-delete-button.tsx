@@ -47,11 +47,11 @@ export function InboxDeleteDialogs({
 					if (!open) setDeleteTarget(null)
 				}}
 			>
-				<div className='flex flex-col-reverse items-center justify-center gap-2 pt-2 sm:flex-row sm:justify-end'>
+				<div className='mx-auto grid w-full max-w-sm grid-cols-1 gap-2 pt-2 sm:grid-cols-2'>
 					<Button
 						variant='outline'
 						size='sm'
-						className='w-full sm:w-auto'
+						className='w-full'
 						onClick={() => setSingleDeleteOpen(false)}
 						disabled={isDeleting}
 					>
@@ -61,7 +61,7 @@ export function InboxDeleteDialogs({
 					<Button
 						variant='destructive'
 						size='sm'
-						className='w-full sm:w-auto'
+						className='w-full'
 						onClick={onConfirmDeleteSingle}
 						disabled={isDeleting}
 					>
@@ -78,11 +78,11 @@ export function InboxDeleteDialogs({
 				open={bulkDeleteOpen}
 				onOpenChange={setBulkDeleteOpen}
 			>
-				<div className='flex flex-col-reverse items-center justify-center gap-2 pt-2 sm:flex-row sm:justify-end'>
+				<div className='mx-auto grid w-full max-w-sm grid-cols-1 gap-2 pt-2 sm:grid-cols-2'>
 					<Button
 						variant='outline'
 						size='sm'
-						className='w-full sm:w-auto'
+						className='w-full'
 						onClick={() => setBulkDeleteOpen(false)}
 						disabled={isDeleting}
 					>
@@ -92,7 +92,7 @@ export function InboxDeleteDialogs({
 					<Button
 						variant='destructive'
 						size='sm'
-						className='w-full sm:w-auto'
+						className='w-full'
 						onClick={onConfirmBulkDelete}
 						disabled={isDeleting}
 					>
