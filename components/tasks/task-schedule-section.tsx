@@ -41,6 +41,8 @@ export interface TaskScheduleSectionProps {
 	onFlexIntervalChange: (v: string) => void
 	flexUnit: 'days' | 'weeks' | 'months'
 	onFlexUnitChange: (v: 'days' | 'weeks' | 'months') => void
+	flexStartDate: Date | undefined
+	onFlexStartDateChange: (v: Date | undefined) => void
 	flexEnds: EndsType
 	onFlexEndsChange: (v: EndsType) => void
 	flexEndDate: Date | undefined
@@ -73,6 +75,8 @@ export function TaskScheduleSection({
 	onFlexIntervalChange,
 	flexUnit,
 	onFlexUnitChange,
+	flexStartDate,
+	onFlexStartDateChange,
 	flexEnds,
 	onFlexEndsChange,
 	flexEndDate,
@@ -96,7 +100,7 @@ export function TaskScheduleSection({
 			<RadioGroup
 				value={scheduleType}
 				onValueChange={(v) => onScheduleTypeChange(v as ScheduleType)}
-				className='space-y-2'
+				className='space-y-1'
 			>
 				{(
 					[
@@ -116,7 +120,7 @@ export function TaskScheduleSection({
 					<label
 						key={value}
 						htmlFor={`sched-${value}`}
-						className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${
+						className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 transition-colors ${
 							scheduleType === value ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
 						}`}
 					>
@@ -145,6 +149,18 @@ export function TaskScheduleSection({
 			{/* ── Flexible recurring fields ── */}
 			{scheduleType === 'flexible' && (
 				<div className='rounded-lg border p-4 space-y-4'>
+					{' '}
+					<div className='space-y-1'>
+						<Label className='text-sm'>
+							Start Date <span className='text-destructive'>*</span>
+						</Label>
+						<DatePicker
+							value={flexStartDate}
+							onChange={onFlexStartDateChange}
+							placeholder='Select a start date'
+							className='w-52'
+						/>
+					</div>{' '}
 					<div className='flex gap-3 items-end'>
 						<div className='space-y-1'>
 							<Label className='text-sm'>Repeat every</Label>
@@ -170,7 +186,6 @@ export function TaskScheduleSection({
 							</Select>
 						</div>
 					</div>
-
 					<EndsSection
 						id='flex'
 						value={flexEnds}
@@ -180,7 +195,6 @@ export function TaskScheduleSection({
 						endCount={flexEndCount}
 						onEndCountChange={onFlexEndCountChange}
 					/>
-
 					<TimeWindowField value={timeWindow} onChange={onTimeWindowChange} />
 				</div>
 			)}

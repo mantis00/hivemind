@@ -59,12 +59,13 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 
 	// Schedule
 	const [scheduleType, setScheduleType] = useState<ScheduleType>('one-time')
-	const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
+	const [dueDate, setDueDate] = useState<Date | undefined>(new Date())
 	const [timeWindow, setTimeWindow] = useState<TimeWindow>('Any')
 
 	// Flexible recurring
 	const [flexInterval, setFlexInterval] = useState('1')
 	const [flexUnit, setFlexUnit] = useState<'days' | 'weeks' | 'months'>('days')
+	const [flexStartDate, setFlexStartDate] = useState<Date | undefined>(new Date())
 	const [flexEnds, setFlexEnds] = useState<EndsType>('never')
 	const [flexEndDate, setFlexEndDate] = useState<Date | undefined>(undefined)
 	const [flexEndCount, setFlexEndCount] = useState('10')
@@ -112,10 +113,11 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 		setAssignedTo('')
 		setPriority('medium')
 		setScheduleType('one-time')
-		setDueDate(undefined)
+		setDueDate(new Date())
 		setTimeWindow('Any')
 		setFlexInterval('1')
 		setFlexUnit('days')
+		setFlexStartDate(new Date())
 		setFlexEnds('never')
 		setFlexEndDate(undefined)
 		setFlexEndCount('10')
@@ -127,7 +129,14 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 	}
 
 	const handleOpenChange = (isOpen: boolean) => {
-		if (!isOpen) reset()
+		if (!isOpen) {
+			reset()
+		} else {
+			// Refresh to actual current time each time the dialog opens,
+			// since the component may have been mounted hours ago (page load time).
+			setDueDate(new Date())
+			setFlexStartDate(new Date())
+		}
 		setOpen(isOpen)
 	}
 
@@ -174,6 +183,10 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 				{ onSuccess }
 			)
 		} else if (scheduleType === 'flexible') {
+			if (!flexStartDate) {
+				toast.error('Please pick a start date.')
+				return
+			}
 			createSchedule.mutate(
 				{
 					enclosure_id: enclosureId,
@@ -185,6 +198,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 					assigned_to: assignedToVal,
 					priority,
 					time_window: timeWindow,
+					start_date: flexStartDate.toISOString(),
 					end_date: flexEnds === 'on-date' && flexEndDate ? flexEndDate.toISOString() : null,
 					max_occurrences: flexEnds === 'after-x' ? parseInt(flexEndCount, 10) || null : null
 				},
@@ -211,6 +225,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 					assigned_to: assignedToVal,
 					priority,
 					time_window: timeWindow,
+					start_date: null,
 					end_date: fixedEnds === 'on-date' && fixedEndDate ? fixedEndDate.toISOString() : null,
 					max_occurrences: fixedEnds === 'after-x' ? parseInt(fixedEndCount, 10) || null : null,
 					advance_task_count: parsedAdvanceCount
@@ -243,11 +258,11 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 				</div>
 			}
 		>
-			<div data-vaul-no-drag className='overflow-y-auto flex-1 min-h-0 space-y-5 pr-4'>
+			<div data-vaul-no-drag className='overflow-y-auto flex-1 min-h-0 space-y-5 pr-4 pb-4'>
 				{/* ── Task Type ── */}
 				<div className='space-y-2'>
 					<Label className='text-sm font-semibold'>Task Type</Label>
-					<RadioGroup value={taskType} onValueChange={(v) => setTaskType(v as TaskType)} className='space-y-2'>
+					<RadioGroup value={taskType} onValueChange={(v) => setTaskType(v as TaskType)} className='space-y-1'>
 						{(
 							[
 								{
@@ -265,7 +280,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 							<label
 								key={value}
 								htmlFor={`tasktype-${value}`}
-								className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${
+								className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 transition-colors ${
 									taskType === value ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
 								}`}
 							>
@@ -388,6 +403,8 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 						onFlexIntervalChange={setFlexInterval}
 						flexUnit={flexUnit}
 						onFlexUnitChange={setFlexUnit}
+						flexStartDate={flexStartDate}
+						onFlexStartDateChange={setFlexStartDate}
 						flexEnds={flexEnds}
 						onFlexEndsChange={setFlexEnds}
 						flexEndDate={flexEndDate}

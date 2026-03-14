@@ -166,6 +166,7 @@ export type EnclosureSchedule = {
 	task_description: string | null
 	priority: 'low' | 'medium' | 'high' | null
 	assigned_to: UUID | null
+	start_date: string | null
 	end_date: string | null
 	max_occurrences: number | null
 	occurrence_count: number
