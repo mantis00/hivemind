@@ -47,24 +47,12 @@ export function InboxDeleteDialogs({
 					if (!open) setDeleteTarget(null)
 				}}
 			>
-				<div className='mx-auto grid w-full max-w-sm grid-cols-1 gap-2 pt-2 sm:grid-cols-2'>
-					<Button
-						variant='outline'
-						size='sm'
-						className='w-full'
-						onClick={() => setSingleDeleteOpen(false)}
-						disabled={isDeleting}
-					>
+				<div className='flex w-full justify-center gap-2'>
+					<Button variant='outline' size='sm' onClick={() => setSingleDeleteOpen(false)} disabled={isDeleting}>
 						Cancel
 					</Button>
 
-					<Button
-						variant='destructive'
-						size='sm'
-						className='w-full'
-						onClick={onConfirmDeleteSingle}
-						disabled={isDeleting}
-					>
+					<Button variant='destructive' size='sm' onClick={onConfirmDeleteSingle} disabled={isDeleting}>
 						{isDeleting ? 'Deleting...' : 'Delete'}
 					</Button>
 				</div>
@@ -78,24 +66,12 @@ export function InboxDeleteDialogs({
 				open={bulkDeleteOpen}
 				onOpenChange={setBulkDeleteOpen}
 			>
-				<div className='mx-auto grid w-full max-w-sm grid-cols-1 gap-2 pt-2 sm:grid-cols-2'>
-					<Button
-						variant='outline'
-						size='sm'
-						className='w-full'
-						onClick={() => setBulkDeleteOpen(false)}
-						disabled={isDeleting}
-					>
+				<div className='flex w-full justify-center gap-2'>
+					<Button variant='outline' size='sm' onClick={() => setBulkDeleteOpen(false)} disabled={isDeleting}>
 						Cancel
 					</Button>
 
-					<Button
-						variant='destructive'
-						size='sm'
-						className='w-full'
-						onClick={onConfirmBulkDelete}
-						disabled={isDeleting}
-					>
+					<Button variant='destructive' size='sm' onClick={onConfirmBulkDelete} disabled={isDeleting}>
 						{isDeleting ? 'Deleting...' : `Delete ${selectedCount} notification${selectedCount !== 1 ? 's' : ''}`}
 					</Button>
 				</div>
