@@ -37,7 +37,7 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 		setRequiresInstall(needsInstall)
 		setCanEnablePush(supported && !needsInstall)
 
-		if (sessionStorage.getItem('pushPromptDismissed') === 'true') {
+		if (!needsInstall && sessionStorage.getItem('pushPromptDismissed') === 'true') {
 			setDismissed(true)
 		}
 	}, [])
@@ -71,7 +71,9 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 	/* Dismiss prompt*/
 
 	const dismiss = () => {
-		sessionStorage.setItem('pushPromptDismissed', 'true')
+		if (!requiresInstall) {
+			sessionStorage.setItem('pushPromptDismissed', 'true')
+		}
 		setDismissed(true)
 		onOpenChange(false)
 	}
