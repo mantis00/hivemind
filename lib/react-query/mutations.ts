@@ -1122,6 +1122,63 @@ export function useSubmitTaskForm() {
 	})
 }
 
+export function useCreateNotification() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			recipientId,
+			senderId,
+			orgId,
+			type,
+			title,
+			description,
+			href
+		}: {
+			recipientId: string
+			senderId?: string
+			orgId?: UUID
+			type: 'mention' | 'invite' | 'update' | 'alert'
+			title: string
+			description: string
+			href?: string
+		}) => {
+			const supabase = createClient()
+
+			if (recipientId.trim() === '') {
+				throw new Error('Recipient ID is required')
+			}
+			if (title.trim() === '') {
+				throw new Error('Title is required')
+			}
+			if (description.trim() === '') {
+				throw new Error('Description is required')
+			}
+
+			const { data, error } = await supabase
+				.from('notifications')
+				.insert({
+					recipient_id: recipientId.trim(),
+					type,
+					title: title.trim(),
+					description: description.trim(),
+					viewed: false,
+					...(senderId ? { sender_id: senderId } : {}),
+					...(orgId ? { org_id: orgId } : {}),
+					...(href ? { href } : {})
+				})
+				.select()
+				.single()
+
+			if (error) throw error
+			return data
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['notifications', variables.recipientId] })
+		}
+	})
+}
+
 export function useMarkNotificationAsViewed(userId?: string) {
 	const queryClient = useQueryClient()
 
