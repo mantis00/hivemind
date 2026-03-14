@@ -71,7 +71,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 	const [flexEndCount, setFlexEndCount] = useState('10')
 
 	// Fixed recurring
-	const [advanceTaskCount, setAdvanceTaskCount] = useState('7')
+	const [advanceTaskCount, setAdvanceTaskCount] = useState('')
 	const [fixedSelectedDays, setFixedSelectedDays] = useState<number[]>([])
 	const [fixedEnds, setFixedEnds] = useState<EndsType>('never')
 	const [fixedEndDate, setFixedEndDate] = useState<Date | undefined>(undefined)
