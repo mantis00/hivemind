@@ -47,7 +47,7 @@ export function InboxDeleteDialogs({
 					if (!open) setDeleteTarget(null)
 				}}
 			>
-				<div className='flex w-full justify-center gap-2'>
+				<div className='mx-auto flex w-fit items-center justify-center gap-2'>
 					<Button variant='outline' size='sm' onClick={() => setSingleDeleteOpen(false)} disabled={isDeleting}>
 						Cancel
 					</Button>
@@ -66,7 +66,7 @@ export function InboxDeleteDialogs({
 				open={bulkDeleteOpen}
 				onOpenChange={setBulkDeleteOpen}
 			>
-				<div className='flex w-full justify-center gap-2'>
+				<div className='mx-auto flex w-fit items-center justify-center gap-2'>
 					<Button variant='outline' size='sm' onClick={() => setBulkDeleteOpen(false)} disabled={isDeleting}>
 						Cancel
 					</Button>
