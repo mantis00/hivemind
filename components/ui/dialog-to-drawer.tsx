@@ -82,7 +82,7 @@ export function ResponsiveDialogDrawer({
 	return (
 		<Drawer open={open} onOpenChange={setOpen} repositionInputs={false}>
 			{trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
-			<DrawerContent className={cn('w-full px-4 pb-6', className)}>
+			<DrawerContent className={cn('w-full px-4 pb-6', className)} onOverlayClick={() => setOpen?.(false)}>
 				<DrawerHeader className='text-left pt-5 pb-2'>
 					<div className='flex items-center gap-2'>
 						<DrawerTitle className='flex-1'>{title}</DrawerTitle>

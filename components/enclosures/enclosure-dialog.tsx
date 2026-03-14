@@ -39,6 +39,12 @@ export function EnclosureDialog({
 			open={open}
 			onOpenChange={onOpenChange}
 			trigger={<div></div>}
+			footer={
+				<div className='flex flex-col gap-2 w-full'>
+					<EditEnclosureButton enclosure={enclosure} spec={species} />
+					<DeleteEnclosureButton enclosure_id={enclosure.id} onDeleted={() => onOpenChange(false)} />
+				</div>
+			}
 		>
 			<div className='overflow-y-auto max-h-[70vh] scrollbar-hide sm:scrollbar-auto'>
 				<Button
@@ -83,10 +89,6 @@ export function EnclosureDialog({
 					<Separator />
 
 					<EnclosureNotesDialog enclosure={enclosure} open={notesOpen} onOpenChange={setNotesOpen} />
-					<div className='flex flex-col gap-2 pt-1'>
-						<EditEnclosureButton enclosure={enclosure} spec={species} />
-						<DeleteEnclosureButton enclosure_id={enclosure.id} onDeleted={() => onOpenChange(false)} />
-					</div>
 				</div>
 			</div>
 		</ResponsiveDialogDrawer>
