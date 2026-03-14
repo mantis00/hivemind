@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useIsMounted } from '@/hooks/use-is-mounted'
-import { getOrgIdFromPathname } from '@/context/push-subscription'
+import { getOrgIdFromPathname } from '@/context/verify-org-path'
 
 export function ProtectedNavHomeLink() {
 	const pathname = usePathname()

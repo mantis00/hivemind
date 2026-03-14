@@ -1530,13 +1530,11 @@ export function useSubscribeToPush() {
 	return useMutation({
 		mutationFn: async ({
 			userId,
-			orgId,
 			endpoint,
 			p256dh,
 			auth
 		}: {
 			userId: string
-			orgId: string | null
 			endpoint: string
 			p256dh: string
 			auth: string
@@ -1547,7 +1545,6 @@ export function useSubscribeToPush() {
 
 			const payload = {
 				user_id: userId,
-				org_id: orgId,
 				endpoint,
 				p256dh,
 				auth,
@@ -1583,8 +1580,6 @@ export function useSubscribeToPush() {
 				.order('created_at', { ascending: false })
 				.limit(1)
 
-			reusableQuery = orgId ? reusableQuery.eq('org_id', orgId) : reusableQuery.is('org_id', null)
-
 			if (userAgent) {
 				reusableQuery = reusableQuery.eq('user_agent', userAgent)
 			}
@@ -1606,6 +1601,7 @@ export function useSubscribeToPush() {
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['pushSubscriptions', variables.userId] })
+			toast.success('Subscribed to push notifications!')
 		}
 	})
 }
@@ -1627,6 +1623,7 @@ export function useUnsubscribeFromPush() {
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['pushSubscriptions', variables.userId] })
+			toast.success('Unsubscribed from push notifications.')
 		}
 	})
 }

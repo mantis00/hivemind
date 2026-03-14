@@ -229,13 +229,11 @@ export type SpeciesRequest = {
 export type PushSubscription = {
 	id: UUID
 	user_id: string
-	org_id: UUID | null
 	endpoint: string
 	p256dh: string
 	auth: string
 	created_at: string
 	user_agent: string | null
-	device_type: string | null
 	last_used_at: string | null
 	is_active: boolean
 }

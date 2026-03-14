@@ -51,7 +51,7 @@ import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useOrgDetails } from '@/lib/react-query/queries'
 import { UUID } from 'crypto'
 import { useLogout } from '@/lib/react-query/auth'
-import { getOrgIdFromPathname } from '@/context/push-subscription'
+import { getOrgIdFromPathname } from '@/context/verify-org-path'
 
 export function AppSidebar() {
 	const pathname = usePathname()

@@ -14,7 +14,7 @@ import { useNotificationsWithProfiles } from '@/context/notifications-with-profi
 import { useMarkNotificationAsViewed, useMarkAllNotificationsAsViewed } from '@/lib/react-query/mutations'
 import { NotificationRow } from '@/components/notification/notification-row'
 import { PushOptInPrompt } from '@/components/notification/push-opt-in-prompt'
-import { getOrgIdFromPathname } from '@/context/push-subscription'
+import { getOrgIdFromPathname } from '@/context/verify-org-path'
 
 // ─── NotificationsDropdown ───────────────────────────────
 

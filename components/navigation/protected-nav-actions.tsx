@@ -10,13 +10,7 @@ import { useRouter } from 'next/navigation'
 import { MobileActionsMenu } from '@/components/navigation/mobile-actions-menu'
 import { LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
-
-function isOrgRoute(pathname: string | null) {
-	if (!pathname) return false
-	return /^\/protected\/orgs\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/.test(
-		pathname
-	)
-}
+import { getOrgIdFromPathname } from '@/context/verify-org-path'
 
 export function ProtectedNavActions() {
 	const pathname = usePathname()
@@ -35,7 +29,7 @@ export function ProtectedNavActions() {
 		return null
 	}
 
-	if (isOrgRoute(pathname)) {
+	if (getOrgIdFromPathname(pathname)) {
 		return (
 			<div className='flex items-center flex-row justify-end gap-2 mr-6 max-w-full'>
 				<NotificationDropdown />

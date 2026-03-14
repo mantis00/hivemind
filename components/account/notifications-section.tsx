@@ -1,26 +1,22 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
 import { Bell, BellOff } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { toaster } from '@/components/ui/sonner'
+import { toast } from 'sonner'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { usePushSubscriptionsForUser } from '@/lib/react-query/queries'
 import { useSubscribeToPush, useUnsubscribeFromPush } from '@/lib/react-query/mutations'
 import {
 	ensurePushSubscription,
 	getCurrentPushSubscription,
-	getOrgIdFromPathname,
 	getPushCapability,
 	requestPushPermission
 } from '@/context/push-subscription'
 
 export function NotificationsSection() {
 	const { data: user } = useCurrentClientUser()
-	const pathname = usePathname()
-	const orgId = getOrgIdFromPathname(pathname)
 
 	const { data: activeSubscriptions } = usePushSubscriptionsForUser(user?.id)
 	const subscribeMutation = useSubscribeToPush()
@@ -69,21 +65,19 @@ export function NotificationsSection() {
 		if (!user) return
 
 		if (requiresInstall) {
-			toaster.info(
-				'On iPhone/iPad, install Hivemind to your Home Screen first, then enable notifications from the app.'
-			)
+			toast.info('On iPhone/iPad, install Hivemind to your Home Screen first, then enable notifications from the app.')
 			return
 		}
 
 		if (!canEnablePush) {
-			toaster.error('Push notifications are not supported on this device/browser.')
+			toast.error('Push notifications are not supported on this device/browser.')
 			return
 		}
 
 		try {
 			const permission = await requestPushPermission()
 			if (permission !== 'granted') {
-				toaster.error('Notification permission was not granted.')
+				toast.error('Notification permission was not granted.')
 				return
 			}
 
@@ -103,17 +97,15 @@ export function NotificationsSection() {
 
 			await subscribeMutation.mutateAsync({
 				userId: user.id,
-				orgId,
 				endpoint: sub.endpoint,
 				p256dh: sub.keys.p256dh,
 				auth: sub.keys.auth
 			})
 
 			setDeviceEndpoint(sub.endpoint)
-			toaster.success('Notifications enabled for this device.')
 		} catch (err) {
 			console.error('Push subscribe failed:', err)
-			toaster.error('Could not enable notifications on this device yet. Please try again.')
+			toast.error('Could not enable notifications on this device yet. Please try again.')
 		}
 	}
 
@@ -125,7 +117,7 @@ export function NotificationsSection() {
 			const endpointToDisable = existingSubscription?.endpoint ?? deviceEndpoint
 
 			if (!endpointToDisable) {
-				toaster.info('No active push subscription found on this device.')
+				toast.info('No active push subscription found on this device.')
 				setDeviceEndpoint(null)
 				return
 			}
@@ -136,10 +128,9 @@ export function NotificationsSection() {
 			})
 
 			setDeviceEndpoint(null)
-			toaster.success('Notifications disabled for this device.')
 		} catch (err) {
 			console.error('Push unsubscribe failed:', err)
-			toaster.error('Could not disable notifications right now. Please try again.')
+			toast.error('Could not disable notifications right now. Please try again.')
 		}
 	}
 

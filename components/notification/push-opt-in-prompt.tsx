@@ -1,17 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
 import { Bell } from 'lucide-react'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Button } from '@/components/ui/button'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useSubscribeToPush } from '@/lib/react-query/mutations'
-import { toaster } from '@/components/ui/sonner'
+import { toast } from 'sonner'
 import {
 	ensurePushSubscription,
 	getCurrentPushSubscription,
-	getOrgIdFromPathname,
 	getPushCapability,
 	requestPushPermission
 } from '@/context/push-subscription'
@@ -24,13 +22,10 @@ interface PushOptInPromptProps {
 export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 	const { data: user } = useCurrentClientUser()
 	const subscribeMutation = useSubscribeToPush()
-	const pathname = usePathname()
 
 	const [canEnablePush, setCanEnablePush] = useState(false)
 	const [requiresInstall, setRequiresInstall] = useState(false)
 	const [dismissed, setDismissed] = useState(false)
-
-	const orgId = getOrgIdFromPathname(pathname)
 
 	/* Check browser support*/
 
@@ -87,9 +82,7 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 		if (!user) return
 
 		if (requiresInstall) {
-			toaster.info(
-				'On iPhone/iPad, install Hivemind to your Home Screen first, then enable notifications from the app.'
-			)
+			toast.info('On iPhone/iPad, install Hivemind to your Home Screen first, then enable notifications from the app.')
 			return
 		}
 
@@ -122,7 +115,6 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 
 			await subscribeMutation.mutateAsync({
 				userId: user.id,
-				orgId,
 				endpoint: sub.endpoint,
 				p256dh: sub.keys.p256dh,
 				auth: sub.keys.auth
@@ -133,11 +125,11 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 			console.error('Push subscription failed:', err)
 
 			if (err instanceof Error && err.name === 'NotAllowedError') {
-				toaster.error('Notifications are blocked. Enable notifications in browser/site settings and try again.')
+				toast.error('Notifications are blocked. Enable notifications in browser/site settings and try again.')
 				return
 			}
 
-			toaster.error('Could not enable notifications on this device yet. Please try again.')
+			toast.error('Could not enable notifications on this device yet. Please try again.')
 		}
 	}
 

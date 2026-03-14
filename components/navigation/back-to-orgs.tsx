@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { usePathname } from 'next/navigation'
-import { getOrgIdFromPathname } from '@/context/push-subscription'
+import { getOrgIdFromPathname } from '@/context/verify-org-path'
 
 export function BackToOrgs() {
 	const pathname = usePathname()
