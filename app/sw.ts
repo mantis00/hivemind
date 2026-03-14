@@ -13,6 +13,26 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope
 
+type PushPayload = {
+	title?: string
+	body?: string
+	id?: string
+	url?: string
+}
+
+function toPushPayload(value: unknown): PushPayload {
+	if (!value || typeof value !== 'object') return {}
+
+	const payload = value as Record<string, unknown>
+
+	return {
+		title: typeof payload.title === 'string' ? payload.title : undefined,
+		body: typeof payload.body === 'string' ? payload.body : undefined,
+		id: typeof payload.id === 'string' ? payload.id : undefined,
+		url: typeof payload.url === 'string' ? payload.url : undefined
+	}
+}
+
 const serwist = new Serwist({
 	precacheEntries: self.__SW_MANIFEST,
 	skipWaiting: true,
@@ -28,6 +48,72 @@ const serwist = new Serwist({
 			}
 		]
 	}
+})
+
+self.addEventListener('push', (event) => {
+	if (!event.data) return
+
+	let data: PushPayload
+	try {
+		data = toPushPayload(event.data.json())
+	} catch {
+		try {
+			const text = event.data.text()
+			data = {
+				title: 'Notification',
+				body: text
+			}
+		} catch {
+			data = {
+				title: 'Notification',
+				body: ''
+			}
+		}
+	}
+
+	event.waitUntil(
+		self.registration.showNotification(data.title ?? 'Notification', {
+			body: data.body ?? '',
+			icon: '/icons/icon-192x192.png',
+			badge: '/icons/icon-192x192.png',
+			data: {
+				notificationId: data.id,
+				url: data.url
+			}
+		})
+	)
+})
+
+self.addEventListener('notificationclick', (event) => {
+	event.notification.close()
+
+	const urlData = event.notification.data?.url
+	let url = '/'
+
+	if (typeof urlData === 'string' && urlData.trim() !== '') {
+		try {
+			const parsed = new URL(urlData, self.location.origin)
+
+			if (parsed.origin === self.location.origin) {
+				url = parsed.pathname + parsed.search + parsed.hash
+			}
+		} catch {
+			// If parsing fails, keep the safe default '/'
+		}
+	}
+
+	event.waitUntil(
+		self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+			for (const client of clients) {
+				if ('focus' in client) {
+					client.navigate(url)
+					return client.focus()
+				}
+			}
+
+			return self.clients.openWindow(url)
+		})
+	)
 })
 
 serwist.addEventListeners()

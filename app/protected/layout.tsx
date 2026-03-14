@@ -7,10 +7,12 @@ import { ProtectedNavHomeLink } from '@/components/navigation/protected-nav-home
 import { NavProgressBar } from '@/components/navigation/nav-progress-bar'
 import LoginInstallPrompt from '@/components/pwa/login-install-prompt'
 import { ThemeSync } from '@/components/account/theme-sync'
+import { NotificationsRealtimeListener } from '@/components/notification/notification-live-listener'
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<SidebarProvider>
+			<NotificationsRealtimeListener /> {/* Listens for live notifications via Supabase WebSocket */}
 			<ThemeSync />
 			<LoginInstallPrompt />
 			<ProtectedSidebar />
