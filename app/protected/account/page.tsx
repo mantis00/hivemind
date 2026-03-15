@@ -1,6 +1,7 @@
 import { ProfileForm } from '@/components/account/profile-form'
 import { PreferencesSection } from '@/components/account/preferences-section'
 import { CredentialsSection } from '@/components/account/credentials-section'
+import { NotificationsSection } from '@/components/account/notifications-section'
 import { BackToOrgs } from '@/components/navigation/back-to-orgs'
 
 export default async function Page() {
@@ -17,6 +18,7 @@ export default async function Page() {
 				<div className='flex flex-col gap-4'>
 					<ProfileForm />
 					<PreferencesSection />
+					<NotificationsSection />
 					<CredentialsSection />
 				</div>
 			</div>

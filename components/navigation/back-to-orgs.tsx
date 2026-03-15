@@ -3,16 +3,11 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { usePathname } from 'next/navigation'
-import { useMemo } from 'react'
+import { getOrgIdFromPathname } from '@/context/verify-org-path'
 
 export function BackToOrgs() {
 	const pathname = usePathname()
-	const orgId = useMemo(() => {
-		const match = pathname?.match(
-			/^\/protected\/orgs\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/
-		)
-		return match?.[1] ?? null
-	}, [pathname])
+	const orgId = getOrgIdFromPathname(pathname)
 
 	if (orgId) return null
 
