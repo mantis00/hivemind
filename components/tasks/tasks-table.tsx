@@ -27,10 +27,18 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { getDateStr, getDayLabel } from '@/context/task-day'
 import { toLocalDate } from '@/context/to-local-date'
 import { formatDate } from '@/context/format-date'
-import { getEffectiveStatus, MOBILE_COL_WIDTHS } from '@/context/task-status'
+import {
+	getEffectiveStatus,
+	MOBILE_COL_WIDTHS,
+	DESKTOP_COL_WIDTHS,
+	OPTIONAL_COLUMNS,
+	DEFAULT_COLUMN_LABELS
+} from '@/context/task-status'
 import { getColumns } from './tasks-columns'
 import { DayNavigator } from './day-navigator'
 import { TasksFilters, type TaskFilters } from './tasks-filters'
+import { ColumnsToggle } from './columns-toggle'
+import { startNavProgress } from '@/components/navigation/nav-progress-bar'
 
 const MAX_TABLE_HEIGHT_DESKTOP = 680
 const MAX_TABLE_HEIGHT_MOBILE = 560
@@ -74,9 +82,43 @@ export function TasksDataTable({
 	const [pendingGlobalSearch, setPendingGlobalSearch] = React.useState(false)
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
 	const [isMounted, setIsMounted] = React.useState(false)
+	const [extraColumns, setExtraColumns] = React.useState<string[]>([])
 
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange, speciesFilter } = filters
 	const isRangeMode = !!(dateRange?.from && dateRange?.to)
+
+	const hasExtraColumns = extraColumns.length > 0
+
+	const defaultColumnIds = React.useMemo(() => {
+		if (isOrgMode) {
+			return isMobile
+				? ['enclosure_name', 'name', 'due_date']
+				: ['enclosure_name', 'species', 'name', 'status', 'due_date', 'assigned_to']
+		}
+		return isMobile
+			? ['name', 'status', 'due_date']
+			: ['name', 'description', 'due_date', 'priority', 'status', 'assigned_to']
+	}, [isOrgMode, isMobile])
+
+	const desktopDefaultColumnIds = React.useMemo(() => {
+		if (isOrgMode) return ['enclosure_name', 'species', 'name', 'status', 'due_date', 'assigned_to']
+		return ['name', 'description', 'due_date', 'priority', 'status', 'assigned_to']
+	}, [isOrgMode])
+
+	const toggleableColumns = React.useMemo(() => {
+		const platformExtras = desktopDefaultColumnIds
+			.filter((id) => !defaultColumnIds.includes(id))
+			.map((id) => ({ id, label: DEFAULT_COLUMN_LABELS[id] ?? id }))
+		return [...platformExtras, ...OPTIONAL_COLUMNS]
+	}, [desktopDefaultColumnIds, defaultColumnIds])
+
+	const getColWidthStyle = React.useCallback(
+		(colId: string): React.CSSProperties | undefined => {
+			const w = isMobile ? MOBILE_COL_WIDTHS[colId] : hasExtraColumns ? DESKTOP_COL_WIDTHS[colId] : undefined
+			return w ? { width: w, minWidth: w } : undefined
+		},
+		[isMobile, hasExtraColumns]
+	)
 
 	const MAX_TABLE_HEIGHT = isMobile ? MAX_TABLE_HEIGHT_MOBILE : MAX_TABLE_HEIGHT_DESKTOP
 	const TARGET_VISIBLE_ROWS = isMobile ? TARGET_VISIBLE_ROWS_MOBILE : TARGET_VISIBLE_ROWS_DESKTOP
@@ -96,7 +138,8 @@ export function TasksDataTable({
 		statusFilter.length > 0 ||
 		globalFilter !== '' ||
 		globalSearch ||
-		(isOrgMode && speciesFilter !== '')
+		(isOrgMode && speciesFilter !== '') ||
+		extraColumns.length > 0
 
 	const resetFilters = () => {
 		setFilters({
@@ -108,6 +151,7 @@ export function TasksDataTable({
 			speciesFilter: ''
 		})
 		setPendingGlobalSearch(false)
+		setExtraColumns([])
 	}
 
 	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(isRangeMode ? [] : enclosureIds)
@@ -135,8 +179,10 @@ export function TasksDataTable({
 			if (isOrgMode) {
 				const task = (enclosureTasks ?? rangeTasks ?? []).find((t) => t.id === taskId)
 				if (!task) return
+				startNavProgress()
 				router.push(`/protected/orgs/${orgId}/enclosures/${task.enclosure_id}/${taskId}`)
 			} else {
+				startNavProgress()
 				router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}/${taskId}`)
 			}
 		},
@@ -145,6 +191,7 @@ export function TasksDataTable({
 
 	const handleViewEnclosure = React.useCallback(
 		(enclosureId: UUID) => {
+			startNavProgress()
 			router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}`)
 		},
 		[router, orgId]
@@ -163,9 +210,19 @@ export function TasksDataTable({
 					: undefined,
 				isOrgMode ? fetchedOrgEnclosures : undefined,
 				isOrgMode ? (fetchedOrgSpecies ?? undefined) : undefined,
-				isOrgMode ? handleViewEnclosure : undefined
+				isOrgMode ? handleViewEnclosure : undefined,
+				extraColumns
 			),
-		[isMobile, handleView, members, isOrgMode, fetchedOrgEnclosures, fetchedOrgSpecies, handleViewEnclosure]
+		[
+			isMobile,
+			handleView,
+			members,
+			isOrgMode,
+			fetchedOrgEnclosures,
+			fetchedOrgSpecies,
+			handleViewEnclosure,
+			extraColumns
+		]
 	)
 
 	const filteredData = React.useMemo(() => {
@@ -297,6 +354,18 @@ export function TasksDataTable({
 		if (pendingGlobalSearch && !tasksFetching) setPendingGlobalSearch(false)
 	}, [pendingGlobalSearch, tasksFetching])
 
+	React.useEffect(() => {
+		measuredRef.current = false
+		setMeasuredRowHeight(null)
+	}, [extraColumns])
+
+	// When the platform changes (mobile ↔ desktop), drop any extra columns that
+	// are now part of the new platform's defaults so the badge resets cleanly.
+	React.useEffect(() => {
+		setExtraColumns((prev) => prev.filter((id) => !defaultColumnIds.includes(id)))
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isMobile])
+
 	if (!isMounted) return null
 
 	return (
@@ -322,12 +391,22 @@ export function TasksDataTable({
 				hasActiveFilters={hasActiveFilters}
 				onReset={resetFilters}
 				showSpeciesFilter={isOrgMode}
+				columnsToggle={
+					<ColumnsToggle
+						defaultColumnIds={defaultColumnIds}
+						extraColumnIds={extraColumns}
+						onExtraColumnsChange={setExtraColumns}
+						toggleableColumns={toggleableColumns}
+					/>
+				}
 			/>
 
 			{isOrgMode && createTaskButton && <div>{createTaskButton}</div>}
 
 			{/* Table */}
-			<div className='rounded-lg border border-border/50 bg-card overflow-hidden'>
+			<div
+				className={`rounded-lg border border-border/50 bg-card ${hasExtraColumns ? 'overflow-x-auto' : 'overflow-hidden'}`}
+			>
 				{activeLoading ? (
 					<div className='flex flex-col items-center justify-center h-48 w-full gap-2'>
 						<LoaderCircle className='h-8 w-8 animate-spin text-muted-foreground' />
@@ -342,8 +421,13 @@ export function TasksDataTable({
 					</div>
 				) : rows.length <= TARGET_VISIBLE_ROWS ? (
 					<table
-						style={{ width: '100%', borderCollapse: 'collapse', ...(isMobile ? { tableLayout: 'fixed' } : {}) }}
-						className='w-full caption-bottom text-sm'
+						style={{
+							borderCollapse: 'collapse',
+							...(hasExtraColumns
+								? { width: 'auto', minWidth: '100%' }
+								: { width: '100%', ...(isMobile ? { tableLayout: 'fixed' } : {}) })
+						}}
+						className={`caption-bottom text-sm${hasExtraColumns ? '' : ' w-full'}`}
 					>
 						<thead className='[&_tr]:border-b'>
 							{table.getHeaderGroups().map((headerGroup) => (
@@ -351,11 +435,7 @@ export function TasksDataTable({
 									{headerGroup.headers.map((header) => (
 										<th
 											key={header.id}
-											style={
-												isMobile && MOBILE_COL_WIDTHS[header.id]
-													? { width: MOBILE_COL_WIDTHS[header.id], minWidth: MOBILE_COL_WIDTHS[header.id] }
-													: undefined
-											}
+											style={getColWidthStyle(header.id)}
 											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -375,11 +455,7 @@ export function TasksDataTable({
 									{row.getVisibleCells().map((cell) => (
 										<td
 											key={cell.id}
-											style={
-												isMobile && MOBILE_COL_WIDTHS[cell.column.id]
-													? { width: MOBILE_COL_WIDTHS[cell.column.id], minWidth: MOBILE_COL_WIDTHS[cell.column.id] }
-													: undefined
-											}
+											style={getColWidthStyle(cell.column.id)}
 											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${cell.column.id === 'description' ? ' whitespace-nowrap' : ''}`}
 										>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -425,11 +501,7 @@ export function TasksDataTable({
 										{row.getVisibleCells().map((cell) => (
 											<td
 												key={cell.id}
-												style={
-													isMobile && MOBILE_COL_WIDTHS[cell.column.id]
-														? { width: MOBILE_COL_WIDTHS[cell.column.id], minWidth: MOBILE_COL_WIDTHS[cell.column.id] }
-														: undefined
-												}
+												style={getColWidthStyle(cell.column.id)}
 												className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${cell.column.id === 'description' ? ' whitespace-nowrap' : ''}`}
 											>
 												{flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -448,11 +520,7 @@ export function TasksDataTable({
 									{headerGroup.headers.map((header) => (
 										<th
 											key={header.id}
-											style={
-												isMobile && MOBILE_COL_WIDTHS[header.id]
-													? { width: MOBILE_COL_WIDTHS[header.id], minWidth: MOBILE_COL_WIDTHS[header.id] }
-													: undefined
-											}
+											style={getColWidthStyle(header.id)}
 											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}

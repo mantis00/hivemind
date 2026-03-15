@@ -49,6 +49,7 @@ interface TasksFiltersProps {
 	hasActiveFilters: boolean
 	onReset: () => void
 	showSpeciesFilter?: boolean
+	columnsToggle?: React.ReactNode
 }
 
 export function TasksFilters({
@@ -58,7 +59,8 @@ export function TasksFilters({
 	onFiltersChange,
 	hasActiveFilters,
 	onReset,
-	showSpeciesFilter
+	showSpeciesFilter,
+	columnsToggle
 }: TasksFiltersProps) {
 	const isMobile = useIsMobile()
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
@@ -136,7 +138,6 @@ export function TasksFilters({
 							))}
 						</DropdownMenuContent>
 					</DropdownMenu>
-
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant='outline' className='gap-2'>
@@ -217,7 +218,8 @@ export function TasksFilters({
 								</ComboboxList>
 							</ComboboxContent>
 						</Combobox>
-					)}
+					)}{' '}
+					{columnsToggle}{' '}
 					<Button
 						variant='ghost'
 						onClick={onReset}

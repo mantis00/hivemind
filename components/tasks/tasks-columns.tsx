@@ -1,7 +1,7 @@
 'use client'
 
 import type { ColumnDef } from '@tanstack/react-table'
-import { ArrowUpDown } from 'lucide-react'
+import { ArrowUpDown, CalendarCheck2 } from 'lucide-react'
 import { UUID } from 'crypto'
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -18,7 +18,8 @@ export function getColumns(
 	columnIds?: string[],
 	enclosures?: Enclosure[],
 	orgSpecies?: OrgSpecies[],
-	onViewEnclosure?: (enclosureId: UUID) => void
+	onViewEnclosure?: (enclosureId: UUID) => void,
+	extraColumnIds: string[] = []
 ): ColumnDef<Task>[] {
 	const memberMap = new Map(members.map((m) => [m.id as string, m]))
 	const enclosureMap = new Map((enclosures ?? []).map((e) => [e.id as string, e]))
@@ -46,8 +47,8 @@ export function getColumns(
 										{enc.name}
 									</button>
 								</TooltipTrigger>
-								<TooltipContent align='start' className='max-w-[160px] text-left text-xs'>
-									You will be redirected to the enclosure
+								<TooltipContent align='start' className='max-w-160 text-left text-xs'>
+									You will be redirected to this enclosure&lsquo;s tasks
 								</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
@@ -80,7 +81,7 @@ export function getColumns(
 			cell: ({ row }) => {
 				const name = row.getValue('name') as string
 				const truncatedName = name && name.length > 30 ? `${name.slice(0, 30)}…` : name
-				return <div className='font-medium truncate w-[150px] cursor-default'>{truncatedName}</div>
+				return <div className='font-medium truncate cursor-default'>{truncatedName}</div>
 			}
 		},
 		{
@@ -184,17 +185,60 @@ export function getColumns(
 							assignedTo={task.assigned_to}
 							assignedMemberName={name}
 							members={members}
+							readOnly={task.status === 'completed'}
 						/>
+					</div>
+				)
+			}
+		},
+		{
+			id: 'created_at',
+			accessorKey: 'created_at',
+			header: ({ column }) => (
+				<button
+					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors'
+				>
+					Created At
+					<ArrowUpDown className='h-4 w-4' />
+				</button>
+			),
+			cell: ({ row }) => {
+				const created = row.original.created_at
+				if (!created) return <span className='text-xs text-muted-foreground'>—</span>
+				return <span className='text-xs whitespace-nowrap text-muted-foreground'>{formatDate(created)}</span>
+			}
+		},
+		{
+			id: 'completed_by',
+			header: () => <span className='font-bold'>Completed By</span>,
+			cell: ({ row }) => {
+				const task = row.original
+				if (!task.completed_by) return <span className='text-xs text-muted-foreground'>—</span>
+				const member = memberMap.get(task.completed_by as string)
+				const name = member ? member.full_name || `${member.first_name} ${member.last_name}`.trim() : null
+				return <span className='text-xs text-muted-foreground'>{name ?? '—'}</span>
+			}
+		},
+		{
+			id: 'on_schedule',
+			header: () => <span className='font-bold'>Scheduled</span>,
+			cell: ({ row }) => {
+				if (!row.original.schedule_id) return <span className='text-xs text-muted-foreground'>—</span>
+				return (
+					<div className='flex items-center'>
+						<CalendarCheck2 className='h-4 w-4 text-green-600 dark:text-green-500' />
 					</div>
 				)
 			}
 		}
 	]
 
+	const getColById = (id: string) => all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)
+
 	if (columnIds) {
-		return columnIds
-			.map((id) => all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id))
-			.filter(Boolean) as ColumnDef<Task>[]
+		const allIds = [...columnIds, ...extraColumnIds.filter((id) => !columnIds.includes(id))]
+		return allIds.map(getColById).filter(Boolean) as ColumnDef<Task>[]
 	}
 
 	const enclosureOnlyIds = new Set(['enclosure_name', 'species'])
@@ -202,15 +246,12 @@ export function getColumns(
 		(col) => !enclosureOnlyIds.has(col.id ?? (col as { accessorKey?: string }).accessorKey ?? '')
 	)
 
-	if (isMobile) {
-		const mobileOrder = ['name', 'status', 'due_date']
-		return mobileOrder.map(
-			(id) => defaultCols.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!
-		)
-	}
+	const baseOrder = isMobile
+		? ['name', 'status', 'due_date']
+		: ['name', 'description', 'due_date', 'priority', 'status', 'assigned_to']
 
-	const desktopOrder = ['name', 'description', 'due_date', 'priority', 'status', 'assigned_to']
-	return desktopOrder.map(
-		(id) => defaultCols.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!
-	)
+	const allOrder = [...baseOrder, ...extraColumnIds.filter((id) => !baseOrder.includes(id))]
+	return allOrder
+		.map((id) => defaultCols.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id))
+		.filter(Boolean) as ColumnDef<Task>[]
 }

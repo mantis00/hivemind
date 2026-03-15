@@ -323,6 +323,7 @@ export function ScheduledTasksTable() {
 												assignedTo={schedule.assigned_to}
 												assignedMemberName={schedule.assigned_member_name}
 												members={members ?? []}
+												readOnly={!schedule.is_active}
 											/>
 										</div>
 									</CardContent>

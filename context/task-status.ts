@@ -22,15 +22,48 @@ export const statusConfig: Record<string, { label: string; color: string }> = {
 }
 
 export const MOBILE_COL_WIDTHS: Record<string, number> = {
-	name: 150,
-	status: 100,
-	due_date: 100
+	name: 120,
+	status: 95,
+	due_date: 95,
+	description: 150,
+	priority: 85,
+	assigned_to: 130,
+	enclosure_name: 140,
+	species: 115,
+	created_at: 125,
+	completed_by: 140,
+	on_schedule: 100
 }
 
 export const DESKTOP_COL_WIDTHS: Record<string, number> = {
-	name: 220,
+	name: 170,
 	due_date: 120,
 	priority: 110,
 	status: 120,
-	assigned_to: 200
+	assigned_to: 170,
+	created_at: 140,
+	completed_by: 160,
+	on_schedule: 120
 }
+
+export const DEFAULT_COLUMN_LABELS: Record<string, string> = {
+	name: 'Task Name',
+	status: 'Status',
+	due_date: 'Due Date',
+	description: 'Description',
+	priority: 'Priority',
+	assigned_to: 'Assigned To',
+	enclosure_name: 'Enclosure',
+	species: 'Species'
+}
+
+export interface OptionalColumnDef {
+	id: string
+	label: string
+}
+
+export const OPTIONAL_COLUMNS: OptionalColumnDef[] = [
+	{ id: 'created_at', label: 'Created At' },
+	{ id: 'completed_by', label: 'Completed By' },
+	{ id: 'on_schedule', label: 'On Schedule' }
+]
