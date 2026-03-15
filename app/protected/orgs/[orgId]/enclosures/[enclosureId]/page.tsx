@@ -9,13 +9,13 @@ export default async function Page({ params }: { params: Promise<{ orgId: UUID; 
 	return (
 		<div className='space-y-4 w-full justify-center items-center'>
 			<div className='flex-col mx-auto max-w-5xl'>
-				<div className='pb-5 flex-row flex items-center justify-between'>
-					<div className='flex-col w-full'>
-						<div className='flex flex-row gap-2 pb-6'>
-							<EnclosureHeading enclosureId={enclosureId} orgId={orgId} />
-						</div>
+				<div className='pb-5'>
+					<EnclosureHeading enclosureId={enclosureId} orgId={orgId} />
+				</div>
+				<div className='flex flex-col gap-6'>
+					<section className='space-y-3'>
 						<TasksDataTable enclosureId={enclosureId} orgId={orgId} />
-					</div>
+					</section>
 				</div>
 			</div>
 		</div>

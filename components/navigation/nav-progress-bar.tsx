@@ -3,6 +3,13 @@
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
+/** Call this before any programmatic router.push() to trigger the progress bar. */
+export function startNavProgress() {
+	if (typeof window !== 'undefined') {
+		window.dispatchEvent(new CustomEvent('nav-start'))
+	}
+}
+
 export function NavProgressBar() {
 	const pathname = usePathname()
 	const pathnameRef = useRef(pathname)
@@ -61,6 +68,14 @@ export function NavProgressBar() {
 		complete()
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [pathname])
+
+	// Listen for programmatic nav-start events (e.g. router.push calls)
+	useEffect(() => {
+		const handleNavStart = () => start()
+		window.addEventListener('nav-start', handleNavStart)
+		return () => window.removeEventListener('nav-start', handleNavStart)
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
 
 	// Intercept link clicks across the whole document
 	useEffect(() => {

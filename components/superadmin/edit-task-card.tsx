@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Separator } from '@/components/ui/separator'
 import { useUpdateTaskTemplate } from '@/lib/react-query/mutations'
-import { DeleteTemplateButton } from '@/components/superadmin/delete-template-button'
+import { ToggleTemplateButton } from '@/components/superadmin/toggle-template-button'
 import { useAllTaskTypes } from '@/lib/react-query/queries'
 import type { Species, TaskTemplate } from '@/lib/react-query/queries'
 import { type FieldDef, emptyField, templateToFields, validateFields } from './template-fields'
@@ -111,7 +111,9 @@ export function EditTaskCard({ template, species, allTemplateTypes }: EditTaskCa
 		<Collapsible
 			open={expanded}
 			onOpenChange={setExpanded}
-			className='rounded-lg border-2 ring-1 ring-border bg-card overflow-hidden'
+			className={`rounded-lg border-2 ring-1 ring-border bg-card overflow-hidden transition-all ${
+				!template.is_active ? 'opacity-60 grayscale border-dashed' : ''
+			}`}
 		>
 			{/* Sticky header */}
 			<div className='sticky top-0 z-10 bg-card'>
@@ -122,15 +124,20 @@ export function EditTaskCard({ template, species, allTemplateTypes }: EditTaskCa
 							<Badge variant='outline' className='font-mono text-xs capitalize shrink-0'>
 								{template.type}
 							</Badge>
+							{!template.is_active && (
+								<Badge variant='secondary' className='text-xs shrink-0'>
+									Disabled
+								</Badge>
+							)}
 							<span className='text-xs text-muted-foreground truncate min-w-0'>
 								{template.description ??
 									`${template.question_templates?.length ?? 0} field${(template.question_templates?.length ?? 0) !== 1 ? 's' : ''}`}
 							</span>
 						</div>
 
-						{/* Delete button — stop propagation so it doesn't toggle the collapsible */}
+						{/* Toggle button — stop propagation so it doesn't toggle the collapsible */}
 						<div onClick={(e) => e.stopPropagation()}>
-							<DeleteTemplateButton template={template} species={species} />
+							<ToggleTemplateButton template={template} species={species} />
 						</div>
 
 						{/* Expand chevron */}

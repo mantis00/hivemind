@@ -178,9 +178,11 @@ export type EnclosureSchedule = {
 	task_description: string | null
 	priority: 'low' | 'medium' | 'high' | null
 	assigned_to: UUID | null
+	start_date: string | null
 	end_date: string | null
 	max_occurrences: number | null
 	occurrence_count: number
+	advance_task_count: number
 }
 
 export type TaskFormData = {
@@ -208,6 +210,7 @@ export type TaskTemplate = {
 	type: string
 	description: string | null
 	created_at: string
+	is_active: boolean
 	question_templates?: QuestionTemplate[]
 }
 
@@ -811,12 +814,19 @@ export function useTasksForEnclosuresInRange(enclosureIds: UUID[], startDate: st
 					const tasks: Task[] = []
 					let from = 0
 					while (true) {
+						// Compute the exclusive upper bound (day after endDate) so that all
+						// timestamps on the end date are included regardless of time component.
+						const endDateExclusive = (() => {
+							const d = new Date(endDate + 'T00:00:00Z')
+							d.setUTCDate(d.getUTCDate() + 1)
+							return d.toISOString().slice(0, 10)
+						})()
 						const { data, error } = (await supabase
 							.from('tasks')
 							.select('*, task_templates(type, description)')
 							.in('enclosure_id', chunk)
 							.gte('due_date', startDate)
-							.lte('due_date', endDate)
+							.lt('due_date', endDateExclusive)
 							.order('due_date', { ascending: true })
 							.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
 
@@ -904,7 +914,11 @@ export function useUsedTaskTypesForSpecies(speciesId: UUID) {
 		queryKey: ['usedTaskTypes', speciesId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = await supabase.from('task_templates').select('type').eq('species_id', speciesId)
+			const { data, error } = await supabase
+				.from('task_templates')
+				.select('type')
+				.eq('species_id', speciesId)
+				.eq('is_active', true)
 			if (error) throw error
 			return (data ?? []).map((t) => t.type) as string[]
 		},
@@ -943,6 +957,7 @@ export function useTaskTemplatesForOrgSpecies(orgSpeciesId: UUID) {
 				.from('task_templates')
 				.select('id, type, description, created_at')
 				.eq('species_id', orgSpecies.master_species_id)
+				.eq('is_active', true)
 				.order('type', { ascending: true })
 			if (error) throw error
 			return (data ?? []) as { id: UUID; type: string; description: string | null; created_at: string }[]

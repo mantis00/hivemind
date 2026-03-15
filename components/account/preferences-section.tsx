@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes'
 import { useUpdateThemePreference } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useIsMounted } from '@/hooks/use-is-mounted'
+import { useAnimatedThemeChange } from '@/components/ui/animated-theme-toggler'
 
 const THEMES = [
 	{ value: 'light', label: 'Light', icon: Sun },
@@ -16,16 +17,15 @@ const THEMES = [
 
 export function PreferencesSection() {
 	const mounted = useIsMounted()
-	const { theme, setTheme } = useTheme()
+	const { theme } = useTheme()
 	const { data: user } = useCurrentClientUser()
 	const updateTheme = useUpdateThemePreference()
 
-	const handleThemeChange = (value: string) => {
-		setTheme(value)
+	const changeTheme = useAnimatedThemeChange((value) => {
 		if (user?.id) {
 			updateTheme.mutate({ userId: user.id, theme: value })
 		}
-	}
+	})
 
 	if (!mounted) return null
 
@@ -46,7 +46,7 @@ export function PreferencesSection() {
 								key={value}
 								variant={theme === value ? 'default' : 'outline'}
 								size='sm'
-								onClick={() => handleThemeChange(value)}
+								onClick={(e) => changeTheme(value, e.currentTarget)}
 								className='flex items-center gap-2'
 							>
 								<Icon className='h-4 w-4' />

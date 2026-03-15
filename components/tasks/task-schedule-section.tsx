@@ -41,6 +41,8 @@ export interface TaskScheduleSectionProps {
 	onFlexIntervalChange: (v: string) => void
 	flexUnit: 'days' | 'weeks' | 'months'
 	onFlexUnitChange: (v: 'days' | 'weeks' | 'months') => void
+	flexStartDate: Date | undefined
+	onFlexStartDateChange: (v: Date | undefined) => void
 	flexEnds: EndsType
 	onFlexEndsChange: (v: EndsType) => void
 	flexEndDate: Date | undefined
@@ -56,6 +58,8 @@ export interface TaskScheduleSectionProps {
 	onFixedEndDateChange: (v: Date | undefined) => void
 	fixedEndCount: string
 	onFixedEndCountChange: (v: string) => void
+	advanceTaskCount: string
+	onAdvanceTaskCountChange: (v: string) => void
 }
 
 // ─── TaskScheduleSection ─────────────────────────────────────────────────────
@@ -71,6 +75,8 @@ export function TaskScheduleSection({
 	onFlexIntervalChange,
 	flexUnit,
 	onFlexUnitChange,
+	flexStartDate,
+	onFlexStartDateChange,
 	flexEnds,
 	onFlexEndsChange,
 	flexEndDate,
@@ -84,7 +90,9 @@ export function TaskScheduleSection({
 	fixedEndDate,
 	onFixedEndDateChange,
 	fixedEndCount,
-	onFixedEndCountChange
+	onFixedEndCountChange,
+	advanceTaskCount,
+	onAdvanceTaskCountChange
 }: TaskScheduleSectionProps) {
 	return (
 		<div className='space-y-4'>
@@ -92,7 +100,7 @@ export function TaskScheduleSection({
 			<RadioGroup
 				value={scheduleType}
 				onValueChange={(v) => onScheduleTypeChange(v as ScheduleType)}
-				className='space-y-2'
+				className='space-y-1'
 			>
 				{(
 					[
@@ -112,7 +120,7 @@ export function TaskScheduleSection({
 					<label
 						key={value}
 						htmlFor={`sched-${value}`}
-						className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${
+						className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 transition-colors ${
 							scheduleType === value ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
 						}`}
 					>
@@ -141,12 +149,27 @@ export function TaskScheduleSection({
 			{/* ── Flexible recurring fields ── */}
 			{scheduleType === 'flexible' && (
 				<div className='rounded-lg border p-4 space-y-4'>
+					{' '}
+					<div className='space-y-1'>
+						<Label className='text-sm'>
+							Start Date <span className='text-destructive'>*</span>
+						</Label>
+						<DatePicker
+							value={flexStartDate}
+							onChange={onFlexStartDateChange}
+							placeholder='Select a start date'
+							className='w-52'
+						/>
+					</div>{' '}
 					<div className='flex gap-3 items-end'>
 						<div className='space-y-1'>
-							<Label className='text-sm'>Repeat every</Label>
+							<Label className='text-sm'>
+								Repeat every <span className='text-destructive'>*</span>
+							</Label>
 							<Input
 								type='number'
 								min='1'
+								placeholder='e.g. 1'
 								value={flexInterval}
 								onChange={(e) => onFlexIntervalChange(e.target.value)}
 								className='w-20'
@@ -166,7 +189,6 @@ export function TaskScheduleSection({
 							</Select>
 						</div>
 					</div>
-
 					<EndsSection
 						id='flex'
 						value={flexEnds}
@@ -176,7 +198,6 @@ export function TaskScheduleSection({
 						endCount={flexEndCount}
 						onEndCountChange={onFlexEndCountChange}
 					/>
-
 					<TimeWindowField value={timeWindow} onChange={onTimeWindowChange} />
 				</div>
 			)}
@@ -225,6 +246,25 @@ export function TaskScheduleSection({
 						endCount={fixedEndCount}
 						onEndCountChange={onFixedEndCountChange}
 					/>
+
+					<div className='space-y-1'>
+						<div className='flex items-center justify-between'>
+							<Label className='text-sm'>
+								Advance Task Count <span className='text-destructive'>*</span>
+							</Label>
+						</div>
+						<Input
+							type='number'
+							min={1}
+							placeholder='e.g. 7'
+							value={advanceTaskCount}
+							onChange={(e) => onAdvanceTaskCountChange(e.target.value)}
+							className='w-32'
+						/>
+						<p className='text-xs text-muted-foreground'>
+							How many future tasks to generate at a time for this schedule.
+						</p>
+					</div>
 
 					<TimeWindowField value={timeWindow} onChange={onTimeWindowChange} />
 				</div>
@@ -286,7 +326,7 @@ function EndsSection({
 				<div className='flex items-center gap-2 flex-wrap'>
 					<RadioGroupItem value='on-date' id={`${id}-ends-on-date`} />
 					<Label htmlFor={`${id}-ends-on-date`} className='text-sm font-normal cursor-pointer'>
-						On date
+						On date {value === 'on-date' && <span className='text-destructive'>*</span>}
 					</Label>
 					{value === 'on-date' && (
 						<DatePicker
@@ -301,14 +341,15 @@ function EndsSection({
 				<div className='flex items-center gap-2 flex-wrap'>
 					<RadioGroupItem value='after-x' id={`${id}-ends-after-x`} />
 					<Label htmlFor={`${id}-ends-after-x`} className='text-sm font-normal cursor-pointer'>
-						After
+						After {value === 'after-x' && <span className='text-destructive'>*</span>}
 					</Label>
 					{value === 'after-x' && (
 						<>
 							<Input
 								type='number'
 								min='1'
-								className='h-8 text-sm w-20'
+								placeholder='e.g. 10'
+								className='h-8 text-sm w-24'
 								value={endCount}
 								onChange={(e) => onEndCountChange(e.target.value)}
 							/>

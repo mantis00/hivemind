@@ -34,10 +34,15 @@ function DrawerOverlay({ className, ...props }: React.ComponentProps<typeof Draw
 	)
 }
 
-function DrawerContent({ className, children, ...props }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+function DrawerContent({
+	className,
+	children,
+	onOverlayClick,
+	...props
+}: React.ComponentProps<typeof DrawerPrimitive.Content> & { onOverlayClick?: () => void }) {
 	return (
 		<DrawerPortal data-slot='drawer-portal'>
-			<DrawerOverlay />
+			<DrawerOverlay onClick={onOverlayClick} />
 			<DrawerPrimitive.Content
 				data-slot='drawer-content'
 				className={cn(
@@ -50,7 +55,7 @@ function DrawerContent({ className, children, ...props }: React.ComponentProps<t
 				)}
 				{...props}
 			>
-				<div className='mx-auto mt-4 hidden h-2 w-[100px] shrink-0 rounded-full bg-muted group-data-[vaul-drawer-direction=bottom]/drawer-content:block' />
+				<div className='mx-auto mt-4 hidden h-2 w-25 shrink-0 rounded-full bg-muted group-data-[vaul-drawer-direction=bottom]/drawer-content:block' />
 				{children}
 			</DrawerPrimitive.Content>
 		</DrawerPortal>
