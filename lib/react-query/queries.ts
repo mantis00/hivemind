@@ -300,6 +300,8 @@ type DashboardTaskRow = {
 	status: string | null
 	completed_time: string | null
 	enclosures: { id: UUID; name: string | null } | { id: UUID; name: string | null }[] | null
+}
+
 export type PushSubscription = {
 	id: UUID
 	user_id: string
@@ -1320,6 +1322,9 @@ export function useDashboardRecentActivity(orgId: UUID | undefined) {
 			return items.sort((a, b) => compareIsoDatesDesc(a.occurredAt, b.occurredAt))
 		},
 		enabled: !!orgId
+	})
+}
+
 export function usePushSubscriptionsForUser(userId: string | undefined) {
 	return useQuery({
 		queryKey: ['pushSubscriptions', userId],
