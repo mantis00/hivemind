@@ -1,6 +1,6 @@
 'use client'
 
-import { OrgSpecies, useOrgEnclosures, useOrgSpecies } from '@/lib/react-query/queries'
+import { useOrgEnclosures, useOrgSpecies } from '@/lib/react-query/queries'
 import {
 	ArrowDownIcon,
 	ArrowUpIcon,
