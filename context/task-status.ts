@@ -26,3 +26,11 @@ export const MOBILE_COL_WIDTHS: Record<string, number> = {
 	status: 100,
 	due_date: 100
 }
+
+export const DESKTOP_COL_WIDTHS: Record<string, number> = {
+	name: 220,
+	due_date: 120,
+	priority: 110,
+	status: 120,
+	assigned_to: 200
+}
