@@ -79,26 +79,34 @@ export function getColumns(
 			),
 			cell: ({ row }) => {
 				const name = row.getValue('name') as string
+				const truncatedName = name && name.length > 30 ? `${name.slice(0, 30)}…` : name
+				return <div className='font-medium truncate w-[150px] cursor-default'>{truncatedName}</div>
+			}
+		},
+		{
+			id: 'description',
+			header: () => <span className='font-bold'>Description</span>,
+			cell: ({ row }) => {
 				const task = row.original
 				const desc = task.description ?? task.task_templates?.description
-				const truncatedName = name && name.length > 30 ? `${name.slice(0, 30)}…` : name
-				const tooltipContent =
-					[name && name.length > 30 ? name : null, desc].filter(Boolean).join('\n') || 'No description'
-
-				return (
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<div className='font-medium truncate w-[200px] cursor-default group-hover:underline'>
-									{truncatedName}
-								</div>
-							</TooltipTrigger>
-							<TooltipContent align='start' className='max-w-[160px] whitespace-pre-line text-left text-xs'>
-								{tooltipContent}
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-				)
+				if (!desc) return <span className='text-xs text-muted-foreground'>—</span>
+				const isTruncated = desc.length > 30
+				const truncated = isTruncated ? `${desc.slice(0, 30)}…` : desc
+				if (isTruncated) {
+					return (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<span className='text-xs text-muted-foreground cursor-default'>{truncated}</span>
+								</TooltipTrigger>
+								<TooltipContent align='start' className='max-w-[240px] text-left text-xs'>
+									{desc}
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					)
+				}
+				return <span className='text-xs text-muted-foreground'>{desc}</span>
 			}
 		},
 		{
@@ -201,7 +209,7 @@ export function getColumns(
 		)
 	}
 
-	const desktopOrder = ['name', 'due_date', 'priority', 'status', 'assigned_to']
+	const desktopOrder = ['name', 'description', 'due_date', 'priority', 'status', 'assigned_to']
 	return desktopOrder.map(
 		(id) => defaultCols.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!
 	)

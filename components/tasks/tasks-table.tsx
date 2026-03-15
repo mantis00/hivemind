@@ -380,7 +380,7 @@ export function TasksDataTable({
 													? { width: MOBILE_COL_WIDTHS[cell.column.id], minWidth: MOBILE_COL_WIDTHS[cell.column.id] }
 													: undefined
 											}
-											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0`}
+											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${cell.column.id === 'description' ? ' whitespace-nowrap' : ''}`}
 										>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
 										</td>
@@ -430,7 +430,7 @@ export function TasksDataTable({
 														? { width: MOBILE_COL_WIDTHS[cell.column.id], minWidth: MOBILE_COL_WIDTHS[cell.column.id] }
 														: undefined
 												}
-												className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0`}
+												className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${cell.column.id === 'description' ? ' whitespace-nowrap' : ''}`}
 											>
 												{flexRender(cell.column.columnDef.cell, cell.getContext())}
 											</td>
