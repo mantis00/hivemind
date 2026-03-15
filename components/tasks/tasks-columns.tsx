@@ -33,15 +33,24 @@ export function getColumns(
 				if (!enc) return <span className='text-xs text-muted-foreground'>—</span>
 				if (onViewEnclosure) {
 					return (
-						<button
-							className='text-sm font-medium text-primary hover:underline'
-							onClick={(e) => {
-								e.stopPropagation()
-								onViewEnclosure(enc.id as UUID)
-							}}
-						>
-							{enc.name}
-						</button>
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										className='text-sm font-medium text-primary hover:underline'
+										onClick={(e) => {
+											e.stopPropagation()
+											onViewEnclosure(enc.id as UUID)
+										}}
+									>
+										{enc.name}
+									</button>
+								</TooltipTrigger>
+								<TooltipContent className='max-w-[160px] text-center text-xs'>
+									You will be redirected to the enclosure
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
 					)
 				}
 				return <span className='text-sm'>{enc.name}</span>
@@ -84,12 +93,12 @@ export function getColumns(
 										{truncatedName}
 									</div>
 								</TooltipTrigger>
-								<TooltipContent className='max-w-xs whitespace-pre-line'>{tooltipContent}</TooltipContent>
+								<TooltipContent className='max-w-xs whitespace-pre-lineeft'>{tooltipContent}</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
 					)
 				}
-				return <div className='font-medium truncate w-[160px] group-hover:underline'>{name}</div>
+				return <div className='font-medium truncate w-[160px]'>{name}</div>
 			}
 		},
 		{
@@ -150,11 +159,7 @@ export function getColumns(
 			cell: ({ row }) => {
 				const due = row.original.due_date
 				if (!due) return <span className='text-xs text-muted-foreground'>—</span>
-				return (
-					<span className='text-xs whitespace-nowrap text-muted-foreground group-hover:underline'>
-						{formatDate(due)}
-					</span>
-				)
+				return <span className='text-xs whitespace-nowrap text-muted-foreground'>{formatDate(due)}</span>
 			}
 		},
 		{
