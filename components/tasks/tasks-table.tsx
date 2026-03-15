@@ -140,6 +140,7 @@ export function TasksDataTable({
 		statusFilter.length > 0 ||
 		globalFilter !== '' ||
 		globalSearch ||
+		isRangeMode ||
 		(isOrgMode && speciesFilter !== '') ||
 		extraColumns.length > 0
 

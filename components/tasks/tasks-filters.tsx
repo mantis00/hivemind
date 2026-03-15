@@ -69,6 +69,7 @@ export function TasksFilters({
 	const { data: orgSpecies, isPending: isPending } = useOrgSpecies(orgId as UUID)
 	const [speciesQuery, setSpeciesQuery] = useState(filters.speciesFilter ?? '')
 	const [showScientific] = useState(false)
+	const [datePickerOpen, setDatePickerOpen] = useState(false)
 
 	const scoreMatch = (str: string | undefined, val: string): number => {
 		if (!str) return -1
@@ -163,7 +164,20 @@ export function TasksFilters({
 							))}
 						</DropdownMenuContent>
 					</DropdownMenu>
-					<Popover>
+					<Popover
+						open={datePickerOpen}
+						onOpenChange={(open) => {
+							if (!open && dateRange?.from && !dateRange?.to) {
+								// Closed with only a start date — treat as a same-day range
+								onFiltersChange({
+									...filters,
+									dateRange: { from: dateRange.from, to: dateRange.from },
+									globalSearch: false
+								})
+							}
+							setDatePickerOpen(open)
+						}}
+					>
 						<PopoverTrigger asChild>
 							<Button variant={isRangeMode ? 'secondary' : 'outline'} className='gap-2'>
 								<CalendarIcon className='h-4 w-4' />
@@ -176,13 +190,16 @@ export function TasksFilters({
 							<Calendar
 								mode='range'
 								selected={dateRange}
-								onSelect={(range) =>
+								onSelect={(range) => {
 									onFiltersChange({
 										...filters,
 										dateRange: range,
-										...(range?.from && range?.to ? { globalSearch: true } : {})
+										globalSearch: false // Selecting a range turns off "All dates"
 									})
-								}
+									if (range?.from && range?.to) {
+										setDatePickerOpen(false)
+									}
+								}}
 								numberOfMonths={isMobile ? 1 : 2}
 							/>
 						</PopoverContent>
