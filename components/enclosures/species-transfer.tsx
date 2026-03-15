@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { ChevronLeftIcon, ChevronRightIcon, LoaderCircle, SaveIcon, SquareCheckIcon, SquareIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useAllSpecies, useOrgSpecies } from '@/lib/react-query/queries'
-import { useAddBatchSpeciesToOrg, useDeleteBatchSpeciesFromOrg } from '@/lib/react-query/mutations'
+import { useAddBatchSpeciesToOrg, useDeactivateBatchOrgSpecies } from '@/lib/react-query/mutations'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import RequestNewSpeciesButton from './request-new-species-button'
@@ -97,7 +97,7 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 	}
 
 	const addMutation = useAddBatchSpeciesToOrg()
-	const deleteMutation = useDeleteBatchSpeciesFromOrg()
+	const deleteMutation = useDeactivateBatchOrgSpecies()
 
 	const hasLeftSelected = leftList.some((item) => item.selected)
 	const hasRightSelected = rightList.some((item) => item.selected)
@@ -323,7 +323,7 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 
 			<ResponsiveDialogDrawer
 				title='Remove Species'
-				description={`Removing ${pendingSave?.removedOrgSpeciesIds.length ?? 0} species (${pendingSave?.removedNames ?? ''}). You can add them back at any time. You will not lose any enclosures, notes, or tasks associated with them.`}
+				description={`Removing ${pendingSave?.removedOrgSpeciesIds.length ?? 0} species (${pendingSave?.removedNames ?? ''}). You can add them back at any time. You will not lose any enclosures, notes, or tasks associated with them. `}
 				trigger={null}
 				open={confirmOpen}
 				onOpenChange={(open) => {

@@ -434,10 +434,17 @@ export function useBatchDeleteEnclosures() {
 
 			const { error } = await supabase.from('enclosures').update({ is_active: false }).in('id', ids)
 			if (error) throw error
+
+			const { error: scheduleError } = await supabase
+				.from('enclosure_schedules')
+				.update({ is_active: false })
+				.in('enclosure_id', ids)
+			if (scheduleError) throw scheduleError
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			toast.success('Enclosures set to inactive.')
 		}
 	})
@@ -452,10 +459,17 @@ export function useBatchActivateEnclosures() {
 
 			const { error } = await supabase.from('enclosures').update({ is_active: true }).in('id', ids)
 			if (error) throw error
+
+			const { error: scheduleError } = await supabase
+				.from('enclosure_schedules')
+				.update({ is_active: true })
+				.in('enclosure_id', ids)
+			if (scheduleError) throw scheduleError
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			toast.success('Enclosures set to active.')
 		}
 	})
@@ -540,12 +554,18 @@ export function useUpdateEnclosureActive() {
 			const supabase = createClient()
 
 			const { error } = await supabase.from('enclosures').update({ is_active }).eq('id', enclosure_id)
-
 			if (error) throw error
+
+			const { error: scheduleError } = await supabase
+				.from('enclosure_schedules')
+				.update({ is_active })
+				.eq('enclosure_id', enclosure_id)
+			if (scheduleError) throw scheduleError
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			toast.success('Enclosure updated!')
 		}
 	})
@@ -1376,7 +1396,7 @@ export function useAddBatchSpeciesToOrg() {
 	})
 }
 
-export function useDeleteSpeciesFromOrg() {
+export function useDeactivateOrgSpecies() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
@@ -1400,7 +1420,7 @@ export function useDeleteSpeciesFromOrg() {
 	})
 }
 
-export function useDeleteBatchSpeciesFromOrg() {
+export function useDeactivateBatchOrgSpecies() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
