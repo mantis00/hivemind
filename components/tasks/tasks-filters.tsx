@@ -1,6 +1,6 @@
 'use client'
 
-import { CalendarIcon, ChevronDown, X } from 'lucide-react'
+import { CalendarIcon, ChevronDown, Search, X } from 'lucide-react'
 import { UUID } from 'crypto'
 import type { DateRange } from 'react-day-picker'
 
@@ -20,17 +20,6 @@ import capitalizeFirstLetter from '@/context/captalize-first-letter'
 import { statusConfig } from '@/context/task-status'
 import { formatDate } from '@/context/format-date'
 import { useIsMobile } from '@/hooks/use-mobile'
-import {
-	Combobox,
-	ComboboxCollection,
-	ComboboxContent,
-	ComboboxEmpty,
-	ComboboxInput,
-	ComboboxItem,
-	ComboboxList
-} from '../ui/combobox'
-import { useOrgSpecies } from '@/lib/react-query/queries'
-import { useMemo, useState } from 'react'
 
 export interface TaskFilters {
 	globalFilter: string
@@ -38,7 +27,6 @@ export interface TaskFilters {
 	priorityFilter: string[]
 	statusFilter: string[]
 	dateRange: DateRange | undefined
-	speciesFilter: string
 }
 
 interface TasksFiltersProps {
@@ -48,7 +36,8 @@ interface TasksFiltersProps {
 	onFiltersChange: (filters: TaskFilters) => void
 	hasActiveFilters: boolean
 	onReset: () => void
-	showSpeciesFilter?: boolean
+	includeSpeciesSearch?: boolean
+	includeEnclosureAndAssigneeSearch?: boolean
 }
 
 export function TasksFilters({
@@ -58,48 +47,31 @@ export function TasksFilters({
 	onFiltersChange,
 	hasActiveFilters,
 	onReset,
-	showSpeciesFilter
+	includeSpeciesSearch = false,
+	includeEnclosureAndAssigneeSearch = false
 }: TasksFiltersProps) {
 	const isMobile = useIsMobile()
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
 	const isRangeMode = !!(dateRange?.from && dateRange?.to)
-
-	const { data: orgSpecies, isPending: isPending } = useOrgSpecies(orgId as UUID)
-	const [speciesQuery, setSpeciesQuery] = useState(filters.speciesFilter ?? '')
-	const [showScientific] = useState(false)
-
-	const scoreMatch = (str: string | undefined, val: string): number => {
-		if (!str) return -1
-		const s = str.trim().toLowerCase()
-		if (s === val) return 0
-		if (s.startsWith(val)) return 1
-		if (s.includes(val)) return 2
-		return -1
-	}
-
-	const filteredSpecies = useMemo(() => {
-		if (!speciesQuery.trim()) return orgSpecies ?? []
-		const val = speciesQuery.trim().toLowerCase()
-		return (orgSpecies ?? [])
-			.map((s) => {
-				const field = showScientific ? s.species?.scientific_name : s.custom_common_name
-				return { s, score: scoreMatch(field, val) }
-			})
-			.filter(({ score }) => score >= 0)
-			.sort((a, b) => a.score - b.score)
-			.map(({ s }) => s)
-	}, [speciesQuery, orgSpecies, showScientific])
+	const searchPlaceholder = includeEnclosureAndAssigneeSearch
+		? 'Search tasks, species, enclosures, or assignees...'
+		: includeSpeciesSearch
+			? 'Search tasks or species...'
+			: 'Search tasks...'
 
 	return (
 		<>
 			<div className='flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap'>
 				<div className='flex items-center gap-2'>
-					<Input
-						placeholder='Search tasks...'
-						value={globalFilter}
-						onChange={(e) => onFiltersChange({ ...filters, globalFilter: e.target.value })}
-						className='w-48'
-					/>
+					<div className='relative flex-1 min-w-48 max-w-sm'>
+						<Search className='absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground' />
+						<Input
+							placeholder={searchPlaceholder}
+							value={globalFilter}
+							onChange={(e) => onFiltersChange({ ...filters, globalFilter: e.target.value })}
+							className='pl-8'
+						/>
+					</div>
 					<GlobalSearchToggle
 						globalSearch={globalSearch}
 						onGlobalSearchChange={(val) =>
@@ -186,38 +158,6 @@ export function TasksFilters({
 							/>
 						</PopoverContent>
 					</Popover>
-					{showSpeciesFilter && (
-						<Combobox
-							items={filteredSpecies}
-							filter={() => true}
-							value={filters.speciesFilter}
-							onValueChange={(value) => {
-								onFiltersChange({ ...filters, speciesFilter: value ?? '' })
-								setSpeciesQuery(value ?? '')
-							}}
-						>
-							<ComboboxInput
-								className='h-9'
-								placeholder='Filter by species...'
-								value={speciesQuery}
-								onChange={(event) => setSpeciesQuery(event.target.value)}
-								disabled={isPending}
-								showClear
-							/>
-							<ComboboxContent>
-								<ComboboxEmpty>No matching species.</ComboboxEmpty>
-								<ComboboxList className='max-h-42 scrollbar-no-track'>
-									<ComboboxCollection>
-										{(spec) => (
-											<ComboboxItem key={spec.id} value={spec.custom_common_name}>
-												{spec.custom_common_name}
-											</ComboboxItem>
-										)}
-									</ComboboxCollection>
-								</ComboboxList>
-							</ComboboxContent>
-						</Combobox>
-					)}
 					<Button
 						variant='ghost'
 						onClick={onReset}

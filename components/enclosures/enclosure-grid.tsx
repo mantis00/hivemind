@@ -9,9 +9,10 @@ import {
 	LoaderCircle,
 	Menu,
 	Move,
+	Power,
+	PowerOff,
 	PlusIcon,
 	Search,
-	TrashIcon,
 	XIcon
 } from 'lucide-react'
 
@@ -39,7 +40,7 @@ import {
 } from '../ui/dropdown-menu'
 import { EditSpeciesOrgForm } from './edit-species-org'
 import { EnclosureCounts } from './enclosure-counts'
-import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
+import { useBatchActivateEnclosures, useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 
 export default function EnclosureGrid() {
 	type EnclosureStatusFilter = 'active' | 'inactive' | 'all'
@@ -124,6 +125,7 @@ export default function EnclosureGrid() {
 	const [manageOpen, setManageOpen] = useState(false)
 	const [createOpen, setCreateOpen] = useState(false)
 	const batchDeleteMutation = useBatchDeleteEnclosures()
+	const batchActivateMutation = useBatchActivateEnclosures()
 	const isMobile = useIsMobile()
 
 	const handleSelectChange = (enclosureId: UUID, checked: boolean) => {
@@ -140,8 +142,26 @@ export default function EnclosureGrid() {
 		if (selectMode) setSelectedIds(new Set())
 	}
 
-	const executeDelete = () => {
+	const handleFilterChange = (filter: EnclosureStatusFilter) => {
+		setEnclosureStatusFilter(filter)
+		setSelectedIds(new Set())
+	}
+
+	const executeSetInactive = () => {
 		batchDeleteMutation.mutate(
+			{ ids: Array.from(selectedIds), orgId: orgId as UUID },
+			{
+				onSuccess: () => {
+					setSelectedIds(new Set())
+					setSelectMode(false)
+					setDeleteConfirmOpen(false)
+				}
+			}
+		)
+	}
+
+	const executeActivate = () => {
+		batchActivateMutation.mutate(
 			{ ids: Array.from(selectedIds), orgId: orgId as UUID },
 			{
 				onSuccess: () => {
@@ -227,16 +247,29 @@ export default function EnclosureGrid() {
 							{selectedIds.size > 0 && (
 								<>
 									<span className='text-xs text-muted-foreground'>{selectedIds.size} selected</span>
-									<Button
-										size='sm'
-										variant='destructive'
-										className='gap-1.5 text-xs'
-										onClick={() => setDeleteConfirmOpen(true)}
-										disabled={batchDeleteMutation.isPending}
-									>
-										<TrashIcon className='h-3.5 w-3.5' />
-										Delete
-									</Button>
+									{enclosureStatusFilter === 'inactive' ? (
+										<Button
+											size='sm'
+											variant='outline'
+											className='gap-1.5 text-xs'
+											onClick={() => setDeleteConfirmOpen(true)}
+											disabled={batchActivateMutation.isPending}
+										>
+											<Power className='h-3.5 w-3.5' />
+											Set Active
+										</Button>
+									) : (
+										<Button
+											size='sm'
+											variant='outline'
+											className='gap-1.5 text-xs'
+											onClick={() => setDeleteConfirmOpen(true)}
+											disabled={batchDeleteMutation.isPending}
+										>
+											<PowerOff className='h-3.5 w-3.5' />
+											Set Inactive
+										</Button>
+									)}
 								</>
 							)}
 						</div>
@@ -261,15 +294,13 @@ export default function EnclosureGrid() {
 									</DropdownMenuItem>
 									<DropdownMenuSeparator />
 									<DropdownMenuLabel className='text-muted-foreground'>Status Filter</DropdownMenuLabel>
-									<DropdownMenuItem onSelect={() => setEnclosureStatusFilter('active')}>
+									<DropdownMenuItem onSelect={() => handleFilterChange('active')}>
 										Show Active Enclosures
 									</DropdownMenuItem>
-									<DropdownMenuItem onSelect={() => setEnclosureStatusFilter('inactive')}>
+									<DropdownMenuItem onSelect={() => handleFilterChange('inactive')}>
 										Show Inactive Enclosures
 									</DropdownMenuItem>
-									<DropdownMenuItem onSelect={() => setEnclosureStatusFilter('all')}>
-										Show All Enclosures
-									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => handleFilterChange('all')}>Show All Enclosures</DropdownMenuItem>
 									<DropdownMenuSeparator />
 									<DropdownMenuLabel className='text-muted-foreground'>Selection</DropdownMenuLabel>
 									<DropdownMenuItem onSelect={toggleSelectMode}>
@@ -283,7 +314,13 @@ export default function EnclosureGrid() {
 						</>
 					) : (
 						<>
-							<Button variant='outline' size='sm' onClick={toggleSelectMode} className='gap-1.5'>
+							<Button
+								variant='outline'
+								size='sm'
+								onClick={toggleSelectMode}
+								className='gap-1.5'
+								disabled={enclosureStatusFilter === 'all'}
+							>
 								<ListChecks className='h-4 w-4' />
 								Select
 							</Button>
@@ -297,7 +334,7 @@ export default function EnclosureGrid() {
 				<div className='w-full py-2 flex flex-row gap-3'>
 					{!isMobile && (
 						<Select
-							onValueChange={(value) => setEnclosureStatusFilter(value as EnclosureStatusFilter)}
+							onValueChange={(value) => handleFilterChange(value as EnclosureStatusFilter)}
 							value={enclosureStatusFilter}
 							disabled={isLoading}
 						>
@@ -528,16 +565,26 @@ export default function EnclosureGrid() {
 			)}
 
 			<ResponsiveDialogDrawer
-				title='Delete Enclosures'
-				description={`Are you sure you want to delete ${selectedIds.size} enclosure${selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.`}
+				title={enclosureStatusFilter === 'inactive' ? 'Activate Enclosures' : 'Set Enclosures Inactive'}
+				description={
+					enclosureStatusFilter === 'inactive'
+						? `Set ${selectedIds.size} enclosure${selectedIds.size !== 1 ? 's' : ''} to active?`
+						: `Set ${selectedIds.size} enclosure${selectedIds.size !== 1 ? 's' : ''} to inactive? They will be hidden from active views but their data will be preserved.`
+				}
 				trigger={null}
 				open={deleteConfirmOpen}
 				onOpenChange={setDeleteConfirmOpen}
 			>
 				<div className='flex flex-col gap-3 px-4 pb-4'>
-					<Button variant='destructive' disabled={batchDeleteMutation.isPending} onClick={executeDelete}>
-						{batchDeleteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm Delete'}
-					</Button>
+					{enclosureStatusFilter === 'inactive' ? (
+						<Button disabled={batchActivateMutation.isPending} onClick={executeActivate}>
+							{batchActivateMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Set Active'}
+						</Button>
+					) : (
+						<Button disabled={batchDeleteMutation.isPending} onClick={executeSetInactive}>
+							{batchDeleteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Set Inactive'}
+						</Button>
+					)}
 					<Button
 						variant='outline'
 						onClick={() => setDeleteConfirmOpen(false)}

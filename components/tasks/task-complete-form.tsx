@@ -56,8 +56,15 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 		setAnswers((prev) => ({ ...prev, [questionId]: value }))
 	}
 
+	const isEnclosureInactive = enclosure?.is_active === false
+
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
+
+		if (isEnclosureInactive) {
+			toast.error('Tasks in inactive enclosures cannot be completed.')
+			return
+		}
 
 		const questions = template?.question_templates ?? []
 
@@ -123,6 +130,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 						<MapPinIcon className='h-3.5 w-3.5' />
 						{enclosureName}
 					</span>
+					{isEnclosureInactive ? <span className='font-semibold text-destructive'>Inactive Enclosure</span> : null}
 					{isCompleted ? (
 						<span className='flex items-center gap-1.5'>
 							<CircleUserRound className='h-3.5 w-3.5' />
@@ -134,6 +142,8 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 							assignedTo={task.assigned_to}
 							assignedMemberName={assignedMemberName}
 							members={members}
+							disabled={isEnclosureInactive}
+							disabledReason='Tasks in inactive enclosures cannot be reassigned.'
 						/>
 					)}
 					{task.priority && (
@@ -211,7 +221,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 						<Button type='button' variant='outline' className='flex-1' onClick={() => router.back()}>
 							Cancel
 						</Button>
-						<Button type='submit' className='flex-1' disabled={submitForm.isPending}>
+						<Button type='submit' className='flex-1' disabled={submitForm.isPending || isEnclosureInactive}>
 							{submitForm.isPending ? (
 								<LoaderCircle className='h-4 w-4 animate-spin' />
 							) : (
@@ -231,7 +241,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 					</Button>
 					<Button
 						className='flex-1'
-						disabled={submitForm.isPending}
+						disabled={submitForm.isPending || isEnclosureInactive}
 						onClick={() =>
 							submitForm.mutate(
 								{ task_id: taskId, user_id: currentUser!.id as UUID, answers: [] },

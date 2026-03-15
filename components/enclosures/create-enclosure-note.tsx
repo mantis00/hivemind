@@ -6,7 +6,7 @@ import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { LoaderCircle } from 'lucide-react'
 import { UUID } from 'crypto'
 
-export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID }) {
+export default function CreateEnclosureNote({ enclosureId, is_active }: { enclosureId: UUID; is_active: boolean }) {
 	const [noteText, setNoteText] = useState('')
 	const createEnclosureNoteMutation = useCreateEnclosureNote()
 	const { data: user } = useCurrentClientUser()
@@ -36,7 +36,7 @@ export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID
 						ref={textareaRef}
 						data-slot='input-group-control'
 						className='flex field-sizing-content min-h-4 w-full resize-none rounded-md bg-transparent px-3 py-2.5 text-base transition-[color,box-shadow] outline-none md:text-sm'
-						placeholder='New note...'
+						placeholder={is_active ? 'New note...' : 'Enclosure is inactive.'}
 						value={noteText}
 						onFocus={() =>
 							setTimeout(() => textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300)
@@ -46,7 +46,13 @@ export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID
 						}}
 					/>
 					<InputGroupAddon align='block-end'>
-						<InputGroupButton className='ml-auto' size='sm' variant='default' type='submit' disabled={loading}>
+						<InputGroupButton
+							className='ml-auto'
+							size='sm'
+							variant='default'
+							type='submit'
+							disabled={loading || !is_active}
+						>
 							{createEnclosureNoteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Submit'}
 						</InputGroupButton>
 					</InputGroupAddon>

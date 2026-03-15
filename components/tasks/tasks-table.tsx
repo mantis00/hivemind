@@ -54,6 +54,7 @@ export function TasksDataTable({
 
 	// Org-mode data — hooks are always called but only used when isOrgMode
 	const { data: fetchedOrgEnclosures = [] } = useOrgEnclosures(orgId)
+	const { data: allOrgEnclosures = [] } = useOrgEnclosures(orgId, 'all')
 	const { data: fetchedOrgSpecies } = useOrgSpecies(orgId)
 
 	const enclosureIds = React.useMemo(
@@ -68,14 +69,13 @@ export function TasksDataTable({
 		globalSearch: false,
 		priorityFilter: [],
 		statusFilter: [],
-		dateRange: undefined,
-		speciesFilter: ''
+		dateRange: undefined
 	})
 	const [pendingGlobalSearch, setPendingGlobalSearch] = React.useState(false)
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
 	const [isMounted, setIsMounted] = React.useState(false)
 
-	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange, speciesFilter } = filters
+	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
 	const isRangeMode = !!(dateRange?.from && dateRange?.to)
 
 	const MAX_TABLE_HEIGHT = isMobile ? MAX_TABLE_HEIGHT_MOBILE : MAX_TABLE_HEIGHT_DESKTOP
@@ -91,12 +91,7 @@ export function TasksDataTable({
 	const measuredRef = React.useRef(false)
 	const stableOrderRef = React.useRef<Map<string, number>>(new Map())
 
-	const hasActiveFilters =
-		priorityFilter.length > 0 ||
-		statusFilter.length > 0 ||
-		globalFilter !== '' ||
-		globalSearch ||
-		(isOrgMode && speciesFilter !== '')
+	const hasActiveFilters = priorityFilter.length > 0 || statusFilter.length > 0 || globalFilter !== '' || globalSearch
 
 	const resetFilters = () => {
 		setFilters({
@@ -104,8 +99,7 @@ export function TasksDataTable({
 			globalSearch: false,
 			priorityFilter: [],
 			statusFilter: [],
-			dateRange: undefined,
-			speciesFilter: ''
+			dateRange: undefined
 		})
 		setPendingGlobalSearch(false)
 	}
@@ -161,36 +155,69 @@ export function TasksDataTable({
 						? ['enclosure_name', 'name', 'due_date']
 						: ['enclosure_name', 'species', 'name', 'status', 'due_date', 'assigned_to', 'actions']
 					: undefined,
-				isOrgMode ? fetchedOrgEnclosures : undefined,
+				allOrgEnclosures,
 				isOrgMode ? (fetchedOrgSpecies ?? undefined) : undefined,
 				isOrgMode ? handleViewEnclosure : undefined
 			),
-		[isMobile, handleView, members, isOrgMode, fetchedOrgEnclosures, fetchedOrgSpecies, handleViewEnclosure]
+		[isMobile, handleView, members, isOrgMode, allOrgEnclosures, fetchedOrgSpecies, handleViewEnclosure]
+	)
+
+	const enclosureNameById = React.useMemo(
+		() => new Map(allOrgEnclosures.map((enclosure) => [enclosure.id as string, enclosure.name ?? ''])),
+		[allOrgEnclosures]
+	)
+
+	const speciesNameByEnclosureId = React.useMemo(
+		() =>
+			new Map(
+				allOrgEnclosures.map((enclosure) => {
+					const speciesName =
+						(fetchedOrgSpecies ?? []).find((species) => species.id === enclosure.species_id)?.custom_common_name ?? ''
+					return [enclosure.id as string, speciesName]
+				})
+			),
+		[allOrgEnclosures, fetchedOrgSpecies]
+	)
+
+	const memberNameById = React.useMemo(
+		() =>
+			new Map(
+				members.map((member) => [
+					member.id as string,
+					member.full_name || `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim()
+				])
+			),
+		[members]
 	)
 
 	const filteredData = React.useMemo(() => {
 		const targetDate = getDateStr(dayOffset)
 		const todayDate = getDateStr(0)
 		const source = isRangeMode ? (rangeTasks ?? []) : (enclosureTasks ?? [])
-
-		const speciesEnclosureIds =
-			isOrgMode && speciesFilter
-				? new Set(
-						fetchedOrgEnclosures
-							.filter(
-								(e) =>
-									e.species_id === (fetchedOrgSpecies ?? []).find((s) => s.custom_common_name === speciesFilter)?.id
-							)
-							.map((e) => e.id as string)
-					)
-				: null
+		const normalizedFilter = globalFilter.trim().toLowerCase()
 
 		const tasks = source.filter((task) => {
-			if (speciesEnclosureIds && !speciesEnclosureIds.has(task.enclosure_id as string)) return false
 			const priorityMatch = priorityFilter.length === 0 || (task.priority && priorityFilter.includes(task.priority))
 			const effectiveStatus = getEffectiveStatus(task)
 			const statusMatch = statusFilter.length === 0 || statusFilter.includes(effectiveStatus)
 			if (!priorityMatch || !statusMatch) return false
+
+			if (normalizedFilter) {
+				const taskName = task.name?.toLowerCase() ?? ''
+				const speciesName = isOrgMode
+					? (speciesNameByEnclosureId.get(task.enclosure_id as string)?.toLowerCase() ?? '')
+					: ''
+				const enclosureName = isOrgMode ? (enclosureNameById.get(task.enclosure_id as string)?.toLowerCase() ?? '') : ''
+				const assigneeName =
+					isOrgMode && task.assigned_to ? (memberNameById.get(task.assigned_to as string)?.toLowerCase() ?? '') : ''
+				if (
+					!taskName.includes(normalizedFilter) &&
+					!speciesName.includes(normalizedFilter) &&
+					!enclosureName.includes(normalizedFilter) &&
+					!assigneeName.includes(normalizedFilter)
+				)
+					return false
+			}
 
 			if (globalSearch) return true
 			if (isRangeMode) return true
@@ -237,15 +264,16 @@ export function TasksDataTable({
 	}, [
 		enclosureTasks,
 		rangeTasks,
+		globalFilter,
 		priorityFilter,
 		statusFilter,
 		dayOffset,
 		isRangeMode,
 		globalSearch,
 		isOrgMode,
-		speciesFilter,
-		fetchedOrgEnclosures,
-		fetchedOrgSpecies
+		enclosureNameById,
+		speciesNameByEnclosureId,
+		memberNameById
 	])
 
 	const table = useReactTable({
@@ -255,9 +283,7 @@ export function TasksDataTable({
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
-		globalFilterFn: 'includesString',
-		state: { sorting, globalFilter },
-		onGlobalFilterChange: (value) => setFilters((prev) => ({ ...prev, globalFilter: value as string }))
+		state: { sorting }
 	})
 
 	const { rows } = table.getRowModel()
@@ -321,7 +347,8 @@ export function TasksDataTable({
 				}}
 				hasActiveFilters={hasActiveFilters}
 				onReset={resetFilters}
-				showSpeciesFilter={isOrgMode}
+				includeSpeciesSearch={isOrgMode}
+				includeEnclosureAndAssigneeSearch={isOrgMode}
 			/>
 
 			{isOrgMode && createTaskButton && <div>{createTaskButton}</div>}

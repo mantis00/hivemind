@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { LoaderCircle, Edit2Icon } from 'lucide-react'
 import { useState, useMemo, useRef } from 'react'
 import { useUpdateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
@@ -155,7 +154,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			open={open}
 			onOpenChange={handleOpenChange}
 			trigger={
-				<Button variant='secondary' onClick={() => setOpen(true)}>
+				<Button variant='secondary' onClick={() => setOpen(true)} disabled={!enclosure?.is_active}>
 					<Edit2Icon className='w-4 h-4' /> Edit Enclosure
 				</Button>
 			}
@@ -308,15 +307,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							required
 							disabled={isPending}
 						/>
-						<div className='flex items-center justify-between rounded-md border p-3'>
-							<div>
-								<Label htmlFor='enclosure-active'>Active Enclosure</Label>
-								<p className='text-xs text-muted-foreground'>
-									Inactive enclosures are hidden from active-species views.
-								</p>
-							</div>
-							<Switch id='enclosure-active' checked={isActive} onCheckedChange={setIsActive} disabled={isPending} />
-						</div>
 					</div>
 				</div>
 				<div className='flex flex-col gap-3 justify-center px-4 pb-2'>

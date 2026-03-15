@@ -16,13 +16,17 @@ export function ReassignMemberButton({
 	taskId,
 	assignedTo,
 	assignedMemberName,
-	members
+	members,
+	disabled = false,
+	disabledReason
 }: {
 	scheduleId?: UUID
 	taskId?: UUID
 	assignedTo: UUID | null
 	assignedMemberName: string | null
 	members: MemberProfile[]
+	disabled?: boolean
+	disabledReason?: string
 }) {
 	const [open, setOpen] = useState(false)
 	const [selectedId, setSelectedId] = useState<string | null>(assignedTo as string | null)
@@ -46,9 +50,11 @@ export function ReassignMemberButton({
 						<Button
 							variant='ghost'
 							size='sm'
-							className='h-7 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground font-normal shrink-0 bg-muted hover:bg-muted/70'
+							className='h-7 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground font-normal shrink-0 bg-muted hover:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-60'
+							disabled={disabled}
 							onClick={(e) => {
 								e.stopPropagation()
+								if (disabled) return
 								handleOpenChange(true)
 							}}
 						>
@@ -57,7 +63,7 @@ export function ReassignMemberButton({
 						</Button>
 					</TooltipTrigger>
 					<TooltipContent>
-						<p>Reassign member</p>
+						<p>{disabled ? (disabledReason ?? 'Reassignment unavailable') : 'Reassign member'}</p>
 					</TooltipContent>
 				</Tooltip>
 			</TooltipProvider>
@@ -72,8 +78,9 @@ export function ReassignMemberButton({
 					<div className='flex gap-2 w-full'>
 						<Button
 							className='flex-1'
-							disabled={reassign.isPending || !hasChanged}
+							disabled={disabled || reassign.isPending || !hasChanged}
 							onClick={() => {
+								if (disabled) return
 								if (taskId) {
 									reassignTask.mutate(
 										{ taskId, memberId: selectedId as UUID | null },

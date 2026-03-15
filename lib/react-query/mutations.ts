@@ -432,22 +432,31 @@ export function useBatchDeleteEnclosures() {
 		mutationFn: async ({ ids }: { ids: UUID[]; orgId: UUID }) => {
 			const supabase = createClient()
 
-			// Delete tasks for all enclosures
-			const { error: tasksError } = await supabase.from('tasks').delete().in('enclosure_id', ids)
-			if (tasksError) throw tasksError
-
-			// Delete tank notes for all enclosures
-			const { error: notesError } = await supabase.from('tank_notes').delete().in('enclosure_id', ids)
-			if (notesError) throw notesError
-
-			// Delete all enclosures
-			const { error: enclosuresError } = await supabase.from('enclosures').delete().in('id', ids)
-			if (enclosuresError) throw enclosuresError
+			const { error } = await supabase.from('enclosures').update({ is_active: false }).in('id', ids)
+			if (error) throw error
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
-			toast.success('Enclosures deleted.')
+			toast.success('Enclosures set to inactive.')
+		}
+	})
+}
+
+export function useBatchActivateEnclosures() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ ids }: { ids: UUID[]; orgId: UUID }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase.from('enclosures').update({ is_active: true }).in('id', ids)
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			toast.success('Enclosures set to active.')
 		}
 	})
 }
@@ -512,6 +521,25 @@ export function useUpdateEnclosure() {
 				.from('enclosures')
 				.update({ species_id: species_id, location: location_id, current_count: count, is_active })
 				.eq('id', enclosure_id)
+
+			if (error) throw error
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			toast.success('Enclosure updated!')
+		}
+	})
+}
+
+export function useUpdateEnclosureActive() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ enclosure_id, is_active }: { orgId: UUID; enclosure_id: UUID; is_active: boolean }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase.from('enclosures').update({ is_active }).eq('id', enclosure_id)
 
 			if (error) throw error
 		},
@@ -1491,6 +1519,24 @@ export function useReassignTask() {
 	return useMutation({
 		mutationFn: async ({ taskId, memberId }: { taskId: UUID; memberId: UUID | null }) => {
 			const supabase = createClient()
+
+			const { data: task, error: taskError } = await supabase
+				.from('tasks')
+				.select('enclosure_id')
+				.eq('id', taskId)
+				.single()
+			if (taskError) throw taskError
+
+			const { data: enclosure, error: enclosureError } = await supabase
+				.from('enclosures')
+				.select('is_active')
+				.eq('id', task.enclosure_id)
+				.single()
+			if (enclosureError) throw enclosureError
+			if (enclosure?.is_active === false) {
+				throw new Error('Tasks in inactive enclosures cannot be reassigned.')
+			}
+
 			const { error } = await supabase.from('tasks').update({ assigned_to: memberId }).eq('id', taskId)
 			if (error) throw error
 		},
@@ -1499,6 +1545,9 @@ export function useReassignTask() {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['taskById'] })
 			toast.success('Task reassigned!')
+		},
+		onError: (error) => {
+			toast.error(error.message || 'Unable to reassign task.')
 		}
 	})
 }

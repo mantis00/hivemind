@@ -59,7 +59,7 @@ export default function EnclosureNotesDialog({
 					No notes for this enclosure yet.
 				</div>
 			)}
-			<CreateEnclosureNote enclosureId={enclosure.id} />
+			<CreateEnclosureNote enclosureId={enclosure.id} is_active={enclosure?.is_active} />
 		</ResponsiveDialogDrawer>
 	)
 }

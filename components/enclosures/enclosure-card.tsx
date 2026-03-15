@@ -21,11 +21,17 @@ export function EnclosureCard({
 	selected?: boolean
 	onSelectChange?: (checked: boolean) => void
 }) {
+	const isInactive = enclosure.is_active === false
+
 	return (
 		<>
 			<Card
 				className={`cursor-pointer transition-colors hover:bg-accent/50 border-l-4 py-2 ${
-					selected ? 'border-l-primary bg-accent/30' : 'border-l-primary/20'
+					selected
+						? 'border-l-primary bg-accent/30'
+						: isInactive
+							? 'border-l-muted-foreground/30 opacity-60'
+							: 'border-l-primary/20'
 				}`}
 				onClick={() => {
 					if (selectable) {
@@ -46,7 +52,16 @@ export function EnclosureCard({
 							/>
 						)}
 						<div className='space-y-1.5 flex-1 min-w-0'>
-							<p className='font-medium text-sm truncate'>{enclosure.name}</p>
+							<div className='flex items-center gap-1.5 min-w-0'>
+								<p className={`font-medium text-sm truncate ${isInactive ? 'text-muted-foreground' : ''}`}>
+									{enclosure.name}
+								</p>
+								{isInactive && (
+									<Badge variant='outline' className='shrink-0 text-xs text-destructive border-destructive/40'>
+										Inactive
+									</Badge>
+								)}
+							</div>
 							<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
 								<MapPin className='h-3 w-3 shrink-0' />
 								<span className='truncate'>{enclosure.locations?.name}</span>
