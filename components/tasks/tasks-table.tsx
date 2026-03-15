@@ -369,7 +369,7 @@ export function TasksDataTable({
 								<tr
 									key={row.id}
 									ref={index === 0 ? rowRef : undefined}
-									className={`border-b transition-colors hover:bg-muted/30 cursor-pointer active:bg-muted ${index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}`}
+									className={`group border-b transition-colors hover:bg-orange-300/20 dark:hover:bg-orange-400/30 cursor-pointer active:bg-orange-100 dark:active:bg-orange-950/30 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}`}
 									onClick={() => handleView(row.original.id as UUID)}
 								>
 									{row.getVisibleCells().map((cell) => (
@@ -380,7 +380,7 @@ export function TasksDataTable({
 													? { width: MOBILE_COL_WIDTHS[cell.column.id], minWidth: MOBILE_COL_WIDTHS[cell.column.id] }
 													: undefined
 											}
-											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0`}
+											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${cell.column.id === 'description' ? ' whitespace-nowrap' : ''}`}
 										>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
 										</td>
@@ -419,7 +419,7 @@ export function TasksDataTable({
 										{...props}
 										ref={index === 0 ? rowRef : undefined}
 										style={style}
-										className={`border-b transition-colors hover:bg-muted cursor-pointer active:bg-muted ${isEven ? 'bg-background' : 'bg-muted/70'}`}
+										className={`group border-b transition-colors hover:bg-orange-300/20 dark:hover:bg-orange-400/30 cursor-pointer active:bg-orange-100 dark:active:bg-orange-950/30 ${isEven ? 'bg-background' : 'bg-muted/70'}`}
 										onClick={() => handleView(row.original.id as UUID)}
 									>
 										{row.getVisibleCells().map((cell) => (
@@ -430,7 +430,7 @@ export function TasksDataTable({
 														? { width: MOBILE_COL_WIDTHS[cell.column.id], minWidth: MOBILE_COL_WIDTHS[cell.column.id] }
 														: undefined
 												}
-												className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0`}
+												className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${cell.column.id === 'description' ? ' whitespace-nowrap' : ''}`}
 											>
 												{flexRender(cell.column.columnDef.cell, cell.getContext())}
 											</td>

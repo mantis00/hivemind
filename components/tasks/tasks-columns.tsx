@@ -1,10 +1,9 @@
 'use client'
 
 import type { ColumnDef } from '@tanstack/react-table'
-import { ArrowRight, ArrowUpDown } from 'lucide-react'
+import { ArrowUpDown } from 'lucide-react'
 import { UUID } from 'crypto'
 
-import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Task, MemberProfile, Enclosure, OrgSpecies } from '@/lib/react-query/queries'
 import { ReassignMemberButton } from './reassign-member-button'
@@ -34,15 +33,24 @@ export function getColumns(
 				if (!enc) return <span className='text-xs text-muted-foreground'>—</span>
 				if (onViewEnclosure) {
 					return (
-						<button
-							className='text-sm font-medium text-primary hover:underline'
-							onClick={(e) => {
-								e.stopPropagation()
-								onViewEnclosure(enc.id as UUID)
-							}}
-						>
-							{enc.name}
-						</button>
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										className='text-sm font-medium text-primary hover:underline'
+										onClick={(e) => {
+											e.stopPropagation()
+											onViewEnclosure(enc.id as UUID)
+										}}
+									>
+										{enc.name}
+									</button>
+								</TooltipTrigger>
+								<TooltipContent align='start' className='max-w-[160px] text-left text-xs'>
+									You will be redirected to the enclosure
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
 					)
 				}
 				return <span className='text-sm'>{enc.name}</span>
@@ -71,43 +79,34 @@ export function getColumns(
 			),
 			cell: ({ row }) => {
 				const name = row.getValue('name') as string
-				if (name && name.length > 20) {
-					return (
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<div className='font-medium truncate max-w-[160px] cursor-default'>{name.slice(0, 20)}…</div>
-								</TooltipTrigger>
-								<TooltipContent>{name}</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					)
-				}
-				return <div className='font-medium truncate max-w-[160px]'>{name}</div>
+				const truncatedName = name && name.length > 30 ? `${name.slice(0, 30)}…` : name
+				return <div className='font-medium truncate w-[150px] cursor-default'>{truncatedName}</div>
 			}
 		},
 		{
 			id: 'description',
-			accessorKey: 'description',
 			header: () => <span className='font-bold'>Description</span>,
 			cell: ({ row }) => {
 				const task = row.original
 				const desc = task.description ?? task.task_templates?.description
-				if (desc && desc.length > 30) {
+				if (!desc) return <span className='text-xs text-muted-foreground'>—</span>
+				const isTruncated = desc.length > 30
+				const truncated = isTruncated ? `${desc.slice(0, 30)}…` : desc
+				if (isTruncated) {
 					return (
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<div className='max-w-[240px] truncate text-sm text-muted-foreground cursor-default'>
-										{desc.slice(0, 30)}…
-									</div>
+									<span className='text-xs text-muted-foreground cursor-default'>{truncated}</span>
 								</TooltipTrigger>
-								<TooltipContent className='max-w-xs'>{desc}</TooltipContent>
+								<TooltipContent align='start' className='max-w-[240px] text-left text-xs'>
+									{desc}
+								</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
 					)
 				}
-				return <div className='max-w-[240px] truncate text-sm text-muted-foreground'>{desc}</div>
+				return <span className='text-xs text-muted-foreground'>{desc}</span>
 			}
 		},
 		{
@@ -189,25 +188,6 @@ export function getColumns(
 					</div>
 				)
 			}
-		},
-		{
-			id: 'actions',
-			header: '',
-			cell: ({ row }) => (
-				<div className='flex items-center gap-1'>
-					<Button
-						variant='ghost'
-						size='icon'
-						className='h-8 w-8 text-muted-foreground hover:text-primary'
-						onClick={(e) => {
-							e.stopPropagation()
-							onView(row.original.id as UUID)
-						}}
-					>
-						<ArrowRight className='h-4 w-4' />
-					</Button>
-				</div>
-			)
 		}
 	]
 
@@ -229,5 +209,8 @@ export function getColumns(
 		)
 	}
 
-	return defaultCols
+	const desktopOrder = ['name', 'description', 'due_date', 'priority', 'status', 'assigned_to']
+	return desktopOrder.map(
+		(id) => defaultCols.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)!
+	)
 }
