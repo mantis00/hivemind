@@ -1,6 +1,6 @@
 'use client'
 
-import { OrgSpecies, useOrgSpecies } from '@/lib/react-query/queries'
+import { OrgSpecies, useOrgEnclosures, useOrgSpecies } from '@/lib/react-query/queries'
 import {
 	ArrowDownIcon,
 	ArrowUpIcon,
@@ -29,25 +29,90 @@ import { UUID } from 'crypto'
 import { useIsMobile } from '@/hooks/use-mobile'
 import ManageSpeciesButton from './manage-species-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger
+} from '../ui/dropdown-menu'
 import { EditSpeciesOrgForm } from './edit-species-org'
 import { EnclosureCounts } from './enclosure-counts'
 import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 
 export default function EnclosureGrid() {
+	type EnclosureStatusFilter = 'active' | 'inactive' | 'all'
+
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useOrgSpecies(orgId as UUID)
 	const activeOrgSpecies = useMemo(() => (orgSpecies ?? []).filter((s) => s.is_active), [orgSpecies])
 
 	const [searchValue, setSearchValue] = useState('')
-	const [searchCount, setSearchCount] = useState(0)
+	const [appliedSearch, setAppliedSearch] = useState('')
 	const [sortUp, setSortUp] = useState(true)
 	const [isSorted, setIsSorted] = useState(false)
 	const [sortKey, setSortKey] = useState('')
+	const [enclosureStatusFilter, setEnclosureStatusFilter] = useState<EnclosureStatusFilter>('active')
+	const { data: filteredEnclosures } = useOrgEnclosures(orgId as UUID, enclosureStatusFilter)
+	const filteredSpeciesSource = useMemo(() => {
+		const speciesIds = new Set((filteredEnclosures ?? []).map((enc) => enc.species_id))
+		return activeOrgSpecies.filter((s) => speciesIds.has(s.id))
+	}, [activeOrgSpecies, filteredEnclosures])
 
-	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>(activeOrgSpecies)
-	const [prevOrgSpecies, setPrevOrgSpecies] = useState(orgSpecies)
+	const displayedSpecies = useMemo(() => {
+		const scoreMatch = (str: string | undefined, val: string): number => {
+			if (!str) return -1
+			const s = str.trim().toLowerCase()
+			if (s === val) return 0
+			if (s.startsWith(val)) return 1
+			if (s.includes(val)) return 2
+			return -1
+		}
+
+		let list = filteredSpeciesSource
+
+		if (appliedSearch) {
+			const scored = list.map((spec) => {
+				let score = -1
+				if (sortKey === 'common_name') {
+					score = scoreMatch(spec.custom_common_name, appliedSearch)
+				} else if (sortKey === 'scientific_name') {
+					score = scoreMatch(spec.species?.scientific_name, appliedSearch)
+				} else {
+					const scores = [
+						scoreMatch(spec.custom_common_name, appliedSearch),
+						scoreMatch(spec.species?.scientific_name, appliedSearch)
+					].filter((s) => s >= 0)
+					score = scores.length > 0 ? Math.min(...scores) : -1
+				}
+				return { spec, score }
+			})
+
+			list = scored
+				.filter(({ score }) => score >= 0)
+				.sort((a, b) => a.score - b.score)
+				.map(({ spec }) => spec)
+		}
+
+		if (isSorted) {
+			if (sortKey === 'common_name') {
+				list = [...list].sort((a, b) => (a.custom_common_name ?? '').localeCompare(b.custom_common_name ?? ''))
+			} else if (sortKey === 'scientific_name') {
+				list = [...list].sort((a, b) =>
+					(a.species?.scientific_name ?? '').localeCompare(b.species?.scientific_name ?? '')
+				)
+			}
+
+			if (!sortUp) {
+				list = [...list].toReversed()
+			}
+		}
+
+		return list
+	}, [filteredSpeciesSource, appliedSearch, sortKey, isSorted, sortUp])
+	const searchCount = appliedSearch ? displayedSpecies.length : 0
 	const [itemHeight, setItemHeight] = useState<number>(114)
 	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
 	const [openSpeciesId, setOpenSpeciesId] = useState<UUID | null>(null)
@@ -94,15 +159,6 @@ export default function EnclosureGrid() {
 	const measureRef = useRef<HTMLDivElement>(null)
 	const virtuosoRef = useRef<HTMLDivElement>(null)
 
-	// Sync displayedSpecies when the query data changes ("setState during render" pattern)
-	if (prevOrgSpecies !== orgSpecies) {
-		setPrevOrgSpecies(orgSpecies)
-		if (searchValue.trim() === '') {
-			setDisplayedSpecies(activeOrgSpecies)
-			setSearchCount(0)
-		}
-	}
-
 	useEffect(() => {
 		if (measureRef.current) {
 			const height = measureRef.current.getBoundingClientRect().height
@@ -122,77 +178,18 @@ export default function EnclosureGrid() {
 		if (!displayedSpecies?.length) return
 
 		if (sortOn === 'sort') {
-			setDisplayedSpecies(activeOrgSpecies)
 			setIsSorted(false)
 			setSortUp(true)
 			setSortKey('')
 			return
-		}
-		let sorted: OrgSpecies[] = []
-
-		if (sortOn === 'common_name') {
-			sorted = [...displayedSpecies].sort((a, b) => {
-				const na = a.custom_common_name ?? ''
-				const nb = b.custom_common_name ?? ''
-				return na.localeCompare(nb)
-			})
-		} else if (sortOn === 'scientific_name') {
-			sorted = [...displayedSpecies].sort((a, b) => {
-				const na = a.species?.scientific_name ?? ''
-				const nb = b.species?.scientific_name ?? ''
-				return na.localeCompare(nb)
-			})
-		}
-		// else if (sortOn === 'enclosure_count') {
-		//   sorted = [...displayedSpecies].sort((a, b) => {
-		//     const na = a.species?.common_name ?? ''
-		//     const nb = b.species?.common_name ?? ''
-		//     return na.localeCompare(nb)
-		//   })
-		// }
-
-		if (sorted.length > 0) {
-			setDisplayedSpecies(sorted)
 		}
 		setSortKey(sortOn)
 		setIsSorted(true)
 	}
 
 	const handleSearch = async () => {
-		if (!searchValue.length || searchValue.trim() === '') return
 		const val = searchValue.trim().toLowerCase()
-
-		const scoreMatch = (str: string | undefined): number => {
-			if (!str) return -1
-			const s = str.trim().toLowerCase()
-			if (s === val) return 0
-			if (s.startsWith(val)) return 1
-			if (s.includes(val)) return 2
-			return -1
-		}
-
-		const scored = activeOrgSpecies.map((spec) => {
-			let score = -1
-			if (sortKey === 'common_name') {
-				score = scoreMatch(spec.custom_common_name)
-			} else if (sortKey === 'scientific_name') {
-				score = scoreMatch(spec.species?.scientific_name)
-			} else {
-				const scores = [scoreMatch(spec.custom_common_name), scoreMatch(spec.species?.scientific_name)].filter(
-					(s) => s >= 0
-				)
-				score = scores.length > 0 ? Math.min(...scores) : -1
-			}
-			return { spec, score }
-		})
-
-		const results = scored
-			.filter(({ score }) => score >= 0)
-			.sort((a, b) => a.score - b.score)
-			.map(({ spec }) => spec)
-
-		setDisplayedSpecies(results)
-		setSearchCount(results.length)
+		setAppliedSearch(val)
 	}
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -204,8 +201,7 @@ export default function EnclosureGrid() {
 
 	const handleClearSearch = () => {
 		setSearchValue('')
-		setDisplayedSpecies(activeOrgSpecies)
-		setSearchCount(0)
+		setAppliedSearch('')
 	}
 
 	// Calculate initial table height based on item count
@@ -254,14 +250,28 @@ export default function EnclosureGrid() {
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align='end'>
-									<DropdownMenuItem onSelect={() => setManageOpen(true)}>
-										<Move className='h-4 w-4' />
-										Manage Species
-									</DropdownMenuItem>
+									<DropdownMenuLabel className='text-muted-foreground'>Enclosure View</DropdownMenuLabel>
 									<DropdownMenuItem onSelect={() => setCreateOpen(true)}>
 										<PlusIcon className='h-4 w-4' />
 										Add Enclosure
 									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => setManageOpen(true)}>
+										<Move className='h-4 w-4' />
+										Manage Species
+									</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									<DropdownMenuLabel className='text-muted-foreground'>Status Filter</DropdownMenuLabel>
+									<DropdownMenuItem onSelect={() => setEnclosureStatusFilter('active')}>
+										Show Active Enclosures
+									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => setEnclosureStatusFilter('inactive')}>
+										Show Inactive Enclosures
+									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => setEnclosureStatusFilter('all')}>
+										Show All Enclosures
+									</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									<DropdownMenuLabel className='text-muted-foreground'>Selection</DropdownMenuLabel>
 									<DropdownMenuItem onSelect={toggleSelectMode}>
 										<ListChecks className='h-4 w-4' />
 										Select
@@ -285,6 +295,28 @@ export default function EnclosureGrid() {
 
 				{/* Sort and Search */}
 				<div className='w-full py-2 flex flex-row gap-3'>
+					{!isMobile && (
+						<Select
+							onValueChange={(value) => setEnclosureStatusFilter(value as EnclosureStatusFilter)}
+							value={enclosureStatusFilter}
+							disabled={isLoading}
+						>
+							<SelectTrigger className='w-46'>
+								<SelectValue placeholder='Enclosures' className='flex-1 min-w-0 truncate' />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value='active' className='text-l cursor-pointer'>
+									Active Enclosures
+								</SelectItem>
+								<SelectItem value='inactive' className='text-l cursor-pointer'>
+									Inactive Enclosures
+								</SelectItem>
+								<SelectItem value='all' className='text-l cursor-pointer'>
+									All Enclosures
+								</SelectItem>
+							</SelectContent>
+						</Select>
+					)}
 					<Select onValueChange={handleSortChange} value={sortKey} disabled={isLoading}>
 						<SelectTrigger className='w-45'>
 							<SelectValue placeholder='Sort' className='flex-1 min-w-0 truncate' />
@@ -321,9 +353,6 @@ export default function EnclosureGrid() {
 						onClick={() => {
 							const newSortUp = !sortUp
 							setSortUp(newSortUp)
-							if (displayedSpecies?.length > 0) {
-								setDisplayedSpecies([...displayedSpecies].toReversed())
-							}
 						}}
 						disabled={isLoading || !isSorted}
 					>
@@ -337,8 +366,7 @@ export default function EnclosureGrid() {
 								const val = e.target.value
 								setSearchValue(val)
 								if (val.trim() === '') {
-									setDisplayedSpecies(activeOrgSpecies)
-									setSearchCount(0)
+									setAppliedSearch('')
 								}
 							}}
 						/>
@@ -396,6 +424,7 @@ export default function EnclosureGrid() {
 									species={displayedSpecies[0]}
 									onDetailsOpenChange={() => {}}
 									sortKey={sortKey}
+									enclosureStatusFilter={enclosureStatusFilter}
 									selectMode={selectMode}
 									selectedIds={selectedIds}
 									onSelectChange={handleSelectChange}
@@ -419,6 +448,7 @@ export default function EnclosureGrid() {
 												setOpenSpeciesId(sp.id)
 											}}
 											sortKey={sortKey}
+											enclosureStatusFilter={enclosureStatusFilter}
 											selectMode={selectMode}
 											selectedIds={selectedIds}
 											onSelectChange={handleSelectChange}

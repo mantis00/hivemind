@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { LoaderCircle, Edit2Icon } from 'lucide-react'
 import { useState, useMemo, useRef } from 'react'
 import { useUpdateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
@@ -32,6 +33,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const [createLocation, setCreateLocation] = useState(false)
 	const savedLocationRef = useRef<string | undefined>(undefined)
 	const [count, setCount] = useState(enclosure?.current_count)
+	const [isActive, setIsActive] = useState(enclosure?.is_active ?? true)
 	const { data: user } = useCurrentClientUser()
 	const editEnclosureMutation = useUpdateEnclosure()
 	const createLocationMutation = useCreateLocation()
@@ -84,6 +86,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			setCreateLocation(false)
 			savedLocationRef.current = undefined
 			setCount(enclosure?.current_count)
+			setIsActive(enclosure?.is_active ?? true)
 		}
 		setOpen(isOpen)
 	}
@@ -113,7 +116,8 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			if (
 				species_id.custom_common_name === species &&
 				existing.name === location &&
-				enclosure.current_count === count
+				enclosure.current_count === count &&
+				enclosure.is_active === isActive
 			) {
 				toast.info('No changes to save.')
 				return
@@ -126,7 +130,8 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 				enclosure_id: enclosure.id,
 				species_id: species_id.id,
 				location_id: resolvedLocationId,
-				count: count
+				count: count,
+				is_active: isActive
 			},
 			{
 				onSuccess: () => {
@@ -137,6 +142,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 					setLocation('')
 					setLocationQuery('')
 					setCount(0)
+					setIsActive(true)
 				}
 			}
 		)
@@ -302,6 +308,15 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							required
 							disabled={isPending}
 						/>
+						<div className='flex items-center justify-between rounded-md border p-3'>
+							<div>
+								<Label htmlFor='enclosure-active'>Active Enclosure</Label>
+								<p className='text-xs text-muted-foreground'>
+									Inactive enclosures are hidden from active-species views.
+								</p>
+							</div>
+							<Switch id='enclosure-active' checked={isActive} onCheckedChange={setIsActive} disabled={isPending} />
+						</div>
 					</div>
 				</div>
 				<div className='flex flex-col gap-3 justify-center px-4 pb-2'>

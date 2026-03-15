@@ -496,19 +496,21 @@ export function useUpdateEnclosure() {
 			enclosure_id,
 			species_id,
 			location_id,
-			count
+			count,
+			is_active
 		}: {
 			orgId: UUID
 			enclosure_id: UUID
 			species_id: UUID
 			location_id: UUID
 			count: number
+			is_active: boolean
 		}) => {
 			const supabase = createClient()
 
 			const { error } = await supabase
 				.from('enclosures')
-				.update({ species_id: species_id, location: location_id, current_count: count })
+				.update({ species_id: species_id, location: location_id, current_count: count, is_active })
 				.eq('id', enclosure_id)
 
 			if (error) throw error

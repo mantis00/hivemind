@@ -323,7 +323,7 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 
 			<ResponsiveDialogDrawer
 				title='Remove Species'
-				description={`Removing ${pendingSave?.removedOrgSpeciesIds.length ?? 0} species (${pendingSave?.removedNames ?? ''}) will permanently delete all associated enclosures, notes, and tasks. This cannot be undone.`}
+				description={`Removing ${pendingSave?.removedOrgSpeciesIds.length ?? 0} species (${pendingSave?.removedNames ?? ''}). You can add them back at any time. You will not lose any enclosures, notes, or tasks associated with them.`}
 				trigger={null}
 				open={confirmOpen}
 				onOpenChange={(open) => {
