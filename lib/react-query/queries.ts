@@ -166,9 +166,11 @@ export type EnclosureSchedule = {
 	task_description: string | null
 	priority: 'low' | 'medium' | 'high' | null
 	assigned_to: UUID | null
+	start_date: string | null
 	end_date: string | null
 	max_occurrences: number | null
 	occurrence_count: number
+	advance_task_count: number
 }
 
 export type TaskFormData = {
@@ -196,6 +198,7 @@ export type TaskTemplate = {
 	type: string
 	description: string | null
 	created_at: string
+	is_active: boolean
 	question_templates?: QuestionTemplate[]
 }
 
@@ -828,7 +831,11 @@ export function useUsedTaskTypesForSpecies(speciesId: UUID) {
 		queryKey: ['usedTaskTypes', speciesId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = await supabase.from('task_templates').select('type').eq('species_id', speciesId)
+			const { data, error } = await supabase
+				.from('task_templates')
+				.select('type')
+				.eq('species_id', speciesId)
+				.eq('is_active', true)
 			if (error) throw error
 			return (data ?? []).map((t) => t.type) as string[]
 		},
@@ -867,6 +874,7 @@ export function useTaskTemplatesForOrgSpecies(orgSpeciesId: UUID) {
 				.from('task_templates')
 				.select('id, type, description, created_at')
 				.eq('species_id', orgSpecies.master_species_id)
+				.eq('is_active', true)
 				.order('type', { ascending: true })
 			if (error) throw error
 			return (data ?? []) as { id: UUID; type: string; description: string | null; created_at: string }[]

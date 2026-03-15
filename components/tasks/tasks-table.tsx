@@ -122,7 +122,7 @@ export function TasksDataTable({
 		const source = enclosureTasks ?? []
 		const todayDate = getDateStr(0)
 		const dueToday = source.filter(
-			(t) => t.due_date && t.due_date.slice(0, 10) === todayDate && t.status !== 'completed'
+			(t) => t.due_date && toLocalDate(t.due_date) === todayDate && t.status !== 'completed'
 		).length
 		const late = source.filter((t) => getEffectiveStatus(t) === 'late').length
 		return { dueToday, late }
@@ -195,7 +195,7 @@ export function TasksDataTable({
 			if (globalSearch) return true
 			if (isRangeMode) return true
 
-			const dueDateStr = task.due_date ? task.due_date.slice(0, 10) : null
+			const dueDateStr = task.due_date ? toLocalDate(task.due_date) : null
 
 			if (dayOffset === 0) {
 				const dueToday = dueDateStr === todayDate

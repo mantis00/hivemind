@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { format } from 'date-fns'
+import { format, isToday } from 'date-fns'
 import { CalendarIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,14 @@ interface DatePickerProps {
 }
 
 export function DatePicker({ value, onChange, placeholder = 'Pick a date', className, disabled }: DatePickerProps) {
+	const handleSelect = (date: Date | undefined) => {
+		if (date) {
+			const now = new Date()
+			date.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds())
+		}
+		onChange(date)
+	}
+
 	return (
 		<Popover>
 			<PopoverTrigger asChild>
@@ -28,11 +36,11 @@ export function DatePicker({ value, onChange, placeholder = 'Pick a date', class
 					disabled={disabled}
 				>
 					<CalendarIcon className='mr-2 h-4 w-4 shrink-0' />
-					{value ? format(value, 'PPP') : <span>{placeholder}</span>}
+					{value ? isToday(value) ? 'Today' : format(value, 'PPP') : <span>{placeholder}</span>}
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent className='w-auto p-0' align='start'>
-				<Calendar mode='single' selected={value} onSelect={onChange} />
+				<Calendar mode='single' selected={value} onSelect={handleSelect} />
 			</PopoverContent>
 		</Popover>
 	)

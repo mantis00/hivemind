@@ -1,10 +1,11 @@
 import type { Task } from '@/lib/react-query/queries'
 import { getDateStr } from '@/context/task-day'
+import { toLocalDate } from '@/context/to-local-date'
 
 /** Returns the effective display status, promoting past-due tasks to 'late' client-side. */
 export function getEffectiveStatus(task: Task): string {
 	if (task.status === 'completed' || task.status === 'late') return task.status
-	if (task.due_date && task.due_date.slice(0, 10) < getDateStr(0)) return 'late'
+	if (task.due_date && toLocalDate(task.due_date) < getDateStr(0)) return 'late'
 	return task.status ?? 'pending'
 }
 
