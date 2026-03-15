@@ -42,7 +42,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Separator } from '@/components/ui/separator'
 import { EnvVarWarning } from '@/components/env-var-warning'
 import { cn, hasEnvVars } from '@/lib/utils'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useIsMobile } from '@/hooks/use-mobile'
 import Link from 'next/link'
@@ -51,6 +51,7 @@ import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useOrgDetails } from '@/lib/react-query/queries'
 import { UUID } from 'crypto'
 import { useLogout } from '@/lib/react-query/auth'
+import { getOrgIdFromPathname } from '@/context/verify-org-path'
 
 export function AppSidebar() {
 	const pathname = usePathname()
@@ -60,13 +61,7 @@ export function AppSidebar() {
 	const userEmail = currentUser?.email ?? ''
 	const userFirstName = currentUser?.user_metadata.first_name ?? ''
 	const userLastName = currentUser?.user_metadata.last_name ?? ''
-	const orgId = useMemo(() => {
-		// Match UUIDs (8-4-4-4-12 hex)
-		const match = pathname?.match(
-			/^\/protected\/orgs\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/
-		)
-		return match?.[1] ?? null
-	}, [pathname])
+	const orgId = getOrgIdFromPathname(pathname)
 
 	const { data: orgDetails } = useOrgDetails(orgId as UUID)
 

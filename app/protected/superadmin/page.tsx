@@ -8,7 +8,7 @@ export default async function Page() {
 	return (
 		<div className='space-y-4 w-full justify-center items-center'>
 			<div className='flex-col mx-auto max-w-5xl'>
-				<div className='pb-5 flex items-start justify-between'>
+				<div className='pb-5 flex items-center justify-between'>
 					<div>
 						<h1 className='text-2xl font-semibold'>Superadmin Tools</h1>
 						<p className='text-sm text-muted-foreground'>Hub for managing the Hivemind app, orginizations, and users</p>

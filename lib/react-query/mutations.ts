@@ -35,14 +35,16 @@ export function useCreateOrg() {
 			}
 
 			// Add all other existing superadmins to the org
-			const { data: superadmins } = await supabase
+			const { data: superadmins, error: superadminsError } = await supabase
 				.from('profiles')
 				.select('id')
 				.eq('is_superadmin', true)
 				.neq('id', userId)
 
+			if (superadminsError) throw superadminsError
+
 			if (superadmins && superadmins.length > 0) {
-				await supabase.from('user_org_role').upsert(
+				const { error: upsertError } = await supabase.from('user_org_role').upsert(
 					superadmins.map((s) => ({
 						user_id: s.id,
 						org_id: org.org_id,
@@ -50,6 +52,7 @@ export function useCreateOrg() {
 					})),
 					{ onConflict: 'user_id,org_id' }
 				)
+				if (upsertError) throw upsertError
 			}
 		},
 		onSuccess: (data, variables) => {
@@ -393,6 +396,7 @@ export function useCreateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure created!')
 		}
 	})
@@ -420,6 +424,7 @@ export function useDeleteEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure deleted.')
 		}
 	})
@@ -469,6 +474,7 @@ export function useBatchActivateEnclosures() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			toast.success('Enclosures set to active.')
 		}
@@ -541,6 +547,7 @@ export function useUpdateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure updated!')
 		}
 	})
@@ -931,29 +938,33 @@ export function useUpdateTaskTemplate() {
 	})
 }
 
-export function useDeleteTaskTemplate() {
+export function useToggleTaskTemplate() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ templateId }: { templateId: UUID; speciesId: UUID }) => {
+		mutationFn: async ({ templateId, is_active }: { templateId: UUID; speciesId: UUID; is_active: boolean }) => {
 			const supabase = createClient()
 
-			const { error: deleteQuestionsError } = await supabase
-				.from('question_templates')
-				.delete()
-				.eq('task_template_id', templateId)
-
-			if (deleteQuestionsError) throw deleteQuestionsError
-
-			const { error } = await supabase.from('task_templates').delete().eq('id', templateId)
+			const { error } = await supabase.from('task_templates').update({ is_active }).eq('id', templateId)
 			if (error) throw error
+
+			// When disabling a template, also disable any schedules that reference it
+			if (!is_active) {
+				const { error: scheduleError } = await supabase
+					.from('enclosure_schedules')
+					.update({ is_active: false })
+					.eq('template_id', templateId)
+					.eq('is_active', true)
+				if (scheduleError) throw scheduleError
+			}
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
 			queryClient.invalidateQueries({ queryKey: ['taskTemplatesForOrgSpecies'] })
-			toast.success('Template deleted!')
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success(variables.is_active ? 'Template enabled!' : 'Template disabled!')
 		}
 	})
 }
@@ -1006,6 +1017,7 @@ export function useCompleteTask() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 		}
 	})
 }
@@ -1057,6 +1069,7 @@ export function useCreateTask() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Task created!')
 		}
 	})
@@ -1076,8 +1089,10 @@ export function useCreateSchedule() {
 			assigned_to,
 			priority,
 			time_window,
+			start_date,
 			end_date,
-			max_occurrences
+			max_occurrences,
+			advance_task_count
 		}: {
 			enclosure_id: UUID
 			template_id: UUID | null
@@ -1088,8 +1103,10 @@ export function useCreateSchedule() {
 			assigned_to: UUID | null
 			priority: string
 			time_window: string
+			start_date?: string
 			end_date: string | null
 			max_occurrences: number | null
+			advance_task_count?: number
 		}) => {
 			const supabase = createClient()
 
@@ -1105,8 +1122,10 @@ export function useCreateSchedule() {
 					assigned_to,
 					priority,
 					time_window,
+					start_date,
 					end_date,
 					max_occurrences,
+					advance_task_count,
 					is_active: true
 				})
 				.select()
@@ -1116,8 +1135,10 @@ export function useCreateSchedule() {
 			return data
 		},
 		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Recurring schedule created!')
 		}
 	})
@@ -1167,6 +1188,7 @@ export function useSubmitTaskForm() {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Task completed!')
 		}
 	})
@@ -1415,6 +1437,7 @@ export function useDeactivateOrgSpecies() {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Species removed from organization')
 		}
 	})
@@ -1439,6 +1462,7 @@ export function useDeactivateBatchOrgSpecies() {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Removed species from organization')
 		}
 	})
@@ -1488,6 +1512,32 @@ export function useToggleScheduleActive() {
 	return useMutation({
 		mutationFn: async ({ scheduleId, is_active }: { scheduleId: UUID; is_active: boolean }) => {
 			const supabase = createClient()
+
+			// When re-enabling, check if the linked template is still active
+			if (is_active) {
+				const { data: schedule, error: scheduleError } = await supabase
+					.from('enclosure_schedules')
+					.select('template_id')
+					.eq('id', scheduleId)
+					.single()
+				if (scheduleError) throw scheduleError
+
+				if (schedule.template_id) {
+					const { data: template, error: templateError } = await supabase
+						.from('task_templates')
+						.select('is_active')
+						.eq('id', schedule.template_id)
+						.single()
+					if (templateError) throw templateError
+
+					if (!template.is_active) {
+						throw new Error(
+							'A superadmin has disabled the task template for this schedule. It cannot be re-enabled until the template is re-enabled.'
+						)
+					}
+				}
+			}
+
 			const { error } = await supabase.from('enclosure_schedules').update({ is_active }).eq('id', scheduleId)
 			if (error) throw error
 		},
@@ -1598,6 +1648,127 @@ export function useChangeOrgName() {
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
 			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
 			toast.success('Org name changed!')
+		}
+	})
+}
+
+export function useDeleteTask() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ taskId }: { taskId: UUID }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			toast.success('Task deleted!')
+		}
+	})
+}
+
+export function useSubscribeToPush() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			userId,
+			endpoint,
+			p256dh,
+			auth
+		}: {
+			userId: string
+			endpoint: string
+			p256dh: string
+			auth: string
+		}) => {
+			const supabase = createClient()
+			const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : null
+			const now = new Date().toISOString()
+
+			const payload = {
+				user_id: userId,
+				endpoint,
+				p256dh,
+				auth,
+				user_agent: userAgent,
+				last_used_at: now,
+				is_active: true
+			}
+
+			const { data: endpointRow, error: endpointLookupError } = await supabase
+				.from('push_subscriptions')
+				.select('id')
+				.eq('user_id', userId)
+				.eq('endpoint', endpoint)
+				.maybeSingle()
+
+			if (endpointLookupError) throw endpointLookupError
+
+			if (endpointRow?.id) {
+				const { error: reactivateError } = await supabase
+					.from('push_subscriptions')
+					.update(payload)
+					.eq('id', endpointRow.id)
+				if (reactivateError) throw reactivateError
+				return
+			}
+
+			let reusableQuery = supabase
+				.from('push_subscriptions')
+				.select('id')
+				.eq('user_id', userId)
+				.eq('is_active', false)
+				.order('last_used_at', { ascending: false, nullsFirst: false })
+				.order('created_at', { ascending: false })
+				.limit(1)
+
+			if (userAgent) {
+				reusableQuery = reusableQuery.eq('user_agent', userAgent)
+			}
+
+			const { data: reusableRows, error: reusableLookupError } = await reusableQuery
+
+			if (reusableLookupError) throw reusableLookupError
+
+			const reusableId = reusableRows?.[0]?.id
+			if (reusableId) {
+				const { error: reuseError } = await supabase.from('push_subscriptions').update(payload).eq('id', reusableId)
+				if (reuseError) throw reuseError
+				return
+			}
+
+			const { error } = await supabase.from('push_subscriptions').upsert(payload, { onConflict: 'endpoint' })
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['pushSubscriptions', variables.userId] })
+			toast.success('Subscribed to push notifications!')
+		}
+	})
+}
+
+export function useUnsubscribeFromPush() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ userId, endpoint }: { userId: string; endpoint: string }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase
+				.from('push_subscriptions')
+				.update({ is_active: false })
+				.eq('user_id', userId)
+				.eq('endpoint', endpoint)
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['pushSubscriptions', variables.userId] })
+			toast.success('Unsubscribed from push notifications.')
 		}
 	})
 }

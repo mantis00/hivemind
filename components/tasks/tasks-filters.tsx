@@ -3,7 +3,7 @@
 import { CalendarIcon, ChevronDown, Search, X } from 'lucide-react'
 import { UUID } from 'crypto'
 import type { DateRange } from 'react-day-picker'
-
+import { useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Calendar } from '@/components/ui/calendar'
@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { GlobalSearchToggle } from './global-search-toggle'
 import { CreateTaskButton } from './create-task-button'
 import capitalizeFirstLetter from '@/context/captalize-first-letter'
-import { statusConfig } from '@/context/task-status'
+import { statusConfig } from '@/context/task-config'
 import { formatDate } from '@/context/format-date'
 import { useIsMobile } from '@/hooks/use-mobile'
 
@@ -38,6 +38,7 @@ interface TasksFiltersProps {
 	onReset: () => void
 	includeSpeciesSearch?: boolean
 	includeEnclosureAndAssigneeSearch?: boolean
+	columnsToggle?: ReactNode
 }
 
 export function TasksFilters({
@@ -48,11 +49,14 @@ export function TasksFilters({
 	hasActiveFilters,
 	onReset,
 	includeSpeciesSearch = false,
-	includeEnclosureAndAssigneeSearch = false
+	includeEnclosureAndAssigneeSearch = false,
+	columnsToggle
 }: TasksFiltersProps) {
 	const isMobile = useIsMobile()
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
 	const isRangeMode = !!(dateRange?.from && dateRange?.to)
+	const [datePickerOpen, setDatePickerOpen] = useState(false)
+
 	const searchPlaceholder = includeEnclosureAndAssigneeSearch
 		? 'Search tasks, species, enclosures, or assignees...'
 		: includeSpeciesSearch
@@ -108,7 +112,6 @@ export function TasksFilters({
 							))}
 						</DropdownMenuContent>
 					</DropdownMenu>
-
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant='outline' className='gap-2'>
@@ -134,7 +137,20 @@ export function TasksFilters({
 							))}
 						</DropdownMenuContent>
 					</DropdownMenu>
-					<Popover>
+					<Popover
+						open={datePickerOpen}
+						onOpenChange={(open) => {
+							if (!open && dateRange?.from && !dateRange?.to) {
+								// Closed with only a start date — treat as a same-day range
+								onFiltersChange({
+									...filters,
+									dateRange: { from: dateRange.from, to: dateRange.from },
+									globalSearch: false
+								})
+							}
+							setDatePickerOpen(open)
+						}}
+					>
 						<PopoverTrigger asChild>
 							<Button variant={isRangeMode ? 'secondary' : 'outline'} className='gap-2'>
 								<CalendarIcon className='h-4 w-4' />
@@ -147,17 +163,21 @@ export function TasksFilters({
 							<Calendar
 								mode='range'
 								selected={dateRange}
-								onSelect={(range) =>
+								onSelect={(range) => {
 									onFiltersChange({
 										...filters,
 										dateRange: range,
-										...(range?.from && range?.to ? { globalSearch: true } : {})
+										globalSearch: false // Selecting a range turns off "All dates"
 									})
-								}
+									if (range?.from && range?.to) {
+										setDatePickerOpen(false)
+									}
+								}}
 								numberOfMonths={isMobile ? 1 : 2}
 							/>
 						</PopoverContent>
 					</Popover>
+					{columnsToggle}
 					<Button
 						variant='ghost'
 						onClick={onReset}

@@ -47,15 +47,15 @@ export function InboxDeleteDialogs({
 					if (!open) setDeleteTarget(null)
 				}}
 			>
-				<div className='flex justify-end gap-2'>
-					<Button variant='outline' size='sm' onClick={() => setSingleDeleteOpen(false)} disabled={isDeleting}>
-						Cancel
-					</Button>
-
-					<Button variant='destructive' size='sm' onClick={onConfirmDeleteSingle} disabled={isDeleting}>
-						{isDeleting ? 'Deleting...' : 'Delete'}
-					</Button>
-				</div>
+				<Button
+					variant='destructive'
+					size='sm'
+					className='w-full'
+					onClick={onConfirmDeleteSingle}
+					disabled={isDeleting}
+				>
+					{isDeleting ? 'Deleting...' : 'Delete notification'}
+				</Button>
 			</ResponsiveDialogDrawer>
 
 			{/* Bulk delete confirmation */}
@@ -66,15 +66,9 @@ export function InboxDeleteDialogs({
 				open={bulkDeleteOpen}
 				onOpenChange={setBulkDeleteOpen}
 			>
-				<div className='flex justify-end gap-2'>
-					<Button variant='outline' size='sm' onClick={() => setBulkDeleteOpen(false)} disabled={isDeleting}>
-						Cancel
-					</Button>
-
-					<Button variant='destructive' size='sm' onClick={onConfirmBulkDelete} disabled={isDeleting}>
-						{isDeleting ? 'Deleting...' : `Delete ${selectedCount} notification${selectedCount !== 1 ? 's' : ''}`}
-					</Button>
-				</div>
+				<Button variant='destructive' size='sm' className='w-full' onClick={onConfirmBulkDelete} disabled={isDeleting}>
+					{isDeleting ? 'Deleting...' : `Delete ${selectedCount} notification${selectedCount !== 1 ? 's' : ''}`}
+				</Button>
 			</ResponsiveDialogDrawer>
 		</>
 	)

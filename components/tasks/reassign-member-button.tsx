@@ -17,6 +17,7 @@ export function ReassignMemberButton({
 	assignedTo,
 	assignedMemberName,
 	members,
+	readOnly = false,
 	disabled = false,
 	disabledReason
 }: {
@@ -25,6 +26,7 @@ export function ReassignMemberButton({
 	assignedTo: UUID | null
 	assignedMemberName: string | null
 	members: MemberProfile[]
+	readOnly?: boolean
 	disabled?: boolean
 	disabledReason?: string
 }) {
@@ -41,6 +43,15 @@ export function ReassignMemberButton({
 
 	const displayName = assignedMemberName ?? 'Unassigned'
 	const hasChanged = selectedId !== (assignedTo as string | null)
+
+	if (readOnly) {
+		return (
+			<div className='flex items-center gap-1.5 text-xs text-muted-foreground px-2 h-7'>
+				{/* <User className='h-3.5 w-3.5 shrink-0' /> */}
+				<span className='max-w-28 truncate'>{displayName}</span>
+			</div>
+		)
+	}
 
 	return (
 		<>

@@ -1,5 +1,4 @@
 import { OrgSettingsSection } from '@/components/org/org-settings-section'
-import { BackToOrgs } from '@/components/navigation/back-to-orgs'
 
 export default async function Page() {
 	return (
@@ -10,7 +9,6 @@ export default async function Page() {
 						<h1 className='text-2xl font-semibold'>Organization Settings</h1>
 						<p className='text-sm text-muted-foreground'>Manage your organization&apos;s settings.</p>
 					</div>
-					<BackToOrgs />
 				</div>
 				<div className='flex flex-col gap-4'>
 					<OrgSettingsSection />
