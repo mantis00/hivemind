@@ -46,7 +46,7 @@ export function getColumns(
 										{enc.name}
 									</button>
 								</TooltipTrigger>
-								<TooltipContent className='max-w-[160px] text-center text-xs'>
+								<TooltipContent align='start' className='max-w-[160px] text-left text-xs'>
 									You will be redirected to the enclosure
 								</TooltipContent>
 							</Tooltip>
@@ -81,24 +81,24 @@ export function getColumns(
 				const name = row.getValue('name') as string
 				const task = row.original
 				const desc = task.description ?? task.task_templates?.description
-				const truncatedName = name && name.length > 40 ? `${name.slice(0, 40)}…` : name
-				const tooltipContent = [name && name.length > 40 ? name : null, desc].filter(Boolean).join('\n')
+				const truncatedName = name && name.length > 30 ? `${name.slice(0, 30)}…` : name
+				const tooltipContent =
+					[name && name.length > 30 ? name : null, desc].filter(Boolean).join('\n') || 'No description'
 
-				if (tooltipContent) {
-					return (
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<div className='font-medium truncate w-[200px] cursor-default group-hover:underline'>
-										{truncatedName}
-									</div>
-								</TooltipTrigger>
-								<TooltipContent className='max-w-xs whitespace-pre-lineeft'>{tooltipContent}</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					)
-				}
-				return <div className='font-medium truncate w-[160px]'>{name}</div>
+				return (
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<div className='font-medium truncate w-[200px] cursor-default group-hover:underline'>
+									{truncatedName}
+								</div>
+							</TooltipTrigger>
+							<TooltipContent align='start' className='max-w-[160px] whitespace-pre-line text-left text-xs'>
+								{tooltipContent}
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+				)
 			}
 		},
 		{
