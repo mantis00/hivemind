@@ -3,6 +3,7 @@ import { Geist, Dancing_Script } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from '@/components/ui/sonner'
 import { QueryProvider } from '@/lib/react-query/provider'
+import { ServiceWorkerProvider } from '@/components/pwa/service-worker-provider'
 import './globals.css'
 
 //consts for metadata and PWA top bar color, used in the metadata and viewport exports below
@@ -86,6 +87,7 @@ export default function RootLayout({
 	return (
 		<html lang='en' suppressHydrationWarning>
 			<body className={`${geistSans.className} ${dancingScript.variable} antialiased`}>
+				<ServiceWorkerProvider /> {/* Registers the service worker for PWA functionality */}
 				<ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange>
 					<QueryProvider>
 						<div vaul-drawer-wrapper='' className='bg-background'>

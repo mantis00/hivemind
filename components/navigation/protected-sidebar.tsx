@@ -4,14 +4,7 @@ import { usePathname } from 'next/navigation'
 import { AppSidebar } from '@/components/navigation/app-sidebar'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useIsMounted } from '@/hooks/use-is-mounted'
-
-function isOrgRoute(pathname: string | null) {
-	if (!pathname) return false
-	// Match UUIDs (8-4-4-4-12 hex)
-	return /^\/protected\/orgs\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/.test(
-		pathname
-	)
-}
+import { getOrgIdFromPathname } from '@/context/verify-org-path'
 
 export function ProtectedSidebar() {
 	const pathname = usePathname()
@@ -21,7 +14,7 @@ export function ProtectedSidebar() {
 		return null
 	}
 
-	if (!isOrgRoute(pathname)) {
+	if (!getOrgIdFromPathname(pathname)) {
 		return null
 	}
 
