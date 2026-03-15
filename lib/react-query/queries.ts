@@ -300,6 +300,16 @@ type DashboardTaskRow = {
 	status: string | null
 	completed_time: string | null
 	enclosures: { id: UUID; name: string | null } | { id: UUID; name: string | null }[] | null
+export type PushSubscription = {
+	id: UUID
+	user_id: string
+	endpoint: string
+	p256dh: string
+	auth: string
+	created_at: string
+	user_agent: string | null
+	last_used_at: string | null
+	is_active: boolean
 }
 
 export function useUserOrgs(userId: string) {
@@ -609,6 +619,51 @@ export function useNotifications(recipientId: string) {
 			return data
 		},
 		enabled: !!recipientId
+	})
+}
+
+export function useLiveNotificationsRealtime(recipientId: string | undefined) {
+	return useQuery({
+		queryKey: ['live-notifications-realtime', recipientId],
+		enabled: !!recipientId,
+		staleTime: Infinity,
+
+		queryFn: async ({ queryKey, client }) => {
+			const [, recipientId] = queryKey
+			const supabase = createClient()
+
+			const channel = supabase
+				.channel(`notifications-${recipientId}`)
+				.on(
+					'postgres_changes',
+					{
+						event: 'INSERT',
+						schema: 'public',
+						table: 'notifications',
+						filter: `recipient_id=eq.${recipientId}`
+					},
+					(payload) => {
+						const newNotification = payload.new as Notification
+
+						client.setQueryData(['notifications', recipientId], (old: Notification[] | undefined) => {
+							if (!old) return [newNotification]
+
+							// prepend the new notification to the cache
+							return [newNotification, ...old.filter((n) => n.id !== newNotification.id)]
+						})
+					}
+				)
+				.subscribe()
+
+			const unsubscribe = client.getQueryCache().subscribe((event) => {
+				if (event.type === 'removed') {
+					supabase.removeChannel(channel)
+					unsubscribe()
+				}
+			})
+
+			return channel
+		}
 	})
 }
 
@@ -1265,5 +1320,19 @@ export function useDashboardRecentActivity(orgId: UUID | undefined) {
 			return items.sort((a, b) => compareIsoDatesDesc(a.occurredAt, b.occurredAt))
 		},
 		enabled: !!orgId
+export function usePushSubscriptionsForUser(userId: string | undefined) {
+	return useQuery({
+		queryKey: ['pushSubscriptions', userId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('push_subscriptions')
+				.select('*')
+				.eq('user_id', userId)
+				.eq('is_active', true)) as { data: PushSubscription[] | null; error: PostgrestError | null }
+			if (error) throw error
+			return data
+		},
+		enabled: !!userId
 	})
 }

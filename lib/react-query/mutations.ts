@@ -1533,3 +1533,107 @@ export function useReassignTask() {
 		}
 	})
 }
+
+export function useSubscribeToPush() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			userId,
+			endpoint,
+			p256dh,
+			auth
+		}: {
+			userId: string
+			endpoint: string
+			p256dh: string
+			auth: string
+		}) => {
+			const supabase = createClient()
+			const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : null
+			const now = new Date().toISOString()
+
+			const payload = {
+				user_id: userId,
+				endpoint,
+				p256dh,
+				auth,
+				user_agent: userAgent,
+				last_used_at: now,
+				is_active: true
+			}
+
+			const { data: endpointRow, error: endpointLookupError } = await supabase
+				.from('push_subscriptions')
+				.select('id')
+				.eq('user_id', userId)
+				.eq('endpoint', endpoint)
+				.maybeSingle()
+
+			if (endpointLookupError) throw endpointLookupError
+
+			if (endpointRow?.id) {
+				const { error: reactivateError } = await supabase
+					.from('push_subscriptions')
+					.update(payload)
+					.eq('id', endpointRow.id)
+				if (reactivateError) throw reactivateError
+				return
+			}
+
+			let reusableQuery = supabase
+				.from('push_subscriptions')
+				.select('id')
+				.eq('user_id', userId)
+				.eq('is_active', false)
+				.order('last_used_at', { ascending: false, nullsFirst: false })
+				.order('created_at', { ascending: false })
+				.limit(1)
+
+			if (userAgent) {
+				reusableQuery = reusableQuery.eq('user_agent', userAgent)
+			}
+
+			const { data: reusableRows, error: reusableLookupError } = await reusableQuery
+
+			if (reusableLookupError) throw reusableLookupError
+
+			const reusableId = reusableRows?.[0]?.id
+			if (reusableId) {
+				const { error: reuseError } = await supabase.from('push_subscriptions').update(payload).eq('id', reusableId)
+				if (reuseError) throw reuseError
+				return
+			}
+
+			const { error } = await supabase.from('push_subscriptions').upsert(payload, { onConflict: 'endpoint' })
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['pushSubscriptions', variables.userId] })
+			toast.success('Subscribed to push notifications!')
+		}
+	})
+}
+
+export function useUnsubscribeFromPush() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ userId, endpoint }: { userId: string; endpoint: string }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase
+				.from('push_subscriptions')
+				.update({ is_active: false })
+				.eq('user_id', userId)
+				.eq('endpoint', endpoint)
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['pushSubscriptions', variables.userId] })
+			toast.success('Unsubscribed from push notifications.')
+		}
+	})
+}
