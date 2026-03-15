@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { GlobalSearchToggle } from './global-search-toggle'
 import { CreateTaskButton } from './create-task-button'
 import capitalizeFirstLetter from '@/context/captalize-first-letter'
-import { statusConfig } from '@/context/task-status'
+import { statusConfig } from '@/context/task-config'
 import { formatDate } from '@/context/format-date'
 import { useIsMobile } from '@/hooks/use-mobile'
 import {

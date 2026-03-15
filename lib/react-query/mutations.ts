@@ -1574,6 +1574,23 @@ export function useReassignTask() {
 	})
 }
 
+export function useDeleteTask() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ taskId }: { taskId: UUID }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			toast.success('Task deleted!')
+		}
+	})
+}
+
 export function useSubscribeToPush() {
 	const queryClient = useQueryClient()
 

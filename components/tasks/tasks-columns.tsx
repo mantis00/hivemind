@@ -9,7 +9,13 @@ import type { Task, MemberProfile, Enclosure, OrgSpecies } from '@/lib/react-que
 import { ReassignMemberButton } from './reassign-member-button'
 import capitalizeFirstLetter from '@/context/captalize-first-letter'
 import { formatDate } from '@/context/format-date'
-import { getEffectiveStatus, priorityConfig, statusConfig } from '@/context/task-status'
+import {
+	getEffectiveStatus,
+	priorityConfig,
+	statusConfig,
+	renderTruncatedWithTooltip,
+	truncateText
+} from '@/context/task-config'
 
 export function getColumns(
 	isMobile: boolean,
@@ -54,7 +60,7 @@ export function getColumns(
 						</TooltipProvider>
 					)
 				}
-				return <span className='text-sm'>{enc.name}</span>
+				return <span className='text-sm'>{truncateText(enc.name, 24)}</span>
 			}
 		},
 		{
@@ -64,7 +70,7 @@ export function getColumns(
 				const enc = enclosureMap.get(row.original.enclosure_id as string)
 				const spec = enc ? speciesMap.get(enc.species_id as string) : undefined
 				if (!spec) return <span className='text-xs text-muted-foreground'>—</span>
-				return <span className='text-sm'>{spec.custom_common_name}</span>
+				return renderTruncatedWithTooltip(spec.custom_common_name, 22)
 			}
 		},
 		{
@@ -72,7 +78,7 @@ export function getColumns(
 			header: ({ column }) => (
 				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors'
+					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap'
 				>
 					Task Name
 					<ArrowUpDown className='h-4 w-4' />
@@ -80,8 +86,7 @@ export function getColumns(
 			),
 			cell: ({ row }) => {
 				const name = row.getValue('name') as string
-				const truncatedName = name && name.length > 30 ? `${name.slice(0, 30)}…` : name
-				return <div className='font-medium truncate cursor-default'>{truncatedName}</div>
+				return renderTruncatedWithTooltip(name, 28, 'font-medium')
 			}
 		},
 		{
@@ -90,24 +95,7 @@ export function getColumns(
 			cell: ({ row }) => {
 				const task = row.original
 				const desc = task.description ?? task.task_templates?.description
-				if (!desc) return <span className='text-xs text-muted-foreground'>—</span>
-				const isTruncated = desc.length > 30
-				const truncated = isTruncated ? `${desc.slice(0, 30)}…` : desc
-				if (isTruncated) {
-					return (
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<span className='text-xs text-muted-foreground cursor-default'>{truncated}</span>
-								</TooltipTrigger>
-								<TooltipContent align='start' className='max-w-[240px] text-left text-xs'>
-									{desc}
-								</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					)
-				}
-				return <span className='text-xs text-muted-foreground'>{desc}</span>
+				return renderTruncatedWithTooltip(desc, 30, 'text-xs text-muted-foreground')
 			}
 		},
 		{
@@ -115,7 +103,7 @@ export function getColumns(
 			header: ({ column }) => (
 				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors'
+					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap'
 				>
 					Priority
 					<ArrowUpDown className='h-4 w-4' />
@@ -137,7 +125,7 @@ export function getColumns(
 			header: ({ column }) => (
 				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors'
+					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap'
 				>
 					Status
 					<ArrowUpDown className='h-4 w-4' />
@@ -159,7 +147,7 @@ export function getColumns(
 			header: ({ column }) => (
 				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors'
+					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap'
 				>
 					Due Date
 					<ArrowUpDown className='h-4 w-4' />
@@ -197,7 +185,7 @@ export function getColumns(
 			header: ({ column }) => (
 				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors'
+					className='flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap'
 				>
 					Created At
 					<ArrowUpDown className='h-4 w-4' />

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import { DEFAULT_COLUMN_LABELS } from '@/context/task-status'
+import { DEFAULT_COLUMN_LABELS } from '@/context/task-config'
 
 interface ColumnsToggleProps {
 	defaultColumnIds: string[]

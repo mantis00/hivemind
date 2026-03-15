@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Task } from '@/lib/react-query/queries'
 import { getDateStr } from '@/context/task-day'
 import { toLocalDate } from '@/context/to-local-date'
@@ -35,17 +37,6 @@ export const MOBILE_COL_WIDTHS: Record<string, number> = {
 	on_schedule: 100
 }
 
-export const DESKTOP_COL_WIDTHS: Record<string, number> = {
-	name: 170,
-	due_date: 120,
-	priority: 110,
-	status: 120,
-	assigned_to: 170,
-	created_at: 140,
-	completed_by: 160,
-	on_schedule: 120
-}
-
 export const DEFAULT_COLUMN_LABELS: Record<string, string> = {
 	name: 'Task Name',
 	status: 'Status',
@@ -62,8 +53,50 @@ export interface OptionalColumnDef {
 	label: string
 }
 
+/** Columns that are defaults on enclosure-tasks but extra/toggleable on org-tasks */
+export const ORG_OPTIONAL_COLUMNS: OptionalColumnDef[] = [
+	{ id: 'description', label: 'Description' },
+	{ id: 'priority', label: 'Priority' }
+]
+
+/** Extra columns available in all modes */
 export const OPTIONAL_COLUMNS: OptionalColumnDef[] = [
 	{ id: 'created_at', label: 'Created At' },
 	{ id: 'completed_by', label: 'Completed By' },
 	{ id: 'on_schedule', label: 'On Schedule' }
 ]
+
+/**
+ * Truncates text at maxChars and returns the string.
+ * Use for elements that already have their own tooltip (e.g. enclosure button).
+ */
+export function truncateText(text: string | null | undefined, maxChars = 26): string {
+	if (!text) return '—'
+	return text.length > maxChars ? `${text.slice(0, maxChars)}…` : text
+}
+
+/**
+ * Renders text truncated at maxChars.
+ * If truncated, wraps in a tooltip that shows the full text.
+ * Use for Species, Task Name, Description, and similar columns.
+ */
+export function renderTruncatedWithTooltip(
+	text: string | null | undefined,
+	maxChars = 28,
+	className = 'text-sm'
+): ReactNode {
+	if (!text) return <span className='text-xs text-muted-foreground'>—</span>
+	if (text.length <= maxChars) return <span className={className}>{text}</span>
+	return (
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<span className={`${className} cursor-default`}>{text.slice(0, maxChars)}…</span>
+				</TooltipTrigger>
+				<TooltipContent align='start' className='max-w-60 text-left text-xs'>
+					{text}
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	)
+}

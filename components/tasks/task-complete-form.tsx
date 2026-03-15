@@ -25,6 +25,7 @@ import {
 import { useSubmitTaskForm } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { ReassignMemberButton } from '@/components/tasks/reassign-member-button'
+import { DeleteTaskButton } from '@/components/tasks/delete-task-button'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -115,7 +116,16 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 		<div className='space-y-6 w-full max-w-xl mx-auto'>
 			{/* ── Task header ── */}
 			<div className='space-y-1'>
-				<h1 className='text-2xl font-bold capitalize'>{taskName}</h1>
+				<div className='flex items-start justify-between gap-2'>
+					<h1 className='text-2xl font-bold capitalize'>{taskName}</h1>
+					{!isCompleted && (
+						<DeleteTaskButton
+							taskId={taskId}
+							taskName={taskName}
+							redirectTo={`/protected/orgs/${orgId}/enclosures/${enclosureId}`}
+						/>
+					)}
+				</div>
 				{taskDesc && <p className='text-sm text-muted-foreground'>{taskDesc}</p>}
 
 				<div className='flex flex-wrap items-center gap-4 pt-1 text-sm text-muted-foreground'>

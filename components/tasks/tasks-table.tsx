@@ -30,10 +30,10 @@ import { formatDate } from '@/context/format-date'
 import {
 	getEffectiveStatus,
 	MOBILE_COL_WIDTHS,
-	DESKTOP_COL_WIDTHS,
 	OPTIONAL_COLUMNS,
+	ORG_OPTIONAL_COLUMNS,
 	DEFAULT_COLUMN_LABELS
-} from '@/context/task-status'
+} from '@/context/task-config'
 import { getColumns } from './tasks-columns'
 import { DayNavigator } from './day-navigator'
 import { TasksFilters, type TaskFilters } from './tasks-filters'
@@ -109,15 +109,17 @@ export function TasksDataTable({
 		const platformExtras = desktopDefaultColumnIds
 			.filter((id) => !defaultColumnIds.includes(id))
 			.map((id) => ({ id, label: DEFAULT_COLUMN_LABELS[id] ?? id }))
-		return [...platformExtras, ...OPTIONAL_COLUMNS]
-	}, [desktopDefaultColumnIds, defaultColumnIds])
+		const modeOptionals = isOrgMode ? ORG_OPTIONAL_COLUMNS : []
+		return [...platformExtras, ...modeOptionals, ...OPTIONAL_COLUMNS]
+	}, [desktopDefaultColumnIds, defaultColumnIds, isOrgMode])
 
 	const getColWidthStyle = React.useCallback(
 		(colId: string): React.CSSProperties | undefined => {
-			const w = isMobile ? MOBILE_COL_WIDTHS[colId] : hasExtraColumns ? DESKTOP_COL_WIDTHS[colId] : undefined
+			if (!isMobile) return undefined
+			const w = MOBILE_COL_WIDTHS[colId]
 			return w ? { width: w, minWidth: w } : undefined
 		},
-		[isMobile, hasExtraColumns]
+		[isMobile]
 	)
 
 	const MAX_TABLE_HEIGHT = isMobile ? MAX_TABLE_HEIGHT_MOBILE : MAX_TABLE_HEIGHT_DESKTOP
@@ -436,7 +438,7 @@ export function TasksDataTable({
 										<th
 											key={header.id}
 											style={getColWidthStyle(header.id)}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>
@@ -456,7 +458,7 @@ export function TasksDataTable({
 										<td
 											key={cell.id}
 											style={getColWidthStyle(cell.column.id)}
-											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${cell.column.id === 'description' ? ' whitespace-nowrap' : ''}`}
+											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
 										>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
 										</td>
@@ -467,7 +469,7 @@ export function TasksDataTable({
 					</table>
 				) : (
 					<TableVirtuoso
-						style={{ height: tableHeight, overflowX: 'hidden' }}
+						style={{ height: tableHeight, overflowX: hasExtraColumns ? 'auto' : 'hidden' }}
 						totalCount={rows.length}
 						className='scrollbar-no-track'
 						components={{
@@ -476,9 +478,10 @@ export function TasksDataTable({
 									{...props}
 									style={{
 										...style,
-										width: '100%',
 										borderCollapse: 'collapse',
-										...(isMobile ? { tableLayout: 'fixed' } : {})
+										...(hasExtraColumns
+											? { width: 'max-content' }
+											: { width: '100%', ...(isMobile ? { tableLayout: 'fixed' } : {}) })
 									}}
 									className='w-full caption-bottom text-sm'
 								/>
@@ -502,7 +505,7 @@ export function TasksDataTable({
 											<td
 												key={cell.id}
 												style={getColWidthStyle(cell.column.id)}
-												className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${cell.column.id === 'description' ? ' whitespace-nowrap' : ''}`}
+												className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
 											>
 												{flexRender(cell.column.columnDef.cell, cell.getContext())}
 											</td>
@@ -521,7 +524,7 @@ export function TasksDataTable({
 										<th
 											key={header.id}
 											style={getColWidthStyle(header.id)}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>
