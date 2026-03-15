@@ -210,7 +210,7 @@ export function getColumns(
 		},
 		{
 			id: 'on_schedule',
-			header: () => <span className='font-bold'>Scheduled</span>,
+			header: () => <span className='font-bold'>On Schedule</span>,
 			cell: ({ row }) => {
 				if (!row.original.schedule_id) return <span className='text-xs text-muted-foreground'>—</span>
 				return (
