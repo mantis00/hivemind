@@ -34,7 +34,7 @@ export function getColumns(
 	const all: ColumnDef<Task>[] = [
 		{
 			id: 'enclosure_name',
-			header: () => <span className='font-bold'>Enclosure</span>,
+			header: () => <span className='font-bold whitespace-nowrap'>Enclosure</span>,
 			cell: ({ row }) => {
 				const enc = enclosureMap.get(row.original.enclosure_id as string)
 				if (!enc) return <span className='text-xs text-muted-foreground'>—</span>
@@ -65,7 +65,7 @@ export function getColumns(
 		},
 		{
 			id: 'species',
-			header: () => <span className='font-bold'>Species</span>,
+			header: () => <span className='font-bold whitespace-nowrap'>Species</span>,
 			cell: ({ row }) => {
 				const enc = enclosureMap.get(row.original.enclosure_id as string)
 				const spec = enc ? speciesMap.get(enc.species_id as string) : undefined
@@ -91,7 +91,7 @@ export function getColumns(
 		},
 		{
 			id: 'description',
-			header: () => <span className='font-bold'>Description</span>,
+			header: () => <span className='font-bold whitespace-nowrap'>Description</span>,
 			cell: ({ row }) => {
 				const task = row.original
 				const desc = task.description ?? task.task_templates?.description
@@ -161,7 +161,7 @@ export function getColumns(
 		},
 		{
 			id: 'assigned_to',
-			header: () => <span className='font-bold'>Assigned To</span>,
+			header: () => <span className='font-bold whitespace-nowrap'>Assigned To</span>,
 			cell: ({ row }) => {
 				const task = row.original
 				const member = task.assigned_to ? memberMap.get(task.assigned_to as string) : null
@@ -199,7 +199,7 @@ export function getColumns(
 		},
 		{
 			id: 'completed_by',
-			header: () => <span className='font-bold'>Completed By</span>,
+			header: () => <span className='font-bold whitespace-nowrap'>Completed By</span>,
 			cell: ({ row }) => {
 				const task = row.original
 				if (!task.completed_by) return <span className='text-xs text-muted-foreground'>—</span>
@@ -210,7 +210,7 @@ export function getColumns(
 		},
 		{
 			id: 'on_schedule',
-			header: () => <span className='font-bold'>On Schedule</span>,
+			header: () => <span className='font-bold whitespace-nowrap'>On Schedule</span>,
 			cell: ({ row }) => {
 				if (!row.original.schedule_id) return <span className='text-xs text-muted-foreground'>—</span>
 				return (
