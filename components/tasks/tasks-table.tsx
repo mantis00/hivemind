@@ -369,7 +369,7 @@ export function TasksDataTable({
 								<tr
 									key={row.id}
 									ref={index === 0 ? rowRef : undefined}
-									className={`border-b transition-colors hover:bg-muted/30 cursor-pointer active:bg-muted ${index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}`}
+									className={`group border-b transition-colors hover:bg-orange-300/20 dark:hover:bg-orange-400/30 cursor-pointer active:bg-orange-100 dark:active:bg-orange-950/30 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}`}
 									onClick={() => handleView(row.original.id as UUID)}
 								>
 									{row.getVisibleCells().map((cell) => (
@@ -419,7 +419,7 @@ export function TasksDataTable({
 										{...props}
 										ref={index === 0 ? rowRef : undefined}
 										style={style}
-										className={`border-b transition-colors hover:bg-muted cursor-pointer active:bg-muted ${isEven ? 'bg-background' : 'bg-muted/70'}`}
+										className={`group border-b transition-colors hover:bg-orange-300/20 dark:hover:bg-orange-400/30 cursor-pointer active:bg-orange-100 dark:active:bg-orange-950/30 ${isEven ? 'bg-background' : 'bg-muted/70'}`}
 										onClick={() => handleView(row.original.id as UUID)}
 									>
 										{row.getVisibleCells().map((cell) => (
