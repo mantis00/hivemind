@@ -38,6 +38,7 @@ export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useOrgSpecies(orgId as UUID)
+	const activeOrgSpecies = useMemo(() => (orgSpecies ?? []).filter((s) => s.is_active), [orgSpecies])
 
 	const [searchValue, setSearchValue] = useState('')
 	const [searchCount, setSearchCount] = useState(0)
@@ -45,7 +46,7 @@ export default function EnclosureGrid() {
 	const [isSorted, setIsSorted] = useState(false)
 	const [sortKey, setSortKey] = useState('')
 
-	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>(orgSpecies ?? [])
+	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>(activeOrgSpecies)
 	const [prevOrgSpecies, setPrevOrgSpecies] = useState(orgSpecies)
 	const [itemHeight, setItemHeight] = useState<number>(114)
 	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
@@ -97,7 +98,7 @@ export default function EnclosureGrid() {
 	if (prevOrgSpecies !== orgSpecies) {
 		setPrevOrgSpecies(orgSpecies)
 		if (searchValue.trim() === '') {
-			setDisplayedSpecies(orgSpecies ?? [])
+			setDisplayedSpecies(activeOrgSpecies)
 			setSearchCount(0)
 		}
 	}
@@ -121,7 +122,7 @@ export default function EnclosureGrid() {
 		if (!displayedSpecies?.length) return
 
 		if (sortOn === 'sort') {
-			setDisplayedSpecies(orgSpecies ?? [])
+			setDisplayedSpecies(activeOrgSpecies)
 			setIsSorted(false)
 			setSortUp(true)
 			setSortKey('')
@@ -170,7 +171,7 @@ export default function EnclosureGrid() {
 			return -1
 		}
 
-		const scored = (orgSpecies ?? []).map((spec) => {
+		const scored = activeOrgSpecies.map((spec) => {
 			let score = -1
 			if (sortKey === 'common_name') {
 				score = scoreMatch(spec.custom_common_name)
@@ -203,7 +204,7 @@ export default function EnclosureGrid() {
 
 	const handleClearSearch = () => {
 		setSearchValue('')
-		setDisplayedSpecies(orgSpecies ?? [])
+		setDisplayedSpecies(activeOrgSpecies)
 		setSearchCount(0)
 	}
 
@@ -336,7 +337,7 @@ export default function EnclosureGrid() {
 								const val = e.target.value
 								setSearchValue(val)
 								if (val.trim() === '') {
-									setDisplayedSpecies(orgSpecies ?? [])
+									setDisplayedSpecies(activeOrgSpecies)
 									setSearchCount(0)
 								}
 							}}

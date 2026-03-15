@@ -38,11 +38,12 @@ interface CreateTaskButtonProps {
 	enclosureId: UUID
 	orgId: UUID
 	disabled?: boolean
+	onTaskCreated?: () => void
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskButtonProps) {
+export function CreateTaskButton({ enclosureId, orgId, disabled, onTaskCreated }: CreateTaskButtonProps) {
 	const [open, setOpen] = useState(false)
 
 	// Task type
@@ -151,6 +152,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 		const onSuccess = () => {
 			setOpen(false)
 			reset()
+			onTaskCreated?.()
 		}
 
 		if (scheduleType === 'one-time') {

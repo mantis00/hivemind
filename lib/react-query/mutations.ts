@@ -1300,16 +1300,43 @@ export function useAddBatchSpeciesToOrg() {
 			if (fetchError) throw fetchError
 			if (!data || data.length === 0) throw new Error('No species found')
 
-			// Insert one org_species row per species
-			const rows = data.map((s) => ({
-				org_id,
-				master_species_id: s.id,
-				custom_common_name: s.common_name,
-				custom_care_instructions: s.care_instructions
-			}))
+			// Find existing org_species rows so we can reactivate without relying on DB unique constraints.
+			const { data: existingOrgSpecies, error: existingError } = await supabase
+				.from('org_species')
+				.select('id, master_species_id, is_active')
+				.eq('org_id', org_id)
+				.in('master_species_id', species_ids)
 
-			const { error } = await supabase.from('org_species').insert(rows)
-			if (error) throw error
+			if (existingError) throw existingError
+
+			const existingMasterIds = new Set((existingOrgSpecies ?? []).map((row) => row.master_species_id))
+			const idsToReactivate = (existingOrgSpecies ?? []).filter((row) => row.is_active === false).map((row) => row.id)
+
+			if (idsToReactivate.length > 0) {
+				const { error: reactivateError } = await supabase
+					.from('org_species')
+					.update({ is_active: true })
+					.eq('org_id', org_id)
+					.in('id', idsToReactivate)
+
+				if (reactivateError) throw reactivateError
+			}
+
+			// Insert only species that do not already exist for this org.
+			const rowsToInsert = data
+				.filter((s) => !existingMasterIds.has(s.id))
+				.map((s) => ({
+					org_id,
+					master_species_id: s.id,
+					custom_common_name: s.common_name,
+					custom_care_instructions: s.care_instructions,
+					is_active: true
+				}))
+
+			if (rowsToInsert.length > 0) {
+				const { error: insertError } = await supabase.from('org_species').insert(rowsToInsert)
+				if (insertError) throw insertError
+			}
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.org_id] })
@@ -1326,35 +1353,10 @@ export function useDeleteSpeciesFromOrg() {
 		mutationFn: async ({ species_id, orgId }: { species_id: UUID; orgId: UUID }) => {
 			const supabase = createClient()
 
-			// Get all enclosures for this species in the org
-			const { data: enclosures, error: enclosuresError } = await supabase
-				.from('enclosures')
-				.select('id')
-				.eq('species_id', species_id)
-				.eq('org_id', orgId)
-
-			if (enclosuresError) throw enclosuresError
-
-			const enclosure_ids = enclosures?.map((e) => e.id) || []
-
-			// Delete tasks for all enclosures
-			if (enclosure_ids.length > 0) {
-				const { error: tasksError } = await supabase.from('tasks').delete().in('enclosure_id', enclosure_ids)
-				if (tasksError) throw tasksError
-
-				// Delete tank notes for all enclosures
-				const { error: notesError } = await supabase.from('tank_notes').delete().in('enclosure_id', enclosure_ids)
-				if (notesError) throw notesError
-
-				// Delete all enclosures
-				const { error: deleteError } = await supabase.from('enclosures').delete().in('id', enclosure_ids)
-				if (deleteError) throw deleteError
-			}
-
-			// Delete the species from org
+			// Soft-delete the species from org
 			const { error: speciesError } = await supabase
 				.from('org_species')
-				.delete()
+				.update({ is_active: false })
 				.eq('id', species_id)
 				.eq('org_id', orgId)
 			if (speciesError) throw speciesError
@@ -1375,35 +1377,10 @@ export function useDeleteBatchSpeciesFromOrg() {
 		mutationFn: async ({ species_ids, orgId }: { species_ids: UUID[]; orgId: UUID }) => {
 			const supabase = createClient()
 
-			// Get all enclosures for these species in the org
-			const { data: enclosures, error: enclosuresError } = await supabase
-				.from('enclosures')
-				.select('id')
-				.in('species_id', species_ids)
-				.eq('org_id', orgId)
-
-			if (enclosuresError) throw enclosuresError
-
-			const enclosure_ids = enclosures?.map((e) => e.id) || []
-
-			if (enclosure_ids.length > 0) {
-				// Delete tasks for all enclosures
-				const { error: tasksError } = await supabase.from('tasks').delete().in('enclosure_id', enclosure_ids)
-				if (tasksError) throw tasksError
-
-				// Delete tank notes for all enclosures
-				const { error: notesError } = await supabase.from('tank_notes').delete().in('enclosure_id', enclosure_ids)
-				if (notesError) throw notesError
-
-				// Delete all enclosures
-				const { error: deleteEnclosuresError } = await supabase.from('enclosures').delete().in('id', enclosure_ids)
-				if (deleteEnclosuresError) throw deleteEnclosuresError
-			}
-
-			// Delete all org_species records
+			// Soft-delete org_species records
 			const { error: speciesError } = await supabase
 				.from('org_species')
-				.delete()
+				.update({ is_active: false })
 				.in('id', species_ids)
 				.eq('org_id', orgId)
 			if (speciesError) throw speciesError
@@ -1520,6 +1497,36 @@ export function useReassignTask() {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['taskById'] })
 			toast.success('Task reassigned!')
+		}
+	})
+}
+
+export function useChangeOrgName() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ org_id, new_name }: { org_id: UUID; new_name: string }) => {
+			const supabase = createClient()
+
+			if (!new_name.trim()) {
+				throw new Error('New name cannot be empty!')
+			}
+
+			const { error } = await supabase
+				.from('orgs')
+				.update({
+					name: new_name
+				})
+				.eq('org_id', org_id)
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
+			queryClient.invalidateQueries({ queryKey: ['orgDetails', variables.org_id] })
+			queryClient.invalidateQueries({ queryKey: ['invites'] })
+			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			toast.success('Org name changed!')
 		}
 	})
 }
