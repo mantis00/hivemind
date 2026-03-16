@@ -157,19 +157,22 @@ export default function EnclosureGrid() {
 		setIsSorted(true)
 	}
 
-	const handleSearch = async () => {
-		if (!searchValue.length || searchValue.trim() === '') return
-		const val = searchValue.trim().toLowerCase()
-
+	const handleSearchChange = (val: string) => {
+		setSearchValue(val)
+		if (!val.trim()) {
+			setDisplayedSpecies(orgSpecies ?? [])
+			setSearchCount(0)
+			return
+		}
+		const lower = val.trim().toLowerCase()
 		const scoreMatch = (str: string | undefined): number => {
 			if (!str) return -1
 			const s = str.trim().toLowerCase()
-			if (s === val) return 0
-			if (s.startsWith(val)) return 1
-			if (s.includes(val)) return 2
+			if (s === lower) return 0
+			if (s.startsWith(lower)) return 1
+			if (s.includes(lower)) return 2
 			return -1
 		}
-
 		const scored = (orgSpecies ?? []).map((spec) => {
 			let score = -1
 			if (sortKey === 'common_name') {
@@ -184,23 +187,13 @@ export default function EnclosureGrid() {
 			}
 			return { spec, score }
 		})
-
 		const results = scored
 			.filter(({ score }) => score >= 0)
 			.sort((a, b) => a.score - b.score)
 			.map(({ spec }) => spec)
-
 		setDisplayedSpecies(results)
 		setSearchCount(results.length)
 	}
-
-	const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-		if (event.key === 'Enter') {
-			event.preventDefault()
-			handleSearch()
-		}
-	}
-
 	const handleClearSearch = () => {
 		setSearchValue('')
 		setDisplayedSpecies(orgSpecies ?? [])
@@ -328,18 +321,14 @@ export default function EnclosureGrid() {
 					>
 						{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
 					</Button>
-					<InputGroup className='w-40 sm:w-60 ml-auto' onKeyDown={handleKeyDown}>
+					<InputGroup className='w-40 sm:w-60 ml-auto'>
+						<InputGroupAddon>
+							<Search className='h-4 w-4 text-muted-foreground' />
+						</InputGroupAddon>
 						<InputGroupInput
 							placeholder='Search...'
 							value={searchValue}
-							onChange={(e) => {
-								const val = e.target.value
-								setSearchValue(val)
-								if (val.trim() === '') {
-									setDisplayedSpecies(orgSpecies ?? [])
-									setSearchCount(0)
-								}
-							}}
+							onChange={(e) => handleSearchChange(e.target.value)}
 						/>
 						{searchValue && (
 							<InputGroupAddon align='inline-end' className='pr-1'>
@@ -351,14 +340,11 @@ export default function EnclosureGrid() {
 								</InputGroupButton>
 							</InputGroupAddon>
 						)}
-						<InputGroupAddon>
-							<InputGroupButton onClick={handleSearch} disabled={isLoading}>
-								<Search />
-							</InputGroupButton>
-						</InputGroupAddon>
-						<InputGroupAddon className='hidden sm:block' align='inline-end'>
-							{searchCount > 0 ? searchCount + ' Results' : ''}{' '}
-						</InputGroupAddon>
+						{searchCount > 0 && (
+							<InputGroupAddon align='inline-end' className='hidden sm:block pr-2 text-xs text-muted-foreground'>
+								{searchCount} Results
+							</InputGroupAddon>
+						)}
 					</InputGroup>
 				</div>
 

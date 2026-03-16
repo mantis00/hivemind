@@ -122,6 +122,12 @@ export function getColumns(
 		},
 		{
 			accessorKey: 'status',
+			sortingFn: (rowA, rowB) => {
+				const order: Record<string, number> = { late: 0, pending: 1, completed: 2 }
+				const a = order[getEffectiveStatus(rowA.original)] ?? 1
+				const b = order[getEffectiveStatus(rowB.original)] ?? 1
+				return a - b
+			},
 			header: ({ column }) => (
 				<button
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}

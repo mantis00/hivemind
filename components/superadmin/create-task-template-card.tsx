@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { useCreateTaskTemplate } from '@/lib/react-query/mutations'
 import { useAllTaskTypes } from '@/lib/react-query/queries'
 import type { Species } from '@/lib/react-query/queries'
-import { type FieldDef, emptyField, validateFields } from './template-fields'
+import { type FieldDef, emptyField, validateFields, encodeChoicesForSave } from './template-fields'
 import { TaskTypeSelector, DescriptionField, FieldsEditor } from './task-template-form-parts'
 
 // ─── CreateTaskTemplateCard ───────────────────────────────────────────────────────────
@@ -30,20 +30,31 @@ export function CreateTaskTemplateCard({ species, usedTypes, onSuccess, onCancel
 	const { data: allTypes } = useAllTaskTypes()
 	const createTemplate = useCreateTaskTemplate()
 
-	// Global types minus ones already used for this species
-	const availableTypes = (allTypes ?? []).filter((t) => !usedTypes.includes(t))
+	// Global types minus ones already used for this species (case-insensitive), deduped by lowercase
+	const usedLower = usedTypes.map((u) => u.toLowerCase())
+	const seenLower = new Set<string>()
+	const availableTypes = (allTypes ?? []).filter((t) => {
+		const lower = t.toLowerCase()
+		if (usedLower.includes(lower)) return false
+		if (seenLower.has(lower)) return false
+		seenLower.add(lower)
+		return true
+	})
 
 	const addField = () => setFields((p) => [...p, emptyField()])
 	const removeField = (id: string) => setFields((p) => p.filter((f) => f._id !== id))
 	const updateField = (id: string, u: Partial<FieldDef>) =>
 		setFields((p) => p.map((f) => (f._id === id ? { ...f, ...u } : f)))
-	const addChoice = (id: string) =>
-		setFields((p) =>
-			p.map((f) => {
-				if (f._id !== id || !f.newChoice.trim()) return f
-				return { ...f, choices: [...f.choices, f.newChoice.trim()], newChoice: '' }
-			})
-		)
+	const addChoice = (id: string) => {
+		const field = fields.find((f) => f._id === id)
+		if (!field || !field.newChoice.trim()) return
+		const trimmed = field.newChoice.trim()
+		if (field.choices.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+			toast.error(`"${trimmed}" is already an option.`)
+			return
+		}
+		setFields((p) => p.map((f) => (f._id !== id ? f : { ...f, choices: [...f.choices, trimmed], newChoice: '' })))
+	}
 	const removeChoice = (fieldId: string, i: number) =>
 		setFields((p) => p.map((f) => (f._id !== fieldId ? f : { ...f, choices: f.choices.filter((_, ci) => ci !== i) })))
 
@@ -53,7 +64,13 @@ export function CreateTaskTemplateCard({ species, usedTypes, onSuccess, onCancel
 			toast.error('Task type is required.')
 			return
 		}
-		if (usedTypes.includes(taskType.trim().toLowerCase())) {
+		// If user typed a new type, block it if that type already exists globally — they should pick it from the dropdown
+		if (showNewTypeInput && (allTypes ?? []).map((t) => t.toLowerCase()).includes(taskType.trim().toLowerCase())) {
+			toast.error(`"${taskType.trim()}" already exists — select it from the existing types dropdown instead.`)
+			return
+		}
+		// Also block if this species already has a template with this type
+		if (usedTypes.map((t) => t.toLowerCase()).includes(taskType.trim().toLowerCase())) {
 			toast.error(`A "${taskType.trim()}" template already exists for this species.`)
 			return
 		}
@@ -73,7 +90,7 @@ export function CreateTaskTemplateCard({ species, usedTypes, onSuccess, onCancel
 					label: f.label,
 					type: f.type,
 					required: f.required,
-					choices: f.choices
+					choices: encodeChoicesForSave(f)
 				}))
 			},
 			{
@@ -84,8 +101,8 @@ export function CreateTaskTemplateCard({ species, usedTypes, onSuccess, onCancel
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className='border-t px-3 py-3 space-y-4 bg-muted/20'>
-			<div className='overflow-y-auto max-h-[58vh] space-y-4 px-1 -mx-1'>
+		<form onSubmit={handleSubmit} className='border-t px-3 py-3 bg-muted/20 flex flex-col flex-1 gap-4'>
+			<div className='flex-1 overflow-y-auto min-h-0 space-y-4 px-1 -mx-1'>
 				{/* Task Type */}
 				<TaskTypeSelector
 					value={taskType}
@@ -111,7 +128,7 @@ export function CreateTaskTemplateCard({ species, usedTypes, onSuccess, onCancel
 				/>
 			</div>
 
-			<div className='flex gap-2 pt-2 border-t'>
+			<div className='flex w-full gap-2 pt-2 border-t'>
 				<Button type='button' variant='outline' className='flex-1' onClick={onCancel}>
 					Cancel
 				</Button>

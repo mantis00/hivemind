@@ -841,6 +841,7 @@ export function useUpdateTaskTemplate() {
 			type: string
 			description: string
 			fields: {
+				dbId?: string
 				question_key: string
 				label: string
 				type: string
@@ -850,33 +851,82 @@ export function useUpdateTaskTemplate() {
 		}) => {
 			const supabase = createClient()
 
+			// Update template metadata
 			const { error: templateError } = await supabase
 				.from('task_templates')
 				.update({ type, description: description || null })
 				.eq('id', templateId)
-
 			if (templateError) throw templateError
 
-			// Replace all question_templates: delete existing then re-insert
-			const { error: deleteError } = await supabase
+			// Fetch current question IDs for this template
+			const { data: currentQuestions, error: fetchError } = await supabase
 				.from('question_templates')
-				.delete()
+				.select('id')
 				.eq('task_template_id', templateId)
+			if (fetchError) throw fetchError
 
-			if (deleteError) throw deleteError
+			const currentIds = new Set((currentQuestions ?? []).map((q) => q.id as string))
+			const keptDbIds = new Set(fields.filter((f) => f.dbId).map((f) => f.dbId as string))
+			const removedIds = [...currentIds].filter((id) => !keptDbIds.has(id))
 
-			const { error: insertError } = await supabase.from('question_templates').insert(
-				fields.map((f) => ({
-					task_template_id: templateId,
-					question_key: f.question_key,
-					label: f.label,
-					type: f.type,
-					required: f.required,
-					choices: f.choices.length > 0 ? f.choices : null
-				}))
-			)
+			// Handle removed questions — delete unreferenced ones, orphan referenced ones
+			if (removedIds.length > 0) {
+				const { data: referenced } = await supabase
+					.from('task_form_data')
+					.select('question_id')
+					.in('question_id', removedIds)
+				const referencedIds = new Set((referenced ?? []).map((r) => r.question_id as string))
 
-			if (insertError) throw insertError
+				// Safe to fully delete — no past answers reference them
+				const safeToDelete = removedIds.filter((id) => !referencedIds.has(id))
+				if (safeToDelete.length > 0) {
+					const { error } = await supabase.from('question_templates').delete().in('id', safeToDelete)
+					if (error) throw error
+				}
+
+				// Referenced by past answers — null out task_template_id so they're orphaned
+				// from the template (won't appear in new tasks) but still satisfy the FK
+				const mustOrphan = removedIds.filter((id) => referencedIds.has(id))
+				if (mustOrphan.length > 0) {
+					const { error } = await supabase
+						.from('question_templates')
+						.update({ task_template_id: null })
+						.in('id', mustOrphan)
+					if (error) throw error
+				}
+			}
+
+			// UPDATE existing questions (preserves their IDs so task_form_data FKs remain valid)
+			const existingFields = fields.filter((f) => f.dbId)
+			for (const f of existingFields) {
+				const { error } = await supabase
+					.from('question_templates')
+					.update({
+						question_key: f.question_key,
+						label: f.label,
+						type: f.type,
+						required: f.required,
+						choices: f.choices.length > 0 ? f.choices : null
+					})
+					.eq('id', f.dbId!)
+				if (error) throw error
+			}
+
+			// INSERT truly new questions
+			const newFields = fields.filter((f) => !f.dbId)
+			if (newFields.length > 0) {
+				const { error } = await supabase.from('question_templates').insert(
+					newFields.map((f) => ({
+						task_template_id: templateId,
+						question_key: f.question_key,
+						label: f.label,
+						type: f.type,
+						required: f.required,
+						choices: f.choices.length > 0 ? f.choices : null
+					}))
+				)
+				if (error) throw error
+			}
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
@@ -1140,6 +1190,58 @@ export function useSubmitTaskForm() {
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Task completed!')
+		}
+	})
+}
+
+export function useResubmitTaskForm() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			task_id,
+			user_id,
+			answers
+		}: {
+			task_id: UUID
+			user_id: UUID
+			answers: { question_id: UUID; answer: string }[]
+		}) => {
+			const supabase = createClient()
+
+			// Delete existing form data for this task
+			const { error: deleteError } = await supabase.from('task_form_data').delete().eq('task_id', task_id)
+			if (deleteError) throw deleteError
+
+			// Re-insert updated answers
+			if (answers.length > 0) {
+				const { error: formError } = await supabase.from('task_form_data').insert(
+					answers.map((a) => ({
+						task_id,
+						question_id: a.question_id,
+						answer: a.answer
+					}))
+				)
+				if (formError) throw formError
+			}
+
+			// Update completed_time to now
+			const { error: taskError } = await supabase
+				.from('tasks')
+				.update({
+					completed_time: new Date().toISOString(),
+					completed_by: user_id
+				})
+				.eq('id', task_id)
+			if (taskError) throw taskError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
+			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success('Submission updated!')
 		}
 	})
 }

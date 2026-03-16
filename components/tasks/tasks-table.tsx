@@ -70,7 +70,10 @@ export function TasksDataTable({
 	)
 
 	const [dayOffset, setDayOffset] = React.useState(0)
-	const [sorting, setSorting] = React.useState<SortingState>([{ id: 'due_date', desc: false }])
+	const [sorting, setSorting] = React.useState<SortingState>([
+		{ id: 'status', desc: false },
+		{ id: 'due_date', desc: false }
+	])
 	const [filters, setFilters] = React.useState<TaskFilters>({
 		globalFilter: '',
 		globalSearch: false,
@@ -283,10 +286,15 @@ export function TasksDataTable({
 		})
 
 		if (!isRangeMode && dayOffset === 0) {
+			const statusOrder: Record<string, number> = { late: 0, pending: 1, completed: 2 }
 			return [...tasks].sort((a, b) => {
-				const aCompleted = a.status === 'completed' ? 1 : 0
-				const bCompleted = b.status === 'completed' ? 1 : 0
-				if (aCompleted !== bCompleted) return aCompleted - bCompleted
+				const aOrder = statusOrder[getEffectiveStatus(a)] ?? 1
+				const bOrder = statusOrder[getEffectiveStatus(b)] ?? 1
+				if (aOrder !== bOrder) return aOrder - bOrder
+				// Stable secondary: due_date ascending, then insertion order
+				const aDate = a.due_date ?? ''
+				const bDate = b.due_date ?? ''
+				if (aDate !== bDate) return aDate < bDate ? -1 : 1
 				const aPos = stableOrderRef.current.get(a.id as string) ?? 999
 				const bPos = stableOrderRef.current.get(b.id as string) ?? 999
 				return aPos - bPos
