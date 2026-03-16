@@ -63,6 +63,7 @@ export type Enclosure = {
 	id: UUID
 	org_id: UUID
 	species_id: UUID
+	is_active: boolean
 	name: string
 	created_at: string
 	location: string
@@ -85,6 +86,7 @@ export type Species = {
 export type OrgSpecies = {
 	id: UUID
 	created_at: string
+	is_active: boolean
 	custom_common_name: string
 	custom_care_instructions: string
 	master_species_id: UUID
@@ -319,7 +321,7 @@ export type PushSubscription = {
 
 export function useUserOrgs(userId: string) {
 	return useQuery({
-		queryKey: ['orgs', userId],
+		queryKey: ['orgs'],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
@@ -455,20 +457,38 @@ export function useOrgDetails(orgId: UUID) {
 	})
 }
 
-export function useOrgEnclosures(orgId: UUID) {
+export function useOrgEnclosures(orgId: UUID, enclosureStatus: 'active' | 'inactive' | 'all' = 'active') {
 	return useQuery({
-		queryKey: ['orgEnclosures', orgId],
+		queryKey: ['orgEnclosures', orgId, enclosureStatus],
 		queryFn: async () => {
 			const supabase = createClient()
 			const PAGE_SIZE = 1000
 			const allEnclosures: Enclosure[] = []
 			let from = 0
 
+			const { data: activeSpecies, error: activeSpeciesError } = await supabase
+				.from('org_species')
+				.select('id')
+				.eq('org_id', orgId)
+				.eq('is_active', true)
+
+			if (activeSpeciesError) throw activeSpeciesError
+
+			const activeSpeciesIds = (activeSpecies ?? []).map((s) => s.id)
+			if (activeSpeciesIds.length === 0) return []
+
 			while (true) {
-				const { data, error } = (await supabase
+				let enclosureQuery = supabase
 					.from('enclosures')
 					.select('*, locations(name, description)')
 					.eq('org_id', orgId)
+					.in('species_id', activeSpeciesIds)
+
+				if (enclosureStatus !== 'all') {
+					enclosureQuery = enclosureQuery.eq('is_active', enclosureStatus === 'active')
+				}
+
+				const { data, error } = (await enclosureQuery
 					.order('current_count', { ascending: true })
 					.range(from, from + PAGE_SIZE - 1)) as { data: Enclosure[] | null; error: PostgrestError | null }
 
@@ -489,10 +509,23 @@ export function useOrgEnclosureCount(orgId: UUID) {
 		queryKey: ['orgEnclosureCount', orgId],
 		queryFn: async () => {
 			const supabase = createClient()
+
+			const { data: activeSpecies, error: activeSpeciesError } = await supabase
+				.from('org_species')
+				.select('id')
+				.eq('org_id', orgId)
+				.eq('is_active', true)
+
+			if (activeSpeciesError) throw activeSpeciesError
+
+			const activeSpeciesIds = (activeSpecies ?? []).map((s) => s.id)
+			if (activeSpeciesIds.length === 0) return 0
+
 			const { count, error } = await supabase
 				.from('enclosures')
 				.select('*', { count: 'exact', head: true })
 				.eq('org_id', orgId)
+				.in('species_id', activeSpeciesIds)
 
 			if (error) throw error
 			return count ?? 0
@@ -549,7 +582,8 @@ export function useSpecies(orgId: UUID) {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('org_species')
-				.select('*, species(scientific_name, picture_url)')) as {
+				.select('*, species(scientific_name, picture_url)')
+				.eq('is_active', true)) as {
 				data: OrgSpecies[] | null
 				error: PostgrestError | null
 			}
@@ -672,16 +706,40 @@ export function useLiveNotificationsRealtime(recipientId: string | undefined) {
 	})
 }
 
-export function useOrgEnclosuresForSpecies(orgId: UUID, speciesId: UUID) {
+export function useOrgEnclosuresForSpecies(
+	orgId: UUID,
+	speciesId: UUID,
+	enclosureStatus: 'active' | 'inactive' | 'all' = 'active'
+) {
 	return useQuery({
-		queryKey: ['speciesEnclosures', orgId, speciesId],
+		queryKey: ['speciesEnclosures', orgId, speciesId, enclosureStatus],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
+
+			const { data: activeSpecies, error: activeSpeciesError } = await supabase
+				.from('org_species')
+				.select('id')
+				.eq('id', speciesId)
+				.eq('org_id', orgId)
+				.eq('is_active', true)
+				.maybeSingle()
+
+			if (activeSpeciesError) throw activeSpeciesError
+			if (!activeSpecies) return []
+
+			let enclosureQuery = supabase
 				.from('enclosures')
-				.select('id, org_id, name, location, current_count, locations(name, description), created_at')
+				.select(
+					'id, org_id, species_id, is_active, name, location, current_count, locations(name, description), created_at'
+				)
 				.eq('species_id', speciesId)
-				.eq('org_id', orgId)) as { data: Enclosure[] | null; error: PostgrestError | null }
+				.eq('org_id', orgId)
+
+			if (enclosureStatus !== 'all') {
+				enclosureQuery = enclosureQuery.eq('is_active', enclosureStatus === 'active')
+			}
+
+			const { data, error } = (await enclosureQuery) as { data: Enclosure[] | null; error: PostgrestError | null }
 			if (error) throw error
 
 			return data
@@ -1044,6 +1102,7 @@ export function useOrgSpecies(org_id: UUID) {
 				.from('org_species')
 				.select('*, species(scientific_name, picture_url)')
 				.eq('org_id', org_id)
+				.eq('is_active', true)
 				.order('custom_common_name', { ascending: true })) as {
 				data: OrgSpecies[] | null
 				error: PostgrestError | null

@@ -5,8 +5,9 @@ import { useCreateEnclosureNote } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { LoaderCircle } from 'lucide-react'
 import { UUID } from 'crypto'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 
-export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID }) {
+export default function CreateEnclosureNote({ enclosureId, is_active }: { enclosureId: UUID; is_active: boolean }) {
 	const [noteText, setNoteText] = useState('')
 	const createEnclosureNoteMutation = useCreateEnclosureNote()
 	const { data: user } = useCurrentClientUser()
@@ -15,6 +16,7 @@ export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
+		if (!is_active) return
 		setLoading(true)
 
 		createEnclosureNoteMutation.mutate(
@@ -32,21 +34,44 @@ export default function CreateEnclosureNote({ enclosureId }: { enclosureId: UUID
 		<>
 			<form onSubmit={handleSubmit} className='grid w-full gap-6 pt-1 mx-auto focus'>
 				<InputGroup>
-					<TextareaAutosize
-						ref={textareaRef}
-						data-slot='input-group-control'
-						className='flex field-sizing-content min-h-4 w-full resize-none rounded-md bg-transparent px-3 py-2.5 text-base transition-[color,box-shadow] outline-none md:text-sm'
-						placeholder='New note...'
-						value={noteText}
-						onFocus={() =>
-							setTimeout(() => textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300)
-						}
-						onChange={(e) => {
-							setNoteText(e.target.value)
-						}}
-					/>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<div className='w-full'>
+									<TextareaAutosize
+										ref={textareaRef}
+										data-slot='input-group-control'
+										className='flex field-sizing-content min-h-4 w-full resize-none rounded-md bg-transparent px-3 py-2.5 text-base transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-60 md:text-sm'
+										placeholder={is_active ? 'New note...' : 'Enclosure is inactive.'}
+										value={noteText}
+										disabled={!is_active}
+										onFocus={() =>
+											setTimeout(
+												() => textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
+												300
+											)
+										}
+										onChange={(e) => {
+											setNoteText(e.target.value)
+										}}
+									/>
+								</div>
+							</TooltipTrigger>
+							{!is_active ? (
+								<TooltipContent>
+									<p>You cannot add notes to an inactive enclosure.</p>
+								</TooltipContent>
+							) : null}
+						</Tooltip>
+					</TooltipProvider>
 					<InputGroupAddon align='block-end'>
-						<InputGroupButton className='ml-auto' size='sm' variant='default' type='submit' disabled={loading}>
+						<InputGroupButton
+							className='ml-auto'
+							size='sm'
+							variant='default'
+							type='submit'
+							disabled={loading || !is_active}
+						>
 							{createEnclosureNoteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Submit'}
 						</InputGroupButton>
 					</InputGroupAddon>

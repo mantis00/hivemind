@@ -4,7 +4,6 @@ import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import { useMemo, useState } from 'react'
 import { PlusIcon } from 'lucide-react'
-
 import { TasksDataTable } from './tasks-table'
 import { Button } from '../ui/button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
@@ -75,7 +74,7 @@ export default function OrgTasksTable() {
 					open={open}
 					onOpenChange={(isOpen) => (isOpen ? setOpen(true) : handleClose())}
 				>
-					<div className='grid gap-4 py-2 px-4'>
+					<div className='grid gap-4'>
 						<div className='grid gap-2'>
 							<Label>Enclosure</Label>
 							<Combobox
@@ -112,8 +111,13 @@ export default function OrgTasksTable() {
 						{/* TODO: render task creation form here using selectedEnclosure?.id */}
 					</div>
 
-					<div className='flex flex-col gap-2 px-4 pb-2'>
-						<CreateTaskButton enclosureId={selectedEnclosure?.id as UUID} orgId={orgId} disabled={!selectedEnclosure} />
+					<div className='flex flex-col gap-2'>
+						<CreateTaskButton
+							enclosureId={selectedEnclosure?.id as UUID}
+							orgId={orgId}
+							disabled={!selectedEnclosure}
+							onTaskCreated={handleClose}
+						/>
 						<Button type='button' variant='outline' onClick={handleClose}>
 							Cancel
 						</Button>
