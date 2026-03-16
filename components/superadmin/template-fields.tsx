@@ -225,7 +225,7 @@ export function FieldRow({
 						<SelectContent>
 							<SelectItem value='text'>Text</SelectItem>
 							<SelectItem value='number'>Number</SelectItem>
-							<SelectItem value='boolean'>Checkbox (Yes / No)</SelectItem>
+							<SelectItem value='boolean'>Boolean (Yes / No)</SelectItem>
 							<SelectItem value='select'>Select (pick one)</SelectItem>
 							<SelectItem value='multiselect'>Multi-select (pick many)</SelectItem>
 						</SelectContent>

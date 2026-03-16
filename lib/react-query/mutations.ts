@@ -932,6 +932,10 @@ export function useUpdateTaskTemplate() {
 			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			queryClient.invalidateQueries({ queryKey: ['taskTemplateById'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById'] })
 			queryClient.invalidateQueries({ queryKey: ['taskTemplatesForOrgSpecies'] })
 			toast.success('Template updated!')
 		}

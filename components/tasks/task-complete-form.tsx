@@ -2,14 +2,27 @@
 
 import * as React from 'react'
 import { useState, useEffect, useRef, startTransition } from 'react'
-import { ArrowLeftCircle, CheckCircle2Icon, CircleUserRound, LoaderCircle, MapPinIcon, Pencil } from 'lucide-react'
+import {
+	ArrowLeftCircle,
+	CheckCircle2Icon,
+	ChevronDown,
+	CircleUserRound,
+	LoaderCircle,
+	MapPinIcon,
+	Pencil
+} from 'lucide-react'
 import { UUID } from 'crypto'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -77,21 +90,22 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 		setAnswers((prev) => ({ ...prev, [questionId]: value }))
 	}
 
-	const handleSubmit = () => {
-		const rawQuestions = template?.question_templates ?? []
+	type QuestionMeta = QuestionTemplate & {
+		conditionFieldKey: string
+		conditionValue: string
+		decodedChoices: string[]
+	}
 
-		// Decode conditions and build enriched question list
-		type QuestionMeta = QuestionTemplate & {
-			conditionFieldKey: string
-			conditionValue: string
-			decodedChoices: string[]
-		}
-		const allQMeta: QuestionMeta[] = rawQuestions.map((q) => {
+	const allQMeta = React.useMemo((): QuestionMeta[] => {
+		const rawQuestions = template?.question_templates ?? []
+		return rawQuestions.map((q) => {
 			const { choices, conditionFieldKey, conditionValue } = decodeChoices(q.choices)
 			return { ...q, conditionFieldKey, conditionValue, decodedChoices: choices }
 		})
+	}, [template])
 
-		const isVisible = (q: QuestionMeta): boolean => {
+	const visibleQMeta = React.useMemo(() => {
+		return allQMeta.filter((q) => {
 			if (!q.conditionFieldKey) return true
 			const trigger = allQMeta.find((t) => t.question_key === q.conditionFieldKey)
 			if (!trigger) return true
@@ -104,12 +118,12 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 					.includes(q.conditionValue)
 			}
 			return triggerAnswer === q.conditionValue
-		}
+		})
+	}, [allQMeta, answers])
 
-		const visibleQuestions = allQMeta.filter(isVisible)
-
+	const handleSubmit = () => {
 		// Validate required visible fields only
-		for (const q of visibleQuestions) {
+		for (const q of visibleQMeta) {
 			if (q.required) {
 				const val = answers[q.id]
 				if (!val || (typeof val === 'string' && val.trim() === '')) {
@@ -119,7 +133,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 			}
 		}
 
-		const answerPayload = visibleQuestions.map((q) => ({
+		const answerPayload = visibleQMeta.map((q) => ({
 			question_id: q.id as UUID,
 			answer: answers[q.id] ?? ''
 		}))
@@ -128,7 +142,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 			{ task_id: taskId, user_id: currentUser!.id as UUID, answers: answerPayload },
 			{
 				onSuccess: () => {
-					if (visibleQuestions.length === 0) router.back()
+					if (visibleQMeta.length === 0) router.back()
 					// With questions, form stays and grays out once isCompleted becomes true
 				}
 			}
@@ -136,33 +150,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 	}
 
 	const handleResubmit = () => {
-		const rawQuestions = template?.question_templates ?? []
-		type ResubmitQuestionMeta = QuestionTemplate & {
-			conditionFieldKey: string
-			conditionValue: string
-			decodedChoices: string[]
-		}
-		const allQMeta: ResubmitQuestionMeta[] = rawQuestions.map((q) => {
-			const { choices, conditionFieldKey, conditionValue } = decodeChoices(q.choices)
-			return { ...q, conditionFieldKey, conditionValue, decodedChoices: choices }
-		})
-		const isVisible = (q: ResubmitQuestionMeta): boolean => {
-			if (!q.conditionFieldKey) return true
-			const trigger = allQMeta.find((t) => t.question_key === q.conditionFieldKey)
-			if (!trigger) return true
-			const triggerAnswer = answers[trigger.id] ?? ''
-			if (trigger.type === 'multiselect') {
-				return triggerAnswer
-					.split(',')
-					.map((v) => v.trim())
-					.filter(Boolean)
-					.includes(q.conditionValue)
-			}
-			return triggerAnswer === q.conditionValue
-		}
-		const visibleQuestions = allQMeta.filter(isVisible)
-
-		for (const q of visibleQuestions) {
+		for (const q of visibleQMeta) {
 			if (q.required) {
 				const val = answers[q.id]
 				if (!val || (typeof val === 'string' && val.trim() === '')) {
@@ -172,7 +160,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 			}
 		}
 
-		const answerPayload = visibleQuestions.map((q) => ({
+		const answerPayload = visibleQMeta.map((q) => ({
 			question_id: q.id as UUID,
 			answer: answers[q.id] ?? ''
 		}))
@@ -206,8 +194,8 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 		return <p className='text-sm text-muted-foreground'>Task not found.</p>
 	}
 
-	const taskName = task.name ?? template?.type ?? 'Task'
-	const taskDesc = task.description ?? template?.description
+	const taskName = (task.template_id ? template?.type : null) ?? task.name ?? 'Task'
+	const taskDesc = (task.template_id ? template?.description : null) ?? task.description
 	const enclosureName = enclosure?.name ?? enclosureId
 	const assignedMember = task?.assigned_to
 		? members.find((m) => (m.id as string) === (task.assigned_to as string))
@@ -215,27 +203,6 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 	const assignedMemberName = assignedMember
 		? assignedMember.full_name || `${assignedMember.first_name} ${assignedMember.last_name}`.trim()
 		: null
-	const rawQuestions = template?.question_templates ?? []
-	type QuestionMeta = QuestionTemplate & { conditionFieldKey: string; conditionValue: string; decodedChoices: string[] }
-	const allQMeta: QuestionMeta[] = rawQuestions.map((q) => {
-		const { choices, conditionFieldKey, conditionValue } = decodeChoices(q.choices)
-		return { ...q, conditionFieldKey, conditionValue, decodedChoices: choices }
-	})
-	const isQuestionVisible = (q: QuestionMeta): boolean => {
-		if (!q.conditionFieldKey) return true
-		const trigger = allQMeta.find((t) => t.question_key === q.conditionFieldKey)
-		if (!trigger) return true
-		const triggerAnswer = answers[trigger.id] ?? ''
-		if (trigger.type === 'multiselect') {
-			return triggerAnswer
-				.split(',')
-				.map((v) => v.trim())
-				.filter(Boolean)
-				.includes(q.conditionValue)
-		}
-		return triggerAnswer === q.conditionValue
-	}
-	const visibleQMeta = allQMeta.filter(isQuestionVisible)
 	const questions = visibleQMeta
 	const isCompleted = task.status === 'completed'
 	const completedByMember = task.completed_by
@@ -444,8 +411,7 @@ function QuestionField({
 	onChange: (val: string) => void
 	disabled?: boolean
 }) {
-	const { label, type, required } = question
-
+	const { label, required, type } = question
 	return (
 		<div className='space-y-2'>
 			<Label className='text-sm font-medium'>
@@ -478,16 +444,27 @@ function QuestionField({
 			)}
 
 			{type === 'boolean' && (
-				<div className='flex items-center gap-2'>
-					<Checkbox
-						id={`q-${question.id}`}
-						checked={value === 'true'}
-						onCheckedChange={(checked) => onChange(checked ? 'true' : 'false')}
+				<div className='flex gap-2'>
+					<Button
+						type='button'
+						variant={value === 'true' ? 'default' : 'outline'}
+						size='sm'
+						className='flex-1'
 						disabled={disabled}
-					/>
-					<label htmlFor={`q-${question.id}`} className='text-sm cursor-pointer'>
+						onClick={() => onChange('true')}
+					>
 						Yes
-					</label>
+					</Button>
+					<Button
+						type='button'
+						variant={value === 'false' ? 'default' : 'outline'}
+						size='sm'
+						className='flex-1'
+						disabled={disabled}
+						onClick={() => onChange('false')}
+					>
+						No
+					</Button>
 				</div>
 			)}
 
@@ -507,34 +484,65 @@ function QuestionField({
 			)}
 
 			{type === 'multiselect' && choices.length > 0 && (
-				<div className='space-y-2'>
-					{choices.map((choice) => {
-						const selected = value
-							? value
-									.split(',')
-									.map((v) => v.trim())
-									.filter(Boolean)
-							: []
-						const isChecked = selected.includes(choice)
-						return (
-							<div key={choice} className='flex items-center gap-2'>
-								<Checkbox
-									id={`q-${question.id}-${choice}`}
-									checked={isChecked}
-									onCheckedChange={(checked) => {
-										const newSelected = checked ? [...selected, choice] : selected.filter((v) => v !== choice)
-										onChange(newSelected.join(','))
-									}}
-									disabled={disabled}
-								/>
-								<label htmlFor={`q-${question.id}-${choice}`} className='text-sm cursor-pointer'>
-									{choice}
-								</label>
-							</div>
-						)
-					})}
-				</div>
+				<MultiSelectDropdown
+					choices={choices}
+					value={value}
+					onChange={onChange}
+					disabled={disabled}
+					required={required}
+				/>
 			)}
 		</div>
+	)
+}
+
+// ─── MultiSelectDropdown ────────────────────────────────────────────────────
+
+function MultiSelectDropdown({
+	choices,
+	value,
+	onChange,
+	disabled
+}: {
+	choices: string[]
+	value: string
+	onChange: (val: string) => void
+	disabled?: boolean
+	required?: boolean
+}) {
+	const selected = value
+		? value
+				.split(',')
+				.map((v) => v.trim())
+				.filter(Boolean)
+		: []
+
+	const handleCheckedChange = (choice: string, checked: boolean) => {
+		const newSelected = checked ? [...selected, choice] : selected.filter((v) => v !== choice)
+		onChange(newSelected.join(','))
+	}
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button type='button' variant='outline' className='w-full justify-between font-normal' disabled={disabled}>
+					<span className='truncate'>{selected.length > 0 ? selected.join(', ') : 'Select one or more'}</span>
+					<ChevronDown className='h-4 w-4 ml-2 shrink-0' />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent className='min-w-(--radix-dropdown-menu-trigger-width)'>
+				{choices.map((choice) => (
+					<DropdownMenuCheckboxItem
+						key={choice}
+						checked={selected.includes(choice)}
+						onSelect={(e) => e.preventDefault()}
+						onCheckedChange={(checked) => handleCheckedChange(choice, checked)}
+						disabled={disabled}
+					>
+						{choice}
+					</DropdownMenuCheckboxItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	)
 }
