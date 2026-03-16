@@ -2,14 +2,13 @@
 
 import { useState } from 'react'
 import { type OrgSpecies } from '@/lib/react-query/queries'
-import { useUpdateOrgSpecies } from '@/lib/react-query/mutations'
+import { useUpdateOrgSpecies, useDeactivateOrgSpecies, useAddBatchSpeciesToOrg } from '@/lib/react-query/mutations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Edit, LoaderCircle } from 'lucide-react'
+import { Edit, LoaderCircle, PowerOff, Power } from 'lucide-react'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import { DeleteSpeciesOrgButton } from './delete-species-org'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import { toast } from 'sonner'
@@ -30,8 +29,10 @@ export function EditSpeciesOrgForm({ species, onDone, onDeleted }: EditSpeciesFo
 	const [commonName, setCommonName] = useState(species.custom_common_name)
 	const [careInstructions, setCareInstructions] = useState(species.custom_care_instructions ?? '')
 	const updateSpecies = useUpdateOrgSpecies()
+	const deactivateSpecies = useDeactivateOrgSpecies()
+	const activateSpecies = useAddBatchSpeciesToOrg()
 	const params = useParams()
-	const orgId = params?.orgId
+	const orgId = params?.orgId as UUID
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -87,7 +88,36 @@ export function EditSpeciesOrgForm({ species, onDone, onDeleted }: EditSpeciesFo
 					>
 						Cancel
 					</Button>
-					<DeleteSpeciesOrgButton species_id={species.id} onDeleted={onDeleted} />
+					<Button
+						type='button'
+						variant={species.is_active ? 'destructive' : 'default'}
+						className='flex-1 gap-1.5'
+						disabled={deactivateSpecies.isPending || activateSpecies.isPending}
+						onClick={() => {
+							if (species.is_active) {
+								deactivateSpecies.mutate({ species_id: species.id, orgId }, { onSuccess: onDone })
+							} else {
+								activateSpecies.mutate(
+									{ species_ids: [species.master_species_id], org_id: orgId },
+									{ onSuccess: onDone }
+								)
+							}
+						}}
+					>
+						{deactivateSpecies.isPending || activateSpecies.isPending ? (
+							<LoaderCircle className='h-4 w-4 animate-spin' />
+						) : species.is_active ? (
+							<>
+								<PowerOff className='h-4 w-4' />
+								Set Inactive
+							</>
+						) : (
+							<>
+								<Power className='h-4 w-4' />
+								Set Active
+							</>
+						)}
+					</Button>
 				</div>
 			</div>
 		</form>
@@ -98,6 +128,8 @@ export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpecie
 	const [commonName, setCommonName] = useState(species.custom_common_name)
 	const [careInstructions, setCareInstructions] = useState(species.custom_care_instructions ?? '')
 	const updateSpecies = useUpdateOrgSpecies()
+	const deactivateSpecies = useDeactivateOrgSpecies()
+	const activateSpecies = useAddBatchSpeciesToOrg()
 
 	const params = useParams()
 	const orgId = params?.orgId
@@ -125,7 +157,7 @@ export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpecie
 		handleOpenChange(false)
 	}
 
-	const isPending = updateSpecies.isPending
+	const isPending = updateSpecies.isPending || deactivateSpecies.isPending || activateSpecies.isPending
 
 	return (
 		<ResponsiveDialogDrawer
@@ -177,7 +209,39 @@ export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpecie
 						>
 							Cancel
 						</Button>
-						<DeleteSpeciesOrgButton species_id={species.id} onDeleted={() => handleOpenChange(false)} />
+						<Button
+							type='button'
+							variant={species.is_active ? 'destructive' : 'default'}
+							className='flex-1 gap-1.5'
+							disabled={isPending}
+							onClick={() => {
+								if (species.is_active) {
+									deactivateSpecies.mutate(
+										{ species_id: species.id, orgId: orgId as UUID },
+										{ onSuccess: () => handleOpenChange(false) }
+									)
+								} else {
+									activateSpecies.mutate(
+										{ species_ids: [species.master_species_id], org_id: orgId as UUID },
+										{ onSuccess: () => handleOpenChange(false) }
+									)
+								}
+							}}
+						>
+							{isPending ? (
+								<LoaderCircle className='h-4 w-4 animate-spin' />
+							) : species.is_active ? (
+								<>
+									<PowerOff className='h-4 w-4' />
+									Set Inactive
+								</>
+							) : (
+								<>
+									<Power className='h-4 w-4' />
+									Set Active
+								</>
+							)}
+						</Button>
 					</div>
 				</div>
 			</form>
