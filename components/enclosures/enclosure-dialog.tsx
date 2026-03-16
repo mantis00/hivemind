@@ -8,7 +8,6 @@ import type { Enclosure, OrgSpecies } from '@/lib/react-query/queries'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import { EditEnclosureButton } from './edit-enclosure-button'
-import DeleteEnclosureButton from './delete-enclosure-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import EnclosureNotesDialog from './enclosure-notes-dialog'
 import { Label } from '../ui/label'
@@ -57,7 +56,22 @@ export function EnclosureDialog({
 			footer={
 				<div className='flex flex-col gap-2 w-full'>
 					<EditEnclosureButton enclosure={enclosure} spec={species} />
-					<DeleteEnclosureButton enclosure_id={enclosure.id} onDeleted={() => onOpenChange(false)} />
+					<div className='flex flex-col gap-2 pt-1'>
+						<div className='flex items-center justify-between rounded-md border p-3'>
+							<div>
+								<Label htmlFor='enclosure-active'>{enclosure?.is_active ? 'Active' : 'Inactive'} Enclosure</Label>
+								<p className='text-xs text-muted-foreground'>
+									Inactive enclosures are hidden from active-species views.
+								</p>
+							</div>
+							<Switch
+								id='enclosure-active'
+								checked={isActive}
+								onCheckedChange={handleActiveChange}
+								disabled={editEnclosureMutation.isPending}
+							/>
+						</div>
+					</div>
 				</div>
 			}
 		>
@@ -104,22 +118,6 @@ export function EnclosureDialog({
 					<Separator />
 
 					<EnclosureNotesDialog enclosure={enclosure} open={notesOpen} onOpenChange={setNotesOpen} />
-					<div className='flex flex-col gap-2 pt-1'>
-						<div className='flex items-center justify-between rounded-md border p-3'>
-							<div>
-								<Label htmlFor='enclosure-active'>{enclosure?.is_active ? 'Active' : 'Inactive'} Enclosure</Label>
-								<p className='text-xs text-muted-foreground'>
-									Inactive enclosures are hidden from active-species views.
-								</p>
-							</div>
-							<Switch
-								id='enclosure-active'
-								checked={isActive}
-								onCheckedChange={handleActiveChange}
-								disabled={editEnclosureMutation.isPending}
-							/>
-						</div>
-					</div>
 				</div>
 			</div>
 		</ResponsiveDialogDrawer>

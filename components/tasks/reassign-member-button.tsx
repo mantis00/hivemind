@@ -45,9 +45,25 @@ export function ReassignMemberButton({
 	const hasChanged = selectedId !== (assignedTo as string | null)
 
 	if (readOnly) {
+		if (disabled) {
+			return (
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<div className='flex items-center gap-1.5 text-xs text-muted-foreground px-2 h-7 cursor-not-allowed'>
+								<span className='max-w-28 truncate'>{displayName}</span>
+							</div>
+						</TooltipTrigger>
+						<TooltipContent>
+							<p>{disabledReason ?? 'Reassignment unavailable'}</p>
+						</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
+			)
+		}
+
 		return (
 			<div className='flex items-center gap-1.5 text-xs text-muted-foreground px-2 h-7'>
-				{/* <User className='h-3.5 w-3.5 shrink-0' /> */}
 				<span className='max-w-28 truncate'>{displayName}</span>
 			</div>
 		)
@@ -58,20 +74,22 @@ export function ReassignMemberButton({
 			<TooltipProvider>
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<Button
-							variant='ghost'
-							size='sm'
-							className='h-7 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground font-normal shrink-0 bg-muted hover:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-60'
-							disabled={disabled}
-							onClick={(e) => {
-								e.stopPropagation()
-								if (disabled) return
-								handleOpenChange(true)
-							}}
-						>
-							<User className='h-3.5 w-3.5 shrink-0' />
-							<span className='max-w-28 truncate'>{displayName}</span>
-						</Button>
+						<span className='inline-flex'>
+							<Button
+								variant='ghost'
+								size='sm'
+								className='h-7 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground font-normal shrink-0 bg-muted hover:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-60'
+								disabled={disabled}
+								onClick={(e) => {
+									e.stopPropagation()
+									if (disabled) return
+									handleOpenChange(true)
+								}}
+							>
+								<User className='h-3.5 w-3.5 shrink-0' />
+								<span className='max-w-28 truncate'>{displayName}</span>
+							</Button>
+						</span>
 					</TooltipTrigger>
 					<TooltipContent>
 						<p>{disabled ? (disabledReason ?? 'Reassignment unavailable') : 'Reassign member'}</p>

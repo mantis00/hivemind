@@ -20,6 +20,8 @@ import capitalizeFirstLetter from '@/context/captalize-first-letter'
 import { statusConfig } from '@/context/task-config'
 import { formatDate } from '@/context/format-date'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useEnclosureById } from '@/lib/react-query/queries'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 
 export interface TaskFilters {
 	globalFilter: string
@@ -48,29 +50,23 @@ export function TasksFilters({
 	onFiltersChange,
 	hasActiveFilters,
 	onReset,
-	includeSpeciesSearch = false,
-	includeEnclosureAndAssigneeSearch = false,
 	columnsToggle
 }: TasksFiltersProps) {
 	const isMobile = useIsMobile()
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
 	const isRangeMode = !!(dateRange?.from && dateRange?.to)
 	const [datePickerOpen, setDatePickerOpen] = useState(false)
-
-	const searchPlaceholder = includeEnclosureAndAssigneeSearch
-		? 'Search tasks, species, enclosures, or assignees...'
-		: includeSpeciesSearch
-			? 'Search tasks or species...'
-			: 'Search tasks...'
+	const { data: enclosure } = useEnclosureById(enclosureId as UUID, orgId)
+	const isEnclosureInactive = enclosure?.is_active === false
 
 	return (
 		<>
 			<div className='flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap'>
-				<div className='flex items-center gap-2'>
-					<div className='relative flex-1 min-w-48 max-w-sm'>
+				<div className='flex items-center gap-2 w-full'>
+					<div className='relative flex-1 min-w-40 max-w-72'>
 						<Search className='absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground' />
 						<Input
-							placeholder={searchPlaceholder}
+							placeholder='Search...'
 							value={globalFilter}
 							onChange={(e) => onFiltersChange({ ...filters, globalFilter: e.target.value })}
 							className='pl-8'
@@ -190,7 +186,20 @@ export function TasksFilters({
 			</div>
 			{enclosureId && (
 				<div className='w-full [&_button]:w-full'>
-					<CreateTaskButton enclosureId={enclosureId} orgId={orgId} />
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span className='block w-full'>
+									<CreateTaskButton enclosureId={enclosureId} orgId={orgId} disabled={isEnclosureInactive} />
+								</span>
+							</TooltipTrigger>
+							{isEnclosureInactive ? (
+								<TooltipContent>
+									<p>Cannot create tasks for inactive enclosures.</p>
+								</TooltipContent>
+							) : null}
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 			)}
 		</>

@@ -19,6 +19,7 @@ import {
 	ComboboxItem,
 	ComboboxList
 } from '../ui/combobox'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { UUID } from 'crypto'
 import { toast } from 'sonner'
 
@@ -154,9 +155,27 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			open={open}
 			onOpenChange={handleOpenChange}
 			trigger={
-				<Button variant='secondary' onClick={() => setOpen(true)} disabled={!enclosure?.is_active}>
-					<Edit2Icon className='w-4 h-4' /> Edit Enclosure
-				</Button>
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<span className='w-full'>
+								<Button
+									className='w-full'
+									variant='secondary'
+									onClick={() => setOpen(true)}
+									disabled={!enclosure?.is_active}
+								>
+									<Edit2Icon className='w-4 h-4' /> Edit Enclosure
+								</Button>
+							</span>
+						</TooltipTrigger>
+						{!enclosure?.is_active ? (
+							<TooltipContent>
+								<p>Cannot edit inactive enclosures.</p>
+							</TooltipContent>
+						) : null}
+					</Tooltip>
+				</TooltipProvider>
 			}
 		>
 			<form onSubmit={handleSubmit}>
