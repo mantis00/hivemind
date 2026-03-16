@@ -22,10 +22,9 @@ interface EditSpeciesDialogProps {
 interface EditSpeciesFormProps {
 	species: OrgSpecies
 	onDone: () => void
-	onDeleted: () => void
 }
 
-export function EditSpeciesOrgForm({ species, onDone, onDeleted }: EditSpeciesFormProps) {
+export function EditSpeciesOrgForm({ species, onDone }: EditSpeciesFormProps) {
 	const [commonName, setCommonName] = useState(species.custom_common_name)
 	const [careInstructions, setCareInstructions] = useState(species.custom_care_instructions ?? '')
 	const updateSpecies = useUpdateOrgSpecies()
