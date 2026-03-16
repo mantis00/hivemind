@@ -40,10 +40,10 @@ export function ScheduledTasksFilters({ filters, onChange }: ScheduledTasksFilte
 	return (
 		<div className='flex flex-wrap items-center gap-2'>
 			{/* Search */}
-			<div className='relative flex-1 min-w-48 max-w-sm'>
+			<div className='relative flex-1 min-w-40 max-w-72'>
 				<Search className='absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground' />
 				<Input
-					placeholder='Search task, enclosure, or species…'
+					placeholder='Search...'
 					className='pl-8'
 					value={search}
 					onChange={(e) => set({ search: e.target.value })}

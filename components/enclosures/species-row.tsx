@@ -26,6 +26,7 @@ export default function SpeciesRow({
 	species,
 	onDetailsOpenChange,
 	sortKey,
+	enclosureStatusFilter,
 	selectMode,
 	selectedIds,
 	onSelectChange,
@@ -34,6 +35,7 @@ export default function SpeciesRow({
 	species: OrgSpecies
 	onDetailsOpenChange: () => void
 	sortKey: string
+	enclosureStatusFilter: 'active' | 'inactive' | 'all'
 	selectMode: boolean
 	selectedIds: Set<UUID>
 	onSelectChange: (enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => void
@@ -42,7 +44,7 @@ export default function SpeciesRow({
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 
-	const { data: enclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
+	const { data: enclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id, enclosureStatusFilter)
 
 	const [isOpen, setIsOpen] = useState(false)
 	const [selectedEnclosure, setSelectedEnclosure] = useState<Enclosure | null>(null)
@@ -205,7 +207,9 @@ export default function SpeciesRow({
 					)}
 					<div className='rounded-md bg-muted p-3'>
 						<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
-						<p className='text-sm leading-relaxed'>{species.custom_care_instructions}</p>
+						<div className='max-h-48 overflow-y-auto overscroll-contain pr-2'>
+							<p className='text-sm leading-relaxed whitespace-pre-wrap'>{species.custom_care_instructions}</p>
+						</div>
 					</div>
 				</div>
 			</ResponsiveDialogDrawer>

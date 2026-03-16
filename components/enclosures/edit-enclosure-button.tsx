@@ -19,6 +19,7 @@ import {
 	ComboboxItem,
 	ComboboxList
 } from '../ui/combobox'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { UUID } from 'crypto'
 import { toast } from 'sonner'
 
@@ -32,6 +33,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const [createLocation, setCreateLocation] = useState(false)
 	const savedLocationRef = useRef<string | undefined>(undefined)
 	const [count, setCount] = useState(enclosure?.current_count)
+	const [isActive, setIsActive] = useState(enclosure?.is_active ?? true)
 	const { data: user } = useCurrentClientUser()
 	const editEnclosureMutation = useUpdateEnclosure()
 	const createLocationMutation = useCreateLocation()
@@ -84,6 +86,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			setCreateLocation(false)
 			savedLocationRef.current = undefined
 			setCount(enclosure?.current_count)
+			setIsActive(enclosure?.is_active ?? true)
 		}
 		setOpen(isOpen)
 	}
@@ -113,7 +116,8 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			if (
 				species_id.custom_common_name === species &&
 				existing.name === location &&
-				enclosure.current_count === count
+				enclosure.current_count === count &&
+				enclosure.is_active === isActive
 			) {
 				toast.info('No changes to save.')
 				return
@@ -126,7 +130,8 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 				enclosure_id: enclosure.id,
 				species_id: species_id.id,
 				location_id: resolvedLocationId,
-				count: count
+				count: count,
+				is_active: isActive
 			},
 			{
 				onSuccess: () => {
@@ -137,6 +142,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 					setLocation('')
 					setLocationQuery('')
 					setCount(0)
+					setIsActive(true)
 				}
 			}
 		)
@@ -149,9 +155,27 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			open={open}
 			onOpenChange={handleOpenChange}
 			trigger={
-				<Button variant='secondary' onClick={() => setOpen(true)}>
-					<Edit2Icon className='w-4 h-4' /> Edit Enclosure
-				</Button>
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<span className='w-full'>
+								<Button
+									className='w-full'
+									variant='secondary'
+									onClick={() => setOpen(true)}
+									disabled={!enclosure?.is_active}
+								>
+									<Edit2Icon className='w-4 h-4' /> Edit Enclosure
+								</Button>
+							</span>
+						</TooltipTrigger>
+						{!enclosure?.is_active ? (
+							<TooltipContent>
+								<p>Cannot edit inactive enclosures.</p>
+							</TooltipContent>
+						) : null}
+					</Tooltip>
+				</TooltipProvider>
 			}
 		>
 			<form onSubmit={handleSubmit}>

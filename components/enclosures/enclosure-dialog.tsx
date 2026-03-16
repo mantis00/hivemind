@@ -2,16 +2,18 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { MapPin, Calendar, Users, ClipboardList, LoaderCircle } from 'lucide-react'
-
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import type { Enclosure, OrgSpecies } from '@/lib/react-query/queries'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
-import DeleteEnclosureButton from './delete-enclosure-button'
 import { EditEnclosureButton } from './edit-enclosure-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import EnclosureNotesDialog from './enclosure-notes-dialog'
+import { Label } from '../ui/label'
+import { Switch } from '../ui/switch'
+import { useUpdateEnclosureActive } from '@/lib/react-query/mutations'
+import { UUID } from 'crypto'
 
 export function EnclosureDialog({
 	enclosure,
@@ -28,9 +30,21 @@ export function EnclosureDialog({
 	const [navigating, setNavigating] = useState(false)
 
 	const params = useParams()
-	const orgId = params?.orgId as number | undefined
+	const orgId = params?.orgId as UUID
 
 	const router = useRouter()
+
+	const editEnclosureMutation = useUpdateEnclosureActive()
+	const [isActive, setIsActive] = useState(enclosure?.is_active ?? true)
+
+	const handleActiveChange = (value: boolean) => {
+		setIsActive(value)
+		editEnclosureMutation.mutate({
+			orgId: orgId as UUID,
+			enclosure_id: enclosure.id,
+			is_active: value
+		})
+	}
 
 	return (
 		<ResponsiveDialogDrawer
@@ -42,7 +56,22 @@ export function EnclosureDialog({
 			footer={
 				<div className='flex flex-col gap-2 w-full'>
 					<EditEnclosureButton enclosure={enclosure} spec={species} />
-					<DeleteEnclosureButton enclosure_id={enclosure.id} onDeleted={() => onOpenChange(false)} />
+					<div className='flex flex-col gap-2 pt-1'>
+						<div className='flex items-center justify-between rounded-md border p-3'>
+							<div>
+								<Label htmlFor='enclosure-active'>{enclosure?.is_active ? 'Active' : 'Inactive'} Enclosure</Label>
+								<p className='text-xs text-muted-foreground'>
+									Inactive enclosures are hidden from active-species views.
+								</p>
+							</div>
+							<Switch
+								id='enclosure-active'
+								checked={isActive}
+								onCheckedChange={handleActiveChange}
+								disabled={editEnclosureMutation.isPending}
+							/>
+						</div>
+					</div>
 				</div>
 			}
 		>

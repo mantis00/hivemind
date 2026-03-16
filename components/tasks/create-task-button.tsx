@@ -38,11 +38,12 @@ interface CreateTaskButtonProps {
 	enclosureId: UUID
 	orgId: UUID
 	disabled?: boolean
+	onTaskCreated?: () => void
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskButtonProps) {
+export function CreateTaskButton({ enclosureId, orgId, disabled, onTaskCreated }: CreateTaskButtonProps) {
 	const [open, setOpen] = useState(false)
 
 	// Task type
@@ -89,6 +90,8 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 	const createSchedule = useCreateSchedule()
 
 	const isPending = createTask.isPending || createSchedule.isPending
+	const isEnclosureInactive = enclosure?.is_active === false
+	const isCreateDisabled = disabled || isEnclosureInactive
 
 	// ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -129,6 +132,10 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 	}
 
 	const handleOpenChange = (isOpen: boolean) => {
+		if (isOpen && isEnclosureInactive) {
+			toast.error('Tasks cannot be created for inactive enclosures.')
+			return
+		}
 		if (!isOpen) {
 			reset()
 		} else {
@@ -143,6 +150,11 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 	// ── Submit ────────────────────────────────────────────────────────────────
 
 	const handleSubmit = async () => {
+		if (isEnclosureInactive) {
+			toast.error('Tasks cannot be created for inactive enclosures.')
+			return
+		}
+
 		const isTemplate = taskType === 'template'
 		const selectedTemplate = isTemplate ? templates?.find((t) => t.id === selectedTemplateId) : null
 		const templateId = isTemplate && selectedTemplateId ? (selectedTemplateId as UUID) : null
@@ -162,6 +174,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 		const onSuccess = () => {
 			setOpen(false)
 			reset()
+			onTaskCreated?.()
 		}
 
 		if (scheduleType === 'one-time') {
@@ -269,7 +282,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 			description='Set up a new task for your facility. Choose from a template or create a custom task.'
 			className='sm:max-w-5xl'
 			trigger={
-				<Button disabled={disabled}>
+				<Button disabled={isCreateDisabled}>
 					<PlusIcon className='h-4 w-4' />
 					Create Task
 				</Button>
@@ -278,7 +291,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 			onOpenChange={handleOpenChange}
 			footer={
 				<div className='flex gap-2 w-full'>
-					<Button type='button' className='flex-1' disabled={isPending} onClick={handleSubmit}>
+					<Button type='button' className='flex-1' disabled={isPending || isEnclosureInactive} onClick={handleSubmit}>
 						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Create Task'}
 					</Button>
 				</div>
