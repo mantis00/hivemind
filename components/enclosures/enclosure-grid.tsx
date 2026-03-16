@@ -16,7 +16,7 @@ import {
 	XIcon
 } from 'lucide-react'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
@@ -179,7 +179,7 @@ export default function EnclosureGrid() {
 	const measureRef = useRef<HTMLDivElement>(null)
 	const virtuosoRef = useRef<HTMLDivElement>(null)
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (measureRef.current) {
 			const height = measureRef.current.getBoundingClientRect().height
 			if (height > 0) {

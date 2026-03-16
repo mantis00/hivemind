@@ -22,6 +22,7 @@ interface EditSpeciesDialogProps {
 interface EditSpeciesFormProps {
 	species: OrgSpecies
 	onDone: () => void
+	onDeleted: () => void
 }
 
 export function EditSpeciesOrgForm({ species, onDone }: EditSpeciesFormProps) {
