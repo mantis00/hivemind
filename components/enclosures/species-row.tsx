@@ -6,7 +6,7 @@ import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Card, CardContent } from '../ui/card'
-import { Bug, ChevronRight, EyeIcon, CheckSquare } from 'lucide-react'
+import { Bug, ChevronRight, EyeIcon } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { Checkbox } from '../ui/checkbox'
 import { Button } from '../ui/button'
