@@ -396,6 +396,7 @@ export function useCreateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosureCount', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure created!')
 		}
@@ -424,6 +425,7 @@ export function useDeleteEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosureCount', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure deleted.')
 		}
