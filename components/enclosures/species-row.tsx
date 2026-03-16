@@ -6,8 +6,9 @@ import { useState } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Card, CardContent } from '../ui/card'
-import { Bug, ChevronRight, EyeIcon } from 'lucide-react'
+import { Bug, ChevronRight, EyeIcon, CheckSquare } from 'lucide-react'
 import { Badge } from '../ui/badge'
+import { Checkbox } from '../ui/checkbox'
 import { Button } from '../ui/button'
 import { EnclosureCard } from './enclosure-card'
 import { Virtuoso } from 'react-virtuoso'
@@ -27,7 +28,8 @@ export default function SpeciesRow({
 	sortKey,
 	selectMode,
 	selectedIds,
-	onSelectChange
+	onSelectChange,
+	onSelectAll
 }: {
 	species: OrgSpecies
 	onDetailsOpenChange: () => void
@@ -35,6 +37,7 @@ export default function SpeciesRow({
 	selectMode: boolean
 	selectedIds: Set<UUID>
 	onSelectChange: (enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => void
+	onSelectAll?: (enclosures: Enclosure[], select: boolean, species: OrgSpecies) => void
 }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
@@ -117,6 +120,25 @@ export default function SpeciesRow({
 							{/* Enclosures Virtuoso list */}
 							{enclosures?.length && enclosures?.length > 0 ? (
 								<div className='rounded-md border bg-background'>
+									{selectMode &&
+										onSelectAll &&
+										(() => {
+											const allSelected = enclosures.every((e) => selectedIds.has(e.id))
+											const someSelected = enclosures.some((e) => selectedIds.has(e.id))
+											return (
+												<div
+													className='flex items-center gap-2 px-3 py-2 border-b cursor-pointer select-none'
+													onClick={() => onSelectAll(enclosures, !allSelected, species)}
+												>
+													<Checkbox
+														checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+														onCheckedChange={(checked) => onSelectAll(enclosures, !!checked, species)}
+														onClick={(e) => e.stopPropagation()}
+													/>
+													<span className='text-xs text-muted-foreground'>Select all</span>
+												</div>
+											)
+										})()}
 									<Virtuoso
 										style={{
 											height: enclosures?.length && enclosures?.length <= 4 ? `${enclosures?.length * 114}px` : '352px'

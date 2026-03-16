@@ -1,6 +1,7 @@
 'use client'
 
-import { OrgSpecies, useOrgSpecies } from '@/lib/react-query/queries'
+import { OrgSpecies, useOrgEnclosures, useOrgSpecies } from '@/lib/react-query/queries'
+import type { Enclosure } from '@/lib/react-query/queries'
 import {
 	ArrowDownIcon,
 	ArrowUpIcon,
@@ -33,7 +34,8 @@ import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu'
 import { EditSpeciesOrgForm } from './edit-species-org'
 import { EnclosureCounts } from './enclosure-counts'
-import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
+import { useBatchDeleteEnclosures, useMarkEnclosuresPrinted } from '@/lib/react-query/mutations'
+import { toast } from 'sonner'
 
 type EnclosureExportData = {
 	enclosureName: string
@@ -66,6 +68,8 @@ export default function EnclosureGrid() {
 	const [manageOpen, setManageOpen] = useState(false)
 	const [createOpen, setCreateOpen] = useState(false)
 	const batchDeleteMutation = useBatchDeleteEnclosures()
+	const markPrintedMutation = useMarkEnclosuresPrinted()
+	const { data: orgEnclosures } = useOrgEnclosures(orgId as UUID)
 	const isMobile = useIsMobile()
 
 	const handleSelectChange = useCallback((enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
@@ -83,6 +87,32 @@ export default function EnclosureGrid() {
 		})
 	}, [])
 
+	const handleSelectAll = useCallback((enclosures: Enclosure[], select: boolean, species: OrgSpecies) => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev)
+			for (const enc of enclosures) {
+				if (select) next.add(enc.id)
+				else next.delete(enc.id)
+			}
+			return next
+		})
+		setSelectedEnclosureData((prev) => {
+			const next = new Map(prev)
+			for (const enc of enclosures) {
+				if (select) {
+					next.set(enc.id, {
+						enclosureName: enc.name,
+						commonName: species.custom_common_name,
+						scientificName: species.species?.scientific_name ?? ''
+					})
+				} else {
+					next.delete(enc.id)
+				}
+			}
+			return next
+		})
+	}, [])
+
 	const toggleSelectMode = () => {
 		setSelectMode((prev) => !prev)
 		if (selectMode) {
@@ -91,15 +121,8 @@ export default function EnclosureGrid() {
 		}
 	}
 
-	const exportToCsv = () => {
+	const buildAndDownloadCsv = (rows: string[][], filename: string) => {
 		const headers = ['Enclosure Name', 'Common Name', 'Scientific Name', 'URL']
-		const baseUrl = window.location.origin
-		const rows = Array.from(selectedIds).map((id) => {
-			const d = selectedEnclosureData.get(id)
-			if (!d) return ['', '', '', '']
-			const url = `${baseUrl}/protected/orgs/${orgId}/enclosures/${id}`
-			return [d.enclosureName, d.commonName, d.scientificName, url]
-		})
 		const csvContent = [headers, ...rows]
 			.map((row) => row.map((cell) => `"${(cell ?? '').replace(/"/g, '""')}"`).join(','))
 			.join('\n')
@@ -107,9 +130,40 @@ export default function EnclosureGrid() {
 		const url = URL.createObjectURL(blob)
 		const a = document.createElement('a')
 		a.href = url
-		a.download = 'enclosures.csv'
+		a.download = filename
 		a.click()
 		URL.revokeObjectURL(url)
+	}
+
+	const exportToCsv = () => {
+		const baseUrl = window.location.origin
+		const rows = Array.from(selectedIds).map((id) => {
+			const d = selectedEnclosureData.get(id)
+			if (!d) return ['', '', '', '']
+			return [d.enclosureName, d.commonName, d.scientificName, `${baseUrl}/protected/orgs/${orgId}/enclosures/${id}`]
+		})
+		buildAndDownloadCsv(rows, 'enclosures.csv')
+		markPrintedMutation.mutate({ enclosureIds: Array.from(selectedIds), orgId: orgId as UUID })
+	}
+
+	const exportAllUnprinted = () => {
+		const unprinted = (orgEnclosures ?? []).filter((e) => !e.printed)
+		if (!unprinted.length) {
+			toast.info('All enclosures have already been printed.')
+			return
+		}
+		const baseUrl = window.location.origin
+		const rows = unprinted.map((enc) => {
+			const sp = (orgSpecies ?? []).find((s) => s.id === enc.species_id)
+			return [
+				enc.name,
+				sp?.custom_common_name ?? '',
+				sp?.species?.scientific_name ?? '',
+				`${baseUrl}/protected/orgs/${orgId}/enclosures/${enc.id}`
+			]
+		})
+		buildAndDownloadCsv(rows, 'unprinted-enclosures.csv')
+		markPrintedMutation.mutate({ enclosureIds: unprinted.map((e) => e.id), orgId: orgId as UUID })
 	}
 
 	const executeDelete = () => {
@@ -265,12 +319,29 @@ export default function EnclosureGrid() {
 								<XIcon className='h-3.5 w-3.5' />
 								Cancel
 							</Button>
-							{selectedIds.size > 0 && (
+							{selectedIds.size === 0 ? (
+								<Button
+									size='sm'
+									variant='outline'
+									className='gap-1.5 text-xs'
+									onClick={exportAllUnprinted}
+									disabled={markPrintedMutation.isPending}
+								>
+									<Download className='h-3.5 w-3.5' />
+									Export All Unprinted
+								</Button>
+							) : (
 								<>
 									<span className='text-xs text-muted-foreground'>{selectedIds.size} selected</span>
-									<Button size='sm' variant='outline' className='gap-1.5 text-xs' onClick={exportToCsv}>
+									<Button
+										size='sm'
+										variant='outline'
+										className='gap-1.5 text-xs'
+										onClick={exportToCsv}
+										disabled={markPrintedMutation.isPending}
+									>
 										<Download className='h-3.5 w-3.5' />
-										Export CSV
+										Export Selected
 									</Button>
 									<Button
 										size='sm'
@@ -440,6 +511,7 @@ export default function EnclosureGrid() {
 									selectMode={selectMode}
 									selectedIds={selectedIds}
 									onSelectChange={handleSelectChange}
+									onSelectAll={handleSelectAll}
 								/>
 							</div>
 						</div>
@@ -463,6 +535,7 @@ export default function EnclosureGrid() {
 											selectMode={selectMode}
 											selectedIds={selectedIds}
 											onSelectChange={handleSelectChange}
+											onSelectAll={handleSelectAll}
 										/>
 									</div>
 								)}
