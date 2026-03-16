@@ -15,6 +15,12 @@ import { EnclosureDialog } from './enclosure-dialog'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { UUID } from 'crypto'
 
+type EnclosureExportData = {
+	enclosureName: string
+	commonName: string
+	scientificName: string
+}
+
 export default function SpeciesRow({
 	species,
 	onDetailsOpenChange,
@@ -28,7 +34,7 @@ export default function SpeciesRow({
 	sortKey: string
 	selectMode: boolean
 	selectedIds: Set<UUID>
-	onSelectChange: (enclosureId: UUID, checked: boolean) => void
+	onSelectChange: (enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => void
 }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
@@ -123,7 +129,13 @@ export default function SpeciesRow({
 													onClick={() => handleEnclosureClick(enclosure)}
 													selectable={selectMode}
 													selected={selectedIds.has(enclosure.id)}
-													onSelectChange={(checked) => onSelectChange(enclosure.id, checked)}
+													onSelectChange={(checked) =>
+														onSelectChange(enclosure.id, checked, {
+															enclosureName: enclosure.name,
+															commonName: species.custom_common_name,
+															scientificName: species.species?.scientific_name ?? ''
+														})
+													}
 												/>
 											</div>
 										)}

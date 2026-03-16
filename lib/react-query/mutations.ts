@@ -1694,3 +1694,21 @@ export function useUnsubscribeFromPush() {
 		}
 	})
 }
+
+export function useMarkEnclosuresPrinted() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ enclosureIds }: { orgId: UUID; enclosureIds: UUID[] }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase.from('enclosures').update({ printed: true }).in('id', enclosureIds)
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			toast.success('Unsubscribed from push notifications.')
+		}
+	})
+}

@@ -4,6 +4,7 @@ import { OrgSpecies, useOrgSpecies } from '@/lib/react-query/queries'
 import {
 	ArrowDownIcon,
 	ArrowUpIcon,
+	Download,
 	Edit,
 	ListChecks,
 	LoaderCircle,
@@ -15,7 +16,7 @@ import {
 	XIcon
 } from 'lucide-react'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
@@ -33,6 +34,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { EditSpeciesOrgForm } from './edit-species-org'
 import { EnclosureCounts } from './enclosure-counts'
 import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
+
+type EnclosureExportData = {
+	enclosureName: string
+	commonName: string
+	scientificName: string
+}
 
 export default function EnclosureGrid() {
 	const params = useParams()
@@ -54,24 +61,55 @@ export default function EnclosureGrid() {
 
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
+	const [selectedEnclosureData, setSelectedEnclosureData] = useState<Map<UUID, EnclosureExportData>>(new Map())
 	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 	const [manageOpen, setManageOpen] = useState(false)
 	const [createOpen, setCreateOpen] = useState(false)
 	const batchDeleteMutation = useBatchDeleteEnclosures()
 	const isMobile = useIsMobile()
 
-	const handleSelectChange = (enclosureId: UUID, checked: boolean) => {
+	const handleSelectChange = useCallback((enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
 		setSelectedIds((prev) => {
 			const next = new Set(prev)
 			if (checked) next.add(enclosureId)
 			else next.delete(enclosureId)
 			return next
 		})
-	}
+		setSelectedEnclosureData((prev) => {
+			const next = new Map(prev)
+			if (checked && data) next.set(enclosureId, data)
+			else next.delete(enclosureId)
+			return next
+		})
+	}, [])
 
 	const toggleSelectMode = () => {
 		setSelectMode((prev) => !prev)
-		if (selectMode) setSelectedIds(new Set())
+		if (selectMode) {
+			setSelectedIds(new Set())
+			setSelectedEnclosureData(new Map())
+		}
+	}
+
+	const exportToCsv = () => {
+		const headers = ['Enclosure Name', 'Common Name', 'Scientific Name', 'URL']
+		const baseUrl = window.location.origin
+		const rows = Array.from(selectedIds).map((id) => {
+			const d = selectedEnclosureData.get(id)
+			if (!d) return ['', '', '', '']
+			const url = `${baseUrl}/protected/orgs/${orgId}/enclosures/${id}`
+			return [d.enclosureName, d.commonName, d.scientificName, url]
+		})
+		const csvContent = [headers, ...rows]
+			.map((row) => row.map((cell) => `"${(cell ?? '').replace(/"/g, '""')}"`).join(','))
+			.join('\n')
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = 'enclosures.csv'
+		a.click()
+		URL.revokeObjectURL(url)
 	}
 
 	const executeDelete = () => {
@@ -230,6 +268,10 @@ export default function EnclosureGrid() {
 							{selectedIds.size > 0 && (
 								<>
 									<span className='text-xs text-muted-foreground'>{selectedIds.size} selected</span>
+									<Button size='sm' variant='outline' className='gap-1.5 text-xs' onClick={exportToCsv}>
+										<Download className='h-3.5 w-3.5' />
+										Export CSV
+									</Button>
 									<Button
 										size='sm'
 										variant='destructive'
