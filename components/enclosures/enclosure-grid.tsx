@@ -62,6 +62,7 @@ export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useOrgSpecies(orgId as UUID)
+	const orgSpeciesById = useMemo(() => new Map((orgSpecies ?? []).map((s) => [s.id, s])), [orgSpecies])
 	const activeOrgSpecies = useMemo(() => (orgSpecies ?? []).filter((s) => s.is_active), [orgSpecies])
 
 	const [searchValue, setSearchValue] = useState('')
@@ -248,7 +249,7 @@ export default function EnclosureGrid() {
 		}
 		const baseUrl = window.location.origin
 		const rows = unprinted.map((enc) => {
-			const sp = (orgSpecies ?? []).find((s) => s.id === enc.species_id)
+			const sp = orgSpeciesById.get(enc.species_id)
 			return [
 				enc.name,
 				sp?.custom_common_name ?? '',
