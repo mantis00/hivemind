@@ -145,23 +145,20 @@ export default function EnclosureGrid() {
 	const batchActivateMutation = useBatchActivateEnclosures()
 	const isMobile = useIsMobile()
 
-	const handleSelectChange = useCallback(
-		(enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
-			setSelectedIds((prev) => {
-				const next = new Set(prev)
-				if (checked) next.add(enclosureId)
-				else next.delete(enclosureId)
-				return next
-			})
-			setSelectedEnclosureData((prev) => {
-				const next = new Map(prev)
-				if (checked && data) next.set(enclosureId, data)
-				else next.delete(enclosureId)
-				return next
-			})
-		},
-		[enclosureStatusFilter]
-	)
+	const handleSelectChange = useCallback((enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev)
+			if (checked) next.add(enclosureId)
+			else next.delete(enclosureId)
+			return next
+		})
+		setSelectedEnclosureData((prev) => {
+			const next = new Map(prev)
+			if (checked && data) next.set(enclosureId, data)
+			else next.delete(enclosureId)
+			return next
+		})
+	}, [])
 
 	const handleSelectAll = useCallback(
 		(enclosures: Enclosure[], select: boolean, species: OrgSpecies) => {
