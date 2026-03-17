@@ -147,10 +147,6 @@ export default function EnclosureGrid() {
 
 	const handleSelectChange = useCallback(
 		(enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
-			if (checked && enclosureStatusFilter === 'all' && data && !data.isActive) {
-				toast.warning('Inactive enclosures cannot be printed. They can be selected for status updates only.')
-			}
-
 			setSelectedIds((prev) => {
 				const next = new Set(prev)
 				if (checked) next.add(enclosureId)
@@ -378,7 +374,7 @@ export default function EnclosureGrid() {
 									variant='outline'
 									className='gap-1.5 text-xs'
 									onClick={exportAllUnprinted}
-									disabled={markPrintedMutation.isPending}
+									disabled={markPrintedMutation.isPending || enclosureStatusFilter === 'inactive'}
 								>
 									<Download className='h-3.5 w-3.5' />
 									Export All Unprinted
@@ -391,7 +387,7 @@ export default function EnclosureGrid() {
 										variant='outline'
 										className='gap-1.5 text-xs'
 										onClick={exportToCsv}
-										disabled={markPrintedMutation.isPending}
+										disabled={markPrintedMutation.isPending || enclosureStatusFilter === 'inactive'}
 									>
 										<Download className='h-3.5 w-3.5' />
 										Export Selected
