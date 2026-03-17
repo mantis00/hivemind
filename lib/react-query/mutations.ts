@@ -1797,7 +1797,7 @@ export function useMarkEnclosuresPrinted() {
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
-			toast.success('Unsubscribed from push notifications.')
+			toast.success('Enclosures marked as printed.')
 		}
 	})
 }

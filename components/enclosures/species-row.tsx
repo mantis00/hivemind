@@ -20,6 +20,7 @@ type EnclosureExportData = {
 	enclosureName: string
 	commonName: string
 	scientificName: string
+	isActive: boolean
 }
 
 export default function SpeciesRow({
@@ -157,7 +158,8 @@ export default function SpeciesRow({
 														onSelectChange(enclosure.id, checked, {
 															enclosureName: enclosure.name,
 															commonName: species.custom_common_name,
-															scientificName: species.species?.scientific_name ?? ''
+															scientificName: species.species?.scientific_name ?? '',
+															isActive: enclosure.is_active
 														})
 													}
 												/>

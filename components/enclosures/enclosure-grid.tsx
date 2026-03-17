@@ -53,6 +53,7 @@ type EnclosureExportData = {
 	enclosureName: string
 	commonName: string
 	scientificName: string
+	isActive: boolean
 }
 
 export default function EnclosureGrid() {
@@ -144,46 +145,60 @@ export default function EnclosureGrid() {
 	const batchActivateMutation = useBatchActivateEnclosures()
 	const isMobile = useIsMobile()
 
-	const handleSelectChange = useCallback((enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
-		setSelectedIds((prev) => {
-			const next = new Set(prev)
-			if (checked) next.add(enclosureId)
-			else next.delete(enclosureId)
-			return next
-		})
-		setSelectedEnclosureData((prev) => {
-			const next = new Map(prev)
-			if (checked && data) next.set(enclosureId, data)
-			else next.delete(enclosureId)
-			return next
-		})
-	}, [])
+	const handleSelectChange = useCallback(
+		(enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
+			if (checked && enclosureStatusFilter === 'all' && data && !data.isActive) {
+				toast.warning('Inactive enclosures cannot be printed. They can be selected for status updates only.')
+			}
 
-	const handleSelectAll = useCallback((enclosures: Enclosure[], select: boolean, species: OrgSpecies) => {
-		setSelectedIds((prev) => {
-			const next = new Set(prev)
-			for (const enc of enclosures) {
-				if (select) next.add(enc.id)
-				else next.delete(enc.id)
-			}
-			return next
-		})
-		setSelectedEnclosureData((prev) => {
-			const next = new Map(prev)
-			for (const enc of enclosures) {
-				if (select) {
-					next.set(enc.id, {
-						enclosureName: enc.name,
-						commonName: species.custom_common_name,
-						scientificName: species.species?.scientific_name ?? ''
-					})
-				} else {
-					next.delete(enc.id)
+			setSelectedIds((prev) => {
+				const next = new Set(prev)
+				if (checked) next.add(enclosureId)
+				else next.delete(enclosureId)
+				return next
+			})
+			setSelectedEnclosureData((prev) => {
+				const next = new Map(prev)
+				if (checked && data) next.set(enclosureId, data)
+				else next.delete(enclosureId)
+				return next
+			})
+		},
+		[enclosureStatusFilter]
+	)
+
+	const handleSelectAll = useCallback(
+		(enclosures: Enclosure[], select: boolean, species: OrgSpecies) => {
+			setSelectedIds((prev) => {
+				const next = new Set(prev)
+				for (const enc of enclosures) {
+					if (select) next.add(enc.id)
+					else next.delete(enc.id)
 				}
-			}
-			return next
-		})
-	}, [])
+				return next
+			})
+			setSelectedEnclosureData((prev) => {
+				const next = new Map(prev)
+				for (const enc of enclosures) {
+					if (select) {
+						if (enclosureStatusFilter === 'all' && !enc.is_active) {
+							toast.warning('Inactive enclosures cannot be printed. They can be selected for status updates only.')
+						}
+						next.set(enc.id, {
+							enclosureName: enc.name,
+							commonName: species.custom_common_name,
+							scientificName: species.species?.scientific_name ?? '',
+							isActive: enc.is_active
+						})
+					} else {
+						next.delete(enc.id)
+					}
+				}
+				return next
+			})
+		},
+		[enclosureStatusFilter]
+	)
 
 	const toggleSelectMode = () => {
 		setSelectMode((prev) => !prev)
@@ -208,18 +223,32 @@ export default function EnclosureGrid() {
 	}
 
 	const exportToCsv = () => {
+		const printableIds = Array.from(selectedIds).filter((id) => {
+			const d = selectedEnclosureData.get(id)
+			return d ? d.isActive : true
+		})
+
+		if (printableIds.length !== selectedIds.size) {
+			toast.warning('Inactive enclosures were excluded from export.')
+		}
+
+		if (!printableIds.length) {
+			toast.info('No active enclosures selected to export.')
+			return
+		}
+
 		const baseUrl = window.location.origin
-		const rows = Array.from(selectedIds).map((id) => {
+		const rows = printableIds.map((id) => {
 			const d = selectedEnclosureData.get(id)
 			if (!d) return ['', '', '', '']
 			return [d.enclosureName, d.commonName, d.scientificName, `${baseUrl}/protected/orgs/${orgId}/enclosures/${id}`]
 		})
 		buildAndDownloadCsv(rows, 'enclosures.csv')
-		markPrintedMutation.mutate({ enclosureIds: Array.from(selectedIds), orgId: orgId as UUID })
+		markPrintedMutation.mutate({ enclosureIds: printableIds, orgId: orgId as UUID })
 	}
 
 	const exportAllUnprinted = () => {
-		const unprinted = (orgEnclosures ?? []).filter((e) => !e.printed)
+		const unprinted = (orgEnclosures ?? []).filter((e) => e.is_active && !e.printed)
 		if (!unprinted.length) {
 			toast.info('All enclosures have already been printed.')
 			return
@@ -240,8 +269,10 @@ export default function EnclosureGrid() {
 
 	const handleFilterChange = (filter: EnclosureStatusFilter) => {
 		setEnclosureStatusFilter(filter)
+		setSelectMode(false)
 		setSelectedIds(new Set())
 		setSelectedEnclosureData(new Map())
+		setDeleteConfirmOpen(false)
 	}
 
 	const executeSetInactive = () => {
