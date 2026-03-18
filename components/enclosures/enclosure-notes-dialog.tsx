@@ -5,7 +5,7 @@ import CreateEnclosureNote from './create-enclosure-note'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
-import { ChevronDown, LoaderCircle, StickyNote } from 'lucide-react'
+import { LoaderCircle, StickyNote } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function EnclosureNotesDialog({
@@ -29,7 +29,6 @@ export default function EnclosureNotesDialog({
 					<Badge variant='secondary' className='ml-auto'>
 						{enclosureNotes?.length}
 					</Badge>
-					<ChevronDown className='h-4 w-4 text-muted-foreground transition-transform duration-200' />
 				</Button>
 			}
 			open={open}
@@ -59,7 +58,7 @@ export default function EnclosureNotesDialog({
 					No notes for this enclosure yet.
 				</div>
 			)}
-			<CreateEnclosureNote enclosureId={enclosure.id} />
+			<CreateEnclosureNote enclosureId={enclosure.id} is_active={enclosure?.is_active} />
 		</ResponsiveDialogDrawer>
 	)
 }

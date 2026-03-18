@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { cn } from '@/lib/utils'
 import {
@@ -90,6 +91,8 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 		setAnswers((prev) => ({ ...prev, [questionId]: value }))
 	}
 
+	const isEnclosureInactive = enclosure?.is_active === false
+
 	type QuestionMeta = QuestionTemplate & {
 		conditionFieldKey: string
 		conditionValue: string
@@ -122,6 +125,10 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 	}, [allQMeta, answers])
 
 	const handleSubmit = () => {
+		if (isEnclosureInactive) {
+			toast.error('Tasks in inactive enclosures cannot be completed.')
+			return
+		}
 		// Validate required visible fields only
 		for (const q of visibleQMeta) {
 			if (q.required) {
@@ -233,6 +240,11 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 						<MapPinIcon className='h-3.5 w-3.5' />
 						{enclosureName}
 					</span>
+					{isEnclosureInactive ? (
+						<Badge variant='outline' className='font-semibold text-destructive'>
+							Inactive Enclosure
+						</Badge>
+					) : null}
 					{isCompleted ? (
 						<span className='flex items-center gap-1.5'>
 							<CircleUserRound className='h-3.5 w-3.5' />
@@ -244,6 +256,8 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 							assignedTo={task.assigned_to}
 							assignedMemberName={assignedMemberName}
 							members={members}
+							disabled={isEnclosureInactive}
+							disabledReason='Tasks in inactive enclosures cannot be reassigned.'
 						/>
 					)}
 					{task.priority && (
@@ -345,16 +359,33 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 								<Button variant='outline' className='flex-1' onClick={() => router.back()}>
 									Cancel
 								</Button>
-								<Button className='flex-1' disabled={submitForm.isPending} onClick={handleSubmit}>
-									{submitForm.isPending ? (
-										<LoaderCircle className='h-4 w-4 animate-spin' />
-									) : (
-										<>
-											<CheckCircle2Icon className='h-4 w-4' />
-											Complete Task
-										</>
-									)}
-								</Button>
+								<TooltipProvider>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span className='flex-1'>
+												<Button
+													className='w-full'
+													disabled={submitForm.isPending || isEnclosureInactive}
+													onClick={handleSubmit}
+												>
+													{submitForm.isPending ? (
+														<LoaderCircle className='h-4 w-4 animate-spin' />
+													) : (
+														<>
+															<CheckCircle2Icon className='h-4 w-4' />
+															Complete Task
+														</>
+													)}
+												</Button>
+											</span>
+										</TooltipTrigger>
+										{isEnclosureInactive && (
+											<TooltipContent>
+												<p>Tasks in inactive enclosures cannot be completed.</p>
+											</TooltipContent>
+										)}
+									</Tooltip>
+								</TooltipProvider>
 							</>
 						)}
 					</div>
@@ -371,25 +402,38 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 					<Button variant='outline' className='flex-1' onClick={() => router.back()}>
 						Cancel
 					</Button>
-					<Button
-						className='flex-1'
-						disabled={submitForm.isPending}
-						onClick={() =>
-							submitForm.mutate(
-								{ task_id: taskId, user_id: currentUser!.id as UUID, answers: [] },
-								{ onSuccess: () => router.back() }
-							)
-						}
-					>
-						{submitForm.isPending ? (
-							<LoaderCircle className='h-4 w-4 animate-spin' />
-						) : (
-							<>
-								<CheckCircle2Icon className='h-4 w-4' />
-								Complete Task
-							</>
-						)}
-					</Button>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span className='flex-1'>
+									<Button
+										className='w-full'
+										disabled={submitForm.isPending || isEnclosureInactive}
+										onClick={() =>
+											submitForm.mutate(
+												{ task_id: taskId, user_id: currentUser!.id as UUID, answers: [] },
+												{ onSuccess: () => router.back() }
+											)
+										}
+									>
+										{submitForm.isPending ? (
+											<LoaderCircle className='h-4 w-4 animate-spin' />
+										) : (
+											<>
+												<CheckCircle2Icon className='h-4 w-4' />
+												Complete Task
+											</>
+										)}
+									</Button>
+								</span>
+							</TooltipTrigger>
+							{isEnclosureInactive && (
+								<TooltipContent>
+									<p>Tasks in inactive enclosures cannot be completed.</p>
+								</TooltipContent>
+							)}
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 			)}
 		</div>

@@ -170,6 +170,8 @@ export function getColumns(
 			header: () => <span className='font-bold whitespace-nowrap'>Assigned To</span>,
 			cell: ({ row }) => {
 				const task = row.original
+				const enclosure = enclosureMap.get(task.enclosure_id as string)
+				const isEnclosureInactive = enclosure?.is_active === false
 				const member = task.assigned_to ? memberMap.get(task.assigned_to as string) : null
 				const name = member ? member.full_name || `${member.first_name} ${member.last_name}`.trim() : null
 				return (
@@ -180,6 +182,8 @@ export function getColumns(
 							assignedMemberName={name}
 							members={members}
 							readOnly={task.status === 'completed'}
+							disabled={isEnclosureInactive}
+							disabledReason='Tasks in inactive enclosures cannot be reassigned.'
 						/>
 					</div>
 				)

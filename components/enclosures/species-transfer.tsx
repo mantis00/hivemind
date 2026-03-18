@@ -3,9 +3,9 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ChevronLeftIcon, ChevronRightIcon, LoaderCircle, SaveIcon, SquareCheckIcon, SquareIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useAllSpecies, useOrgSpecies } from '@/lib/react-query/queries'
-import { useAddBatchSpeciesToOrg, useDeleteBatchSpeciesFromOrg } from '@/lib/react-query/mutations'
+import { useAddBatchSpeciesToOrg, useDeactivateBatchOrgSpecies } from '@/lib/react-query/mutations'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import RequestNewSpeciesButton from './request-new-species-button'
@@ -87,8 +87,12 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 		setList((prev) => prev.map((item) => (item.key === key ? { ...item, selected: !item.selected } : item)))
 	}
 
+	const getDisplayLabel = useCallback(
+		(item: Item) => (showScientific ? (item.scientificLabel ?? item.label) : item.label),
+		[showScientific]
+	)
+
 	const toggleSelectAll = (list: Item[], setList: React.Dispatch<React.SetStateAction<Item[]>>, search: string) => {
-		const getDisplayLabel = (item: Item) => (showScientific ? (item.scientificLabel ?? item.label) : item.label)
 		const visibleKeys = new Set(
 			list.filter((item) => getDisplayLabel(item).toLowerCase().includes(search.toLowerCase())).map((i) => i.key)
 		)
@@ -97,10 +101,26 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 	}
 
 	const addMutation = useAddBatchSpeciesToOrg()
-	const deleteMutation = useDeleteBatchSpeciesFromOrg()
+	const deleteMutation = useDeactivateBatchOrgSpecies()
 
 	const hasLeftSelected = leftList.some((item) => item.selected)
 	const hasRightSelected = rightList.some((item) => item.selected)
+
+	const leftVisibleItems = useMemo(() => {
+		const filtered = leftList.filter((item) => getDisplayLabel(item).toLowerCase().includes(leftSearch.toLowerCase()))
+		if (!showScientific) return filtered
+		return [...filtered].sort((a, b) =>
+			getDisplayLabel(a).localeCompare(getDisplayLabel(b), undefined, { sensitivity: 'base' })
+		)
+	}, [leftList, leftSearch, showScientific, getDisplayLabel])
+
+	const rightVisibleItems = useMemo(() => {
+		const filtered = rightList.filter((item) => getDisplayLabel(item).toLowerCase().includes(rightSearch.toLowerCase()))
+		if (!showScientific) return filtered
+		return [...filtered].sort((a, b) =>
+			getDisplayLabel(a).localeCompare(getDisplayLabel(b), undefined, { sensitivity: 'base' })
+		)
+	}, [rightList, rightSearch, showScientific, getDisplayLabel])
 
 	const handleSave = () => {
 		if (!orgId) return
@@ -179,7 +199,7 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 						<div className='flex items-center justify-between'>
 							<Input
 								placeholder='Search'
-								className='rounded-br-none rounded-bl-none rounded-tr-none rounded-bl-none focus-visible:ring-0 focus-visible:border-blue-500'
+								className='rounded-br-none rounded-bl-none rounded-tr-none focus-visible:ring-0 focus-visible:border-blue-500'
 								value={leftSearch}
 								onChange={(e) => setLeftSearch(e.target.value)}
 							/>
@@ -198,13 +218,7 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 									className='flex items-start gap-1.5 w-full p-1.5 min-w-0'
 									onClick={() => toggleSelectAll(leftList, setLeftList, leftSearch)}
 								>
-									{leftList
-										.filter((i) =>
-											(showScientific ? (i.scientificLabel ?? i.label) : i.label)
-												.toLowerCase()
-												.includes(leftSearch.toLowerCase())
-										)
-										.every((i) => i.selected) && leftList.length > 0 ? (
+									{leftVisibleItems.every((i) => i.selected) && leftVisibleItems.length > 0 ? (
 										<SquareCheckIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
 									) : (
 										<SquareIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
@@ -212,29 +226,21 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 									<span className='text-left'>Select All</span>
 								</button>
 							</li>
-							{leftList
-								.filter((item) =>
-									(showScientific ? (item.scientificLabel ?? item.label) : item.label)
-										.toLowerCase()
-										.includes(leftSearch.toLowerCase())
-								)
-								.map((item) => (
-									<li className='flex items-center text-sm hover:bg-muted rounded-sm' key={item.key}>
-										<button
-											className='flex items-start gap-1.5 w-full p-1.5 min-w-0'
-											onClick={() => toggleSelection(setLeftList, item.key)}
-										>
-											{item.selected ? (
-												<SquareCheckIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
-											) : (
-												<SquareIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
-											)}
-											<span className='break-words text-left'>
-												{showScientific ? (item.scientificLabel ?? item.label) : item.label}
-											</span>
-										</button>
-									</li>
-								))}
+							{leftVisibleItems.map((item) => (
+								<li className='flex items-center text-sm hover:bg-muted rounded-sm' key={item.key}>
+									<button
+										className='flex items-start gap-1.5 w-full p-1.5 min-w-0'
+										onClick={() => toggleSelection(setLeftList, item.key)}
+									>
+										{item.selected ? (
+											<SquareCheckIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
+										) : (
+											<SquareIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
+										)}
+										<span className='wrap-break-word text-left'>{getDisplayLabel(item)}</span>
+									</button>
+								</li>
+							))}
 						</ul>
 					</div>
 
@@ -251,7 +257,7 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 							</Button>
 							<Input
 								placeholder='Search'
-								className='rounded-bl-none rounded-br-none rounded-tl-none rounded-bl-none focus-visible:ring-0 focus-visible:border-blue-500'
+								className='rounded-bl-none rounded-br-none rounded-tl-none focus-visible:ring-0 focus-visible:border-blue-500'
 								value={rightSearch}
 								onChange={(e) => setRightSearch(e.target.value)}
 							/>
@@ -262,13 +268,7 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 									className='flex items-start gap-1.5 w-full p-1.5 min-w-0'
 									onClick={() => toggleSelectAll(rightList, setRightList, rightSearch)}
 								>
-									{rightList
-										.filter((i) =>
-											(showScientific ? (i.scientificLabel ?? i.label) : i.label)
-												.toLowerCase()
-												.includes(rightSearch.toLowerCase())
-										)
-										.every((i) => i.selected) && rightList.length > 0 ? (
+									{rightVisibleItems.every((i) => i.selected) && rightVisibleItems.length > 0 ? (
 										<SquareCheckIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
 									) : (
 										<SquareIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
@@ -276,29 +276,21 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 									<span className='text-left'>Select All</span>
 								</button>
 							</li>
-							{rightList
-								.filter((item) =>
-									(showScientific ? (item.scientificLabel ?? item.label) : item.label)
-										.toLowerCase()
-										.includes(rightSearch.toLowerCase())
-								)
-								.map((item) => (
-									<li className='flex items-center text-sm hover:bg-muted rounded-sm' key={item.key}>
-										<button
-											className='flex items-start gap-1.5 w-full p-1.5 min-w-0'
-											onClick={() => toggleSelection(setRightList, item.key)}
-										>
-											{item.selected ? (
-												<SquareCheckIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
-											) : (
-												<SquareIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
-											)}
-											<span className='wrap-break-words text-left'>
-												{showScientific ? (item.scientificLabel ?? item.label) : item.label}
-											</span>
-										</button>
-									</li>
-								))}
+							{rightVisibleItems.map((item) => (
+								<li className='flex items-center text-sm hover:bg-muted rounded-sm' key={item.key}>
+									<button
+										className='flex items-start gap-1.5 w-full p-1.5 min-w-0'
+										onClick={() => toggleSelection(setRightList, item.key)}
+									>
+										{item.selected ? (
+											<SquareCheckIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
+										) : (
+											<SquareIcon className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/50' />
+										)}
+										<span className='wrap-break-words text-left'>{getDisplayLabel(item)}</span>
+									</button>
+								</li>
+							))}
 						</ul>
 					</div>
 					<div></div>
@@ -323,7 +315,7 @@ export default function SpeciesTransferList({ onClose }: { onClose?: () => void 
 
 			<ResponsiveDialogDrawer
 				title='Remove Species'
-				description={`Removing ${pendingSave?.removedOrgSpeciesIds.length ?? 0} species (${pendingSave?.removedNames ?? ''}) will permanently delete all associated enclosures, notes, and tasks. This cannot be undone.`}
+				description={`Removing ${pendingSave?.removedOrgSpeciesIds.length ?? 0} species (${pendingSave?.removedNames ?? ''}). You can add them back at any time. You will not lose any enclosures, notes, or tasks associated with them. `}
 				trigger={null}
 				open={confirmOpen}
 				onOpenChange={(open) => {

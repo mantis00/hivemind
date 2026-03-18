@@ -141,155 +141,153 @@ export function CreateEnclosureButton({
 				)
 			}
 		>
-			<form onSubmit={handleSubmit}>
-				<div className='grid py-4 px-4'>
-					<div className='grid grid-cols-1 gap-4'>
-						<div className='flex items-center justify-between'>
-							<Label>Species</Label>
-							<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>
-								<button
-									type='button'
-									className={`w-full text-center px-2.5 py-1 transition-colors ${!showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
-									onClick={() => {
-										setShowScientific(false)
-										setSpeciesQuery(species ?? '')
-									}}
-								>
-									Common
-								</button>
-								<button
-									type='button'
-									className={`w-full text-center px-2.5 py-1 transition-colors ${showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
-									onClick={() => {
-										setShowScientific(true)
-										const scientificName = orgSpecies?.find((s) => s.custom_common_name === species)?.species
-											?.scientific_name
-										setSpeciesQuery(scientificName ?? '')
-									}}
-								>
-									Scientific
-								</button>
-							</div>
+			<form onSubmit={handleSubmit} className='flex flex-col gap-4'>
+				<div className='grid grid-cols-1 gap-4'>
+					<div className='flex items-center justify-between'>
+						<Label>Species</Label>
+						<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>
+							<button
+								type='button'
+								className={`w-full text-center px-2.5 py-1 transition-colors ${!showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+								onClick={() => {
+									setShowScientific(false)
+									setSpeciesQuery(species ?? '')
+								}}
+							>
+								Common
+							</button>
+							<button
+								type='button'
+								className={`w-full text-center px-2.5 py-1 transition-colors ${showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+								onClick={() => {
+									setShowScientific(true)
+									const scientificName = orgSpecies?.find((s) => s.custom_common_name === species)?.species
+										?.scientific_name
+									setSpeciesQuery(scientificName ?? '')
+								}}
+							>
+								Scientific
+							</button>
 						</div>
+					</div>
+					<Combobox
+						items={filteredSpecies}
+						filter={() => true}
+						value={species}
+						onValueChange={(value) => {
+							setSpecies(value ?? '')
+							setSpeciesQuery(value ?? '')
+						}}
+					>
+						<ComboboxInput
+							className='h-9'
+							placeholder='Search species...'
+							value={speciesQuery}
+							onChange={(event) => setSpeciesQuery(event.target.value)}
+							disabled={isPending}
+							showClear
+						/>
+						<ComboboxContent>
+							<ComboboxEmpty>No matching species.</ComboboxEmpty>
+							<ComboboxList className='max-h-42 scrollbar-no-track'>
+								<ComboboxCollection>
+									{(spec: OrgSpecies) => (
+										<ComboboxItem key={spec.id} value={spec.custom_common_name}>
+											{showScientific ? (
+												<span className='flex flex-col'>
+													<span>{spec.species?.scientific_name}</span>
+													<span className='text-xs text-muted-foreground'>{spec.custom_common_name}</span>
+												</span>
+											) : (
+												spec.custom_common_name
+											)}
+										</ComboboxItem>
+									)}
+								</ComboboxCollection>
+							</ComboboxList>
+						</ComboboxContent>
+					</Combobox>
+					<div className='flex items-center justify-between'>
+						<Label>Enclosure Location</Label>
+						<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>
+							<button
+								type='button'
+								className={`w-full text-center px-2.5 py-1 transition-colors ${!createLocation ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+								onClick={() => {
+									setCreateLocation(false)
+									setLocation('')
+									setLocationQuery('')
+								}}
+							>
+								Search
+							</button>
+							<button
+								type='button'
+								className={`w-full text-center px-2.5 py-1 transition-colors ${createLocation ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+								onClick={() => {
+									setCreateLocation(true)
+									setLocation('')
+									setLocationQuery('')
+								}}
+							>
+								Create
+							</button>
+						</div>
+					</div>
+					{createLocation ? (
+						<Input
+							className='h-9'
+							placeholder='New location name...'
+							value={location}
+							onChange={(e) => setLocation(e.target.value)}
+							disabled={isPending}
+						/>
+					) : (
 						<Combobox
-							items={filteredSpecies}
+							items={filteredLocations}
 							filter={() => true}
-							value={species}
+							value={location}
 							onValueChange={(value) => {
-								setSpecies(value ?? '')
-								setSpeciesQuery(value ?? '')
+								setLocation(value ?? '')
+								setLocationQuery(value ?? '')
 							}}
 						>
 							<ComboboxInput
 								className='h-9'
-								placeholder='Search species...'
-								value={speciesQuery}
-								onChange={(event) => setSpeciesQuery(event.target.value)}
+								placeholder='Search locations...'
+								value={locationQuery}
+								onChange={(event) => setLocationQuery(event.target.value)}
 								disabled={isPending}
 								showClear
 							/>
 							<ComboboxContent>
-								<ComboboxEmpty>No matching species.</ComboboxEmpty>
+								<ComboboxEmpty>No matching locations.</ComboboxEmpty>
 								<ComboboxList className='max-h-42 scrollbar-no-track'>
 									<ComboboxCollection>
-										{(spec: OrgSpecies) => (
-											<ComboboxItem key={spec.id} value={spec.custom_common_name}>
-												{showScientific ? (
-													<span className='flex flex-col'>
-														<span>{spec.species?.scientific_name}</span>
-														<span className='text-xs text-muted-foreground'>{spec.custom_common_name}</span>
-													</span>
-												) : (
-													spec.custom_common_name
-												)}
+										{(loc) => (
+											<ComboboxItem key={loc.id} value={loc.name}>
+												{loc.name}
 											</ComboboxItem>
 										)}
 									</ComboboxCollection>
 								</ComboboxList>
 							</ComboboxContent>
 						</Combobox>
-						<div className='flex items-center justify-between'>
-							<Label>Enclosure Location</Label>
-							<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>
-								<button
-									type='button'
-									className={`w-full text-center px-2.5 py-1 transition-colors ${!createLocation ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
-									onClick={() => {
-										setCreateLocation(false)
-										setLocation('')
-										setLocationQuery('')
-									}}
-								>
-									Search
-								</button>
-								<button
-									type='button'
-									className={`w-full text-center px-2.5 py-1 transition-colors ${createLocation ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
-									onClick={() => {
-										setCreateLocation(true)
-										setLocation('')
-										setLocationQuery('')
-									}}
-								>
-									Create
-								</button>
-							</div>
-						</div>
-						{createLocation ? (
-							<Input
-								className='h-9'
-								placeholder='New location name...'
-								value={location}
-								onChange={(e) => setLocation(e.target.value)}
-								disabled={isPending}
-							/>
-						) : (
-							<Combobox
-								items={filteredLocations}
-								filter={() => true}
-								value={location}
-								onValueChange={(value) => {
-									setLocation(value ?? '')
-									setLocationQuery(value ?? '')
-								}}
-							>
-								<ComboboxInput
-									className='h-9'
-									placeholder='Search locations...'
-									value={locationQuery}
-									onChange={(event) => setLocationQuery(event.target.value)}
-									disabled={isPending}
-									showClear
-								/>
-								<ComboboxContent>
-									<ComboboxEmpty>No matching locations.</ComboboxEmpty>
-									<ComboboxList className='max-h-42 scrollbar-no-track'>
-										<ComboboxCollection>
-											{(loc) => (
-												<ComboboxItem key={loc.id} value={loc.name}>
-													{loc.name}
-												</ComboboxItem>
-											)}
-										</ComboboxCollection>
-									</ComboboxList>
-								</ComboboxContent>
-							</Combobox>
-						)}
-						<Label>Count</Label>
-						<Input
-							className='h-9'
-							id='count'
-							placeholder='Count'
-							value={count}
-							type='number'
-							min='0'
-							onChange={(e) => setCount(e.target.value)}
-							required
-							disabled={isPending}
-						/>
-					</div>
+					)}
+					<Label>Count</Label>
+					<Input
+						className='h-9'
+						id='count'
+						placeholder='Count'
+						value={count}
+						type='number'
+						min='0'
+						onChange={(e) => setCount(e.target.value)}
+						required
+						disabled={isPending}
+					/>
 				</div>
-				<div className='flex flex-col gap-3 justify-center px-4 pb-2'>
+				<div className='flex flex-col gap-3 justify-center'>
 					<Button type='submit' disabled={isPending || !user}>
 						{isPending ? <LoaderCircle className='animate-spin' /> : 'Create Enclosure'}
 					</Button>
