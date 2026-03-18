@@ -126,9 +126,18 @@ interface FieldsEditorProps {
 	onUpdate: (id: string, updates: Partial<FieldDef>) => void
 	onAddChoice: (id: string) => void
 	onRemoveChoice: (fieldId: string, choiceIndex: number) => void
+	onMove: (id: string, dir: 'up' | 'down') => void
 }
 
-export function FieldsEditor({ fields, onAdd, onRemove, onUpdate, onAddChoice, onRemoveChoice }: FieldsEditorProps) {
+export function FieldsEditor({
+	fields,
+	onAdd,
+	onRemove,
+	onUpdate,
+	onAddChoice,
+	onRemoveChoice,
+	onMove
+}: FieldsEditorProps) {
 	return (
 		<div className='space-y-2'>
 			<div className='flex items-center justify-between'>
@@ -149,6 +158,8 @@ export function FieldsEditor({ fields, onAdd, onRemove, onUpdate, onAddChoice, o
 						onDelete={() => onRemove(field._id)}
 						onAddChoice={() => onAddChoice(field._id)}
 						onRemoveChoice={(ci) => onRemoveChoice(field._id, ci)}
+						onMoveUp={index > 0 ? () => onMove(field._id, 'up') : undefined}
+						onMoveDown={index < fields.length - 1 ? () => onMove(field._id, 'down') : undefined}
 					/>
 				))}
 			</div>

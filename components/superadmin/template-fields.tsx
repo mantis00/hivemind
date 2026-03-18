@@ -1,6 +1,6 @@
 'use client'
 
-import { Trash2, XIcon } from 'lucide-react'
+import { ArrowDownIcon, ArrowUpIcon, Trash2, XIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -95,21 +95,24 @@ export const emptyField = (): FieldDef => ({
 })
 
 export function templateToFields(template: TaskTemplate): FieldDef[] {
-	return (template.question_templates ?? []).map((q) => {
-		const { choices, conditionFieldKey, conditionValue } = decodeRawChoices(q.choices ?? [])
-		return {
-			_id: crypto.randomUUID(),
-			dbId: q.id,
-			key: q.question_key,
-			label: q.label,
-			type: q.type as FieldType,
-			required: q.required,
-			choices,
-			newChoice: '',
-			conditionFieldKey,
-			conditionValue
-		}
-	})
+	return (template.question_templates ?? [])
+		.slice()
+		.sort((a, b) => a.order - b.order)
+		.map((q) => {
+			const { choices, conditionFieldKey, conditionValue } = decodeRawChoices(q.choices ?? [])
+			return {
+				_id: crypto.randomUUID(),
+				dbId: q.id,
+				key: q.question_key,
+				label: q.label,
+				type: q.type as FieldType,
+				required: q.required,
+				choices,
+				newChoice: '',
+				conditionFieldKey,
+				conditionValue
+			}
+		})
 }
 
 export function validateFields(fs: FieldDef[]): string | null {
@@ -138,6 +141,10 @@ export interface FieldRowProps {
 	onDelete: () => void
 	onAddChoice: () => void
 	onRemoveChoice: (index: number) => void
+	/** Move this field up one position (undefined = already first) */
+	onMoveUp?: () => void
+	/** Move this field down one position (undefined = already last) */
+	onMoveDown?: () => void
 }
 
 export function FieldRow({
@@ -148,7 +155,9 @@ export function FieldRow({
 	onUpdate,
 	onDelete,
 	onAddChoice,
-	onRemoveChoice
+	onRemoveChoice,
+	onMoveUp,
+	onMoveDown
 }: FieldRowProps) {
 	const isChoiceType = field.type === 'select' || field.type === 'multiselect'
 	const hasCondition = !!field.conditionFieldKey
@@ -175,17 +184,39 @@ export function FieldRow({
 		<div className='rounded-lg border bg-muted/30 p-3 space-y-3'>
 			<div className='flex items-center justify-between'>
 				<span className='text-xs font-semibold text-muted-foreground'>Field {index + 1}</span>
-				{canDelete && (
+				<div className='flex items-center gap-0.5'>
 					<Button
 						type='button'
 						variant='ghost'
 						size='icon'
-						className='h-7 w-7 text-muted-foreground hover:text-destructive'
-						onClick={onDelete}
+						className='h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-30'
+						onClick={onMoveUp}
+						disabled={!onMoveUp}
 					>
-						<Trash2 className='h-3.5 w-3.5' />
+						<ArrowUpIcon className='h-3.5 w-3.5' />
 					</Button>
-				)}
+					<Button
+						type='button'
+						variant='ghost'
+						size='icon'
+						className='h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-30'
+						onClick={onMoveDown}
+						disabled={!onMoveDown}
+					>
+						<ArrowDownIcon className='h-3.5 w-3.5' />
+					</Button>
+					{canDelete && (
+						<Button
+							type='button'
+							variant='ghost'
+							size='icon'
+							className='h-7 w-7 text-muted-foreground hover:text-destructive'
+							onClick={onDelete}
+						>
+							<Trash2 className='h-3.5 w-3.5' />
+						</Button>
+					)}
+				</div>
 			</div>
 
 			<div className='grid grid-cols-2 gap-2'>

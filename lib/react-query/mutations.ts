@@ -814,6 +814,7 @@ export function useCreateTaskTemplate() {
 				type: string
 				required: boolean
 				choices: string[]
+				order: number
 			}[]
 		}) => {
 			const supabase = createClient()
@@ -833,7 +834,8 @@ export function useCreateTaskTemplate() {
 					label: f.label,
 					type: f.type,
 					required: f.required,
-					choices: f.choices.length > 0 ? f.choices : null
+					choices: f.choices.length > 0 ? f.choices : null,
+					order: f.order
 				}))
 			)
 
@@ -870,6 +872,7 @@ export function useUpdateTaskTemplate() {
 				type: string
 				required: boolean
 				choices: string[]
+				order: number
 			}[]
 		}) => {
 			const supabase = createClient()
@@ -929,7 +932,8 @@ export function useUpdateTaskTemplate() {
 						label: f.label,
 						type: f.type,
 						required: f.required,
-						choices: f.choices.length > 0 ? f.choices : null
+						choices: f.choices.length > 0 ? f.choices : null,
+						order: f.order
 					})
 					.eq('id', f.dbId!)
 				if (error) throw error

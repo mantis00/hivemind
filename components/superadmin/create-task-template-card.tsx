@@ -45,6 +45,16 @@ export function CreateTaskTemplateCard({ species, usedTypes, onSuccess, onCancel
 	const removeField = (id: string) => setFields((p) => p.filter((f) => f._id !== id))
 	const updateField = (id: string, u: Partial<FieldDef>) =>
 		setFields((p) => p.map((f) => (f._id === id ? { ...f, ...u } : f)))
+	const moveField = (id: string, dir: 'up' | 'down') =>
+		setFields((prev) => {
+			const idx = prev.findIndex((f) => f._id === id)
+			if (idx < 0) return prev
+			const next = [...prev]
+			const swapIdx = dir === 'up' ? idx - 1 : idx + 1
+			if (swapIdx < 0 || swapIdx >= next.length) return prev
+			;[next[idx], next[swapIdx]] = [next[swapIdx], next[idx]]
+			return next
+		})
 	const addChoice = (id: string) => {
 		const field = fields.find((f) => f._id === id)
 		if (!field || !field.newChoice.trim()) return
@@ -85,12 +95,13 @@ export function CreateTaskTemplateCard({ species, usedTypes, onSuccess, onCancel
 				speciesId: species.id,
 				type: taskType.trim(),
 				description: description.trim(),
-				fields: fields.map((f) => ({
+				fields: fields.map((f, index) => ({
 					question_key: f.key,
 					label: f.label,
 					type: f.type,
 					required: f.required,
-					choices: encodeChoicesForSave(f)
+					choices: encodeChoicesForSave(f),
+					order: index
 				}))
 			},
 			{
@@ -125,6 +136,7 @@ export function CreateTaskTemplateCard({ species, usedTypes, onSuccess, onCancel
 					onUpdate={updateField}
 					onAddChoice={addChoice}
 					onRemoveChoice={removeChoice}
+					onMove={moveField}
 				/>
 			</div>
 

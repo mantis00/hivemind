@@ -100,7 +100,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 	}
 
 	const allQMeta = React.useMemo((): QuestionMeta[] => {
-		const rawQuestions = template?.question_templates ?? []
+		const rawQuestions = [...(template?.question_templates ?? [])].sort((a, b) => a.order - b.order)
 		return rawQuestions.map((q) => {
 			const { choices, conditionFieldKey, conditionValue } = decodeChoices(q.choices)
 			return { ...q, conditionFieldKey, conditionValue, decodedChoices: choices }

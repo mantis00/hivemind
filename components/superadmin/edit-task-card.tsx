@@ -85,6 +85,16 @@ export function EditTaskCard({ template, species, allTemplateTypes }: EditTaskCa
 	const removeField = (id: string) => setFields((p) => p.filter((f) => f._id !== id))
 	const updateField = (id: string, u: Partial<FieldDef>) =>
 		setFields((p) => p.map((f) => (f._id === id ? { ...f, ...u } : f)))
+	const moveField = (id: string, dir: 'up' | 'down') =>
+		setFields((prev) => {
+			const idx = prev.findIndex((f) => f._id === id)
+			if (idx < 0) return prev
+			const next = [...prev]
+			const swapIdx = dir === 'up' ? idx - 1 : idx + 1
+			if (swapIdx < 0 || swapIdx >= next.length) return prev
+			;[next[idx], next[swapIdx]] = [next[swapIdx], next[idx]]
+			return next
+		})
 	const addChoice = (id: string) => {
 		const field = fields.find((f) => f._id === id)
 		if (!field || !field.newChoice.trim()) return
@@ -120,13 +130,14 @@ export function EditTaskCard({ template, species, allTemplateTypes }: EditTaskCa
 				speciesId: species.id,
 				type: type.trim(),
 				description: description.trim(),
-				fields: fields.map((f) => ({
+				fields: fields.map((f, index) => ({
 					dbId: f.dbId,
 					question_key: f.key,
 					label: f.label,
 					type: f.type,
 					required: f.required,
-					choices: encodeChoicesForSave(f)
+					choices: encodeChoicesForSave(f),
+					order: index
 				}))
 			},
 			{
@@ -202,6 +213,7 @@ export function EditTaskCard({ template, species, allTemplateTypes }: EditTaskCa
 						onUpdate={updateField}
 						onAddChoice={addChoice}
 						onRemoveChoice={removeChoice}
+						onMove={moveField}
 					/>
 
 					{/* Cancel / Save — only when dirty */}
