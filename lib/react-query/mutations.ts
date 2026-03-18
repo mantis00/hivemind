@@ -1627,6 +1627,57 @@ export function useToggleScheduleActive() {
 	})
 }
 
+export function useUpdateSchedule() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			scheduleId,
+			task_name,
+			task_description,
+			time_window,
+			priority,
+			max_occurrences,
+			end_date,
+			schedule_rule,
+			advance_task_count
+		}: {
+			scheduleId: UUID
+			task_name: string | null
+			task_description: string | null
+			time_window: string | null
+			priority: string | null
+			max_occurrences: number | null
+			end_date: string | null
+			schedule_rule: string
+			advance_task_count: number
+		}) => {
+			const supabase = createClient()
+			const { error } = await supabase
+				.from('enclosure_schedules')
+				.update({
+					task_name,
+					task_description,
+					time_window,
+					priority,
+					max_occurrences,
+					end_date,
+					schedule_rule,
+					advance_task_count
+				})
+				.eq('id', scheduleId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success('Schedule updated!')
+		}
+	})
+}
+
 export function useDeleteSchedule() {
 	const queryClient = useQueryClient()
 

@@ -316,6 +316,13 @@ export function TasksDataTable({
 		fetchedOrgSpecies
 	])
 
+	// Guard against sorting by a column that isn't in the current column set
+	// (e.g. 'status' is absent on mobile org-mode which only shows enclosure_name / name / due_date)
+	const validSorting = React.useMemo(() => {
+		const ids = new Set(columns.map((c) => c.id ?? (c as { accessorKey?: string }).accessorKey ?? ''))
+		return sorting.filter((s) => ids.has(s.id))
+	}, [sorting, columns])
+
 	const table = useReactTable({
 		data: filteredData,
 		columns,
@@ -324,7 +331,7 @@ export function TasksDataTable({
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
 		globalFilterFn: 'includesString',
-		state: { sorting, globalFilter },
+		state: { sorting: validSorting, globalFilter },
 		onGlobalFilterChange: (value) => setFilters((prev) => ({ ...prev, globalFilter: value as string }))
 	})
 

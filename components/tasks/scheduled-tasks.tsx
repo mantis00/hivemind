@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Calendar, CalendarClock, Clock, LoaderCircle, Power, Repeat } from 'lucide-react'
 import { DeleteScheduleButton } from '@/components/tasks/delete-schedule-button'
+import { EditScheduleButton } from '@/components/tasks/edit-schedule-button'
 import { ReassignMemberButton } from '@/components/tasks/reassign-member-button'
 import { ViewScheduleTemplateButton } from '@/components/tasks/view-schedule-template-button'
 import { ScheduledTasksFilters, type ScheduleFilters } from '@/components/tasks/scheduled-tasks-filters'
@@ -215,7 +216,8 @@ export function ScheduledTasksTable() {
 												{schedule.task_description && <TruncatedDescription text={schedule.task_description} />}
 											</div>
 											{/* Active/Paused toggle */}
-											<DeleteScheduleButton scheduleId={schedule.id as UUID} taskName={schedule.task_name} />
+											<DeleteScheduleButton scheduleId={schedule.id as UUID} taskName={schedule.task_name} />{' '}
+											<EditScheduleButton schedule={schedule} />{' '}
 											<ViewScheduleTemplateButton templateId={schedule.template_id} taskName={schedule.task_name} />
 											<TooltipProvider>
 												<Tooltip>

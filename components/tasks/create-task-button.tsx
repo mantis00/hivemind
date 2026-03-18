@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
+import { ViewScheduleTemplateButton } from '@/components/tasks/view-schedule-template-button'
 
 import { useCreateTask, useCreateSchedule } from '@/lib/react-query/mutations'
 import {
@@ -331,19 +332,27 @@ export function CreateTaskButton({ enclosureId, orgId, disabled }: CreateTaskBut
 						) : !templates?.length ? (
 							<p className='text-xs text-muted-foreground'>No templates for this enclosure&apos;s species.</p>
 						) : (
-							<Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-								<SelectTrigger>
-									<SelectValue placeholder='Select a template…' />
-								</SelectTrigger>
-								<SelectContent>
-									{templates.map((t) => (
-										<SelectItem key={t.id} value={t.id}>
-											<span className='capitalize'>{t.type}</span>
-											{t.description && <span className='ml-2 text-muted-foreground text-xs'>— {t.description}</span>}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							<div className='flex items-center gap-2'>
+								<Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+									<SelectTrigger className='flex-1 min-w-0 cursor-pointer'>
+										<SelectValue placeholder='Select a template…' />
+									</SelectTrigger>
+									<SelectContent>
+										{templates.map((t) => (
+											<SelectItem key={t.id} value={t.id} className='cursor-pointer'>
+												<span className='capitalize'>{t.type}</span>
+												{t.description && <span className='ml-2 text-muted-foreground text-xs'>— {t.description}</span>}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								{selectedTemplateId && (
+									<ViewScheduleTemplateButton
+										templateId={selectedTemplateId as UUID}
+										taskName={templates.find((t) => t.id === selectedTemplateId)?.type ?? null}
+									/>
+								)}
+							</div>
 						)}
 					</div>
 				) : (
