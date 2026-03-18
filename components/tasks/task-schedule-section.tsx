@@ -1,6 +1,5 @@
 'use client'
 
-import * as React from 'react'
 import { RRule } from 'rrule'
 
 import { Label } from '@/components/ui/label'
@@ -275,7 +274,7 @@ export function TaskScheduleSection({
 
 // ─── TimeWindowField ──────────────────────────────────────────────────────────
 
-function TimeWindowField({ value, onChange }: { value: TimeWindow; onChange: (v: TimeWindow) => void }) {
+export function TimeWindowField({ value, onChange }: { value: TimeWindow; onChange: (v: TimeWindow) => void }) {
 	return (
 		<div className='space-y-1'>
 			<Label className='text-sm'>Time Window</Label>
@@ -295,7 +294,7 @@ function TimeWindowField({ value, onChange }: { value: TimeWindow; onChange: (v:
 
 // ─── EndsSection ─────────────────────────────────────────────────────────────
 
-function EndsSection({
+export function EndsSection({
 	id,
 	value,
 	onChange,

@@ -72,7 +72,7 @@ export function ResponsiveDialogDrawer({
 						</div>
 						<DialogDescription>{description}</DialogDescription>
 					</DialogHeader>
-					<div className='min-h-0 flex-1 overflow-y-auto flex flex-col gap-2'>{children}</div>
+					<div className='min-h-0 flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-2 px-0.5'>{children}</div>
 					{footer && <DialogFooter>{footer}</DialogFooter>}
 				</DialogContent>
 			</Dialog>
@@ -90,7 +90,9 @@ export function ResponsiveDialogDrawer({
 					</div>
 					<DrawerDescription>{description}</DrawerDescription>
 				</DrawerHeader>
-				<div className='min-h-0 flex-1 overflow-y-auto flex flex-col gap-2 scrollbar-hide'>{children}</div>
+				<div className='min-h-0 flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-2 scrollbar-hide px-0.5'>
+					{children}
+				</div>
 				{footer && <DrawerFooter className='px-0'>{footer}</DrawerFooter>}
 			</DrawerContent>
 		</Drawer>

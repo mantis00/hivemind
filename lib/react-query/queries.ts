@@ -205,6 +205,7 @@ export type QuestionTemplate = {
 	required: boolean
 	choices: string[] | null
 	created_at: string
+	order: number
 }
 
 export type TaskTemplate = {
@@ -1397,6 +1398,22 @@ export function useDashboardRecentActivity(orgId: UUID | undefined) {
 			return items.sort((a, b) => compareIsoDatesDesc(a.occurredAt, b.occurredAt))
 		},
 		enabled: !!orgId
+	})
+}
+
+export function useIsSpeciesInUse(speciesId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['isSpeciesInUse', speciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { count, error } = await supabase
+				.from('org_species')
+				.select('id', { count: 'exact', head: true })
+				.eq('master_species_id', speciesId!)
+			if (error) throw error
+			return (count ?? 0) > 0
+		},
+		enabled: !!speciesId
 	})
 }
 

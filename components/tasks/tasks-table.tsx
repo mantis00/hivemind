@@ -71,7 +71,10 @@ export function TasksDataTable({
 	)
 
 	const [dayOffset, setDayOffset] = React.useState(0)
-	const [sorting, setSorting] = React.useState<SortingState>([{ id: 'due_date', desc: false }])
+	const [sorting, setSorting] = React.useState<SortingState>([
+		{ id: 'status', desc: false },
+		{ id: 'due_date', desc: false }
+	])
 	const [filters, setFilters] = React.useState<TaskFilters>({
 		globalFilter: '',
 		globalSearch: false,
@@ -305,10 +308,15 @@ export function TasksDataTable({
 		})
 
 		if (!isRangeMode && dayOffset === 0) {
+			const statusOrder: Record<string, number> = { late: 0, pending: 1, completed: 2 }
 			return [...tasks].sort((a, b) => {
-				const aCompleted = a.status === 'completed' ? 1 : 0
-				const bCompleted = b.status === 'completed' ? 1 : 0
-				if (aCompleted !== bCompleted) return aCompleted - bCompleted
+				const aOrder = statusOrder[getEffectiveStatus(a)] ?? 1
+				const bOrder = statusOrder[getEffectiveStatus(b)] ?? 1
+				if (aOrder !== bOrder) return aOrder - bOrder
+				// Stable secondary: due_date ascending, then insertion order
+				const aDate = a.due_date ?? ''
+				const bDate = b.due_date ?? ''
+				if (aDate !== bDate) return aDate < bDate ? -1 : 1
 				const aPos = stableOrderRef.current.get(a.id as string) ?? 999
 				const bPos = stableOrderRef.current.get(b.id as string) ?? 999
 				return aPos - bPos
@@ -331,6 +339,13 @@ export function TasksDataTable({
 		memberNameById
 	])
 
+	// Guard against sorting by a column that isn't in the current column set
+	// (e.g. 'status' is absent on mobile org-mode which only shows enclosure_name / name / due_date)
+	const validSorting = React.useMemo(() => {
+		const ids = new Set(columns.map((c) => c.id ?? (c as { accessorKey?: string }).accessorKey ?? ''))
+		return sorting.filter((s) => ids.has(s.id))
+	}, [sorting, columns])
+
 	const table = useReactTable({
 		data: filteredData,
 		columns,
@@ -338,7 +353,9 @@ export function TasksDataTable({
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
-		state: { sorting }
+		globalFilterFn: 'includesString',
+		state: { sorting: validSorting, globalFilter },
+		onGlobalFilterChange: (value) => setFilters((prev) => ({ ...prev, globalFilter: value as string }))
 	})
 
 	const { rows } = table.getRowModel()

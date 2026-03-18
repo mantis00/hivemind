@@ -329,18 +329,6 @@ export default function EnclosureGrid() {
 		setIsSorted(true)
 	}
 
-	const handleSearch = async () => {
-		const val = searchValue.trim().toLowerCase()
-		setAppliedSearch(val)
-	}
-
-	const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-		if (event.key === 'Enter') {
-			event.preventDefault()
-			handleSearch()
-		}
-	}
-
 	const handleClearSearch = () => {
 		setSearchValue('')
 		setAppliedSearch('')
@@ -538,16 +526,17 @@ export default function EnclosureGrid() {
 					>
 						{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
 					</Button>
-					<InputGroup className='w-40 sm:w-60 ml-auto' onKeyDown={handleKeyDown}>
+					<InputGroup className='w-40 sm:w-60 ml-auto'>
+						<InputGroupAddon>
+							<Search className='h-4 w-4 text-muted-foreground' />
+						</InputGroupAddon>
 						<InputGroupInput
 							placeholder='Search...'
 							value={searchValue}
 							onChange={(e) => {
 								const val = e.target.value
 								setSearchValue(val)
-								if (val.trim() === '') {
-									setAppliedSearch('')
-								}
+								setAppliedSearch(val.trim().toLowerCase())
 							}}
 						/>
 						{searchValue && (
@@ -560,14 +549,11 @@ export default function EnclosureGrid() {
 								</InputGroupButton>
 							</InputGroupAddon>
 						)}
-						<InputGroupAddon>
-							<InputGroupButton onClick={handleSearch} disabled={isLoading}>
-								<Search />
-							</InputGroupButton>
-						</InputGroupAddon>
-						<InputGroupAddon className='hidden sm:block' align='inline-end'>
-							{searchCount > 0 ? searchCount + ' Results' : ''}{' '}
-						</InputGroupAddon>
+						{searchCount > 0 && (
+							<InputGroupAddon align='inline-end' className='hidden sm:block pr-2 text-xs text-muted-foreground'>
+								{searchCount} Results
+							</InputGroupAddon>
+						)}
 					</InputGroup>
 				</div>
 
@@ -720,7 +706,7 @@ export default function EnclosureGrid() {
 				open={deleteConfirmOpen}
 				onOpenChange={setDeleteConfirmOpen}
 			>
-				<div className='flex flex-col gap-3 px-4 pb-4'>
+				<div className='flex flex-col gap-3'>
 					{enclosureStatusFilter === 'inactive' ? (
 						<Button disabled={batchActivateMutation.isPending} onClick={executeActivate}>
 							{batchActivateMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Set Active'}

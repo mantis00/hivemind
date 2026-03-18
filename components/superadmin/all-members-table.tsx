@@ -1,14 +1,14 @@
 'use client'
 
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState } from 'react'
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
 import { useAllProfiles, type AllProfile } from '@/lib/react-query/queries'
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { LoaderCircle, Search, Users } from 'lucide-react'
-import getAccessLevelName from '@/context/access-levels'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { OrgRolesBadge } from './org-roles-badge'
 
 // Defined outside the component so the references are stable across renders
 const tableComponents: TableComponents<AllProfile> = {
@@ -33,19 +33,8 @@ const MAX_HEIGHT = 7 * FALLBACK_ROW_HEIGHT + HEADER_HEIGHT // 313px — scrolls 
 export function AllMembersTable() {
 	const { data: profiles, isLoading, isError } = useAllProfiles()
 	const [search, setSearch] = useState('')
-	const rowHeightRef = useRef(FALLBACK_ROW_HEIGHT)
-	const [rowHeight, setRowHeight] = useState(FALLBACK_ROW_HEIGHT)
-
-	// Measure the first rendered row's actual height
-	const measuredCellRef = useCallback((node: HTMLTableCellElement | null) => {
-		if (node) {
-			const trHeight = node.closest('tr')?.offsetHeight ?? FALLBACK_ROW_HEIGHT
-			if (trHeight !== rowHeightRef.current) {
-				rowHeightRef.current = trHeight
-				setRowHeight(trHeight)
-			}
-		}
-	}, [])
+	const [listHeight, setListHeight] = useState(FALLBACK_ROW_HEIGHT)
+	const isMobile = useIsMobile()
 
 	const filtered = profiles?.filter((p) => {
 		const term = search.toLowerCase()
@@ -57,9 +46,7 @@ export function AllMembersTable() {
 	})
 
 	const count = filtered?.length ?? 0
-	const containerHeight =
-		isLoading || isError || count === 0 ? 120 : Math.min(count * rowHeight + HEADER_HEIGHT, MAX_HEIGHT)
-
+	const containerHeight = isLoading || isError || count === 0 ? 120 : Math.min(listHeight + HEADER_HEIGHT, MAX_HEIGHT)
 	return (
 		<div className='space-y-3'>
 			<div className='flex items-center gap-3'>
@@ -79,84 +66,69 @@ export function AllMembersTable() {
 					</div>
 				)}
 			</div>
-
-			<div className='rounded-md border overflow-hidden'>
+			<div className={`rounded-md border ${isMobile ? '' : 'overflow-hidden'}`}>
 				{isLoading && (
 					<div className='flex justify-center items-center gap-2 py-10 text-sm text-muted-foreground'>
 						<LoaderCircle className='h-4 w-4 animate-spin' />
 						Loading members...
 					</div>
 				)}
-
 				{isError && <div className='py-10 text-center text-sm text-destructive'>Failed to load members.</div>}
-
 				{!isLoading && !isError && count === 0 && (
 					<div className='py-10 text-center text-sm text-muted-foreground'>No members found.</div>
 				)}
-
 				{!isLoading && !isError && count > 0 && (
 					<TableVirtuoso<AllProfile>
 						style={{ height: containerHeight }}
 						data={filtered}
 						components={tableComponents}
+						totalListHeightChanged={setListHeight}
 						fixedHeaderContent={() => (
 							<TableRow>
-								<TableHead>Name</TableHead>
-								<TableHead>Email</TableHead>
-								<TableHead className='text-center'>Role</TableHead>
-								<TableHead className='text-center'>Organizations</TableHead>
-								<TableHead>Created at</TableHead>
+								<TableHead className='w-1/2'>Name</TableHead>
+								<TableHead className='w-1/2'>Email</TableHead>
+								{!isMobile && <TableHead className='text-center'>Role</TableHead>}
+								{!isMobile && <TableHead className='text-center'>Organizations</TableHead>}
+								{!isMobile && <TableHead>Created at</TableHead>}
 							</TableRow>
 						)}
 						itemContent={(index, profile) => (
 							<>
-								<TableCell
-									ref={index === 0 ? measuredCellRef : undefined}
-									className={`font-medium ${index % 2 === 1 ? 'bg-muted/40' : ''}`}
-								>
-									{profile.full_name || '—'}
+								<TableCell className={`font-medium w-1/2 max-w-0 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+									<span className='block truncate' title={profile.full_name ?? undefined}>
+										{profile.full_name || '—'}
+									</span>
 								</TableCell>
-								<TableCell className={`text-muted-foreground ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
-									{profile.email}
+								<TableCell className={`text-muted-foreground w-1/2 max-w-0 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+									<span className='block truncate' title={profile.email ?? undefined}>
+										{profile.email}
+									</span>
 								</TableCell>
-								<TableCell className={`text-center ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
-									{profile.is_superadmin ? (
-										<Badge variant='default'>Superadmin</Badge>
-									) : (
-										<Badge variant='secondary'>User</Badge>
-									)}
-								</TableCell>
-								<TableCell className={`text-center ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
-									{profile.user_org_role?.length > 0 ? (
-										<div className='flex flex-wrap gap-1 justify-center'>
-											<TooltipProvider>
-												{profile.user_org_role.map((role) => (
-													<Tooltip key={role.org_id}>
-														<TooltipTrigger asChild>
-															<Badge variant='outline' className='cursor-default'>
-																{role.orgs?.name ?? 'Unknown'}
-															</Badge>
-														</TooltipTrigger>
-														<TooltipContent>
-															<p>{getAccessLevelName(role.access_lvl)}</p>
-														</TooltipContent>
-													</Tooltip>
-												))}
-											</TooltipProvider>
-										</div>
-									) : (
-										<span className='text-muted-foreground text-sm'>No orgs</span>
-									)}
-								</TableCell>
-								<TableCell className={`text-muted-foreground text-sm ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
-									{profile.updated_at
-										? new Date(profile.updated_at).toLocaleDateString(undefined, {
-												year: 'numeric',
-												month: 'short',
-												day: 'numeric'
-											})
-										: '—'}
-								</TableCell>
+								{!isMobile && (
+									<TableCell className={`text-center ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+										{profile.is_superadmin ? (
+											<Badge variant='default'>Superadmin</Badge>
+										) : (
+											<Badge variant='secondary'>User</Badge>
+										)}
+									</TableCell>
+								)}
+								{!isMobile && (
+									<TableCell className={`text-center ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+										<OrgRolesBadge orgRoles={profile.user_org_role ?? []} />
+									</TableCell>
+								)}
+								{!isMobile && (
+									<TableCell className={`text-muted-foreground text-sm ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+										{profile.updated_at
+											? new Date(profile.updated_at).toLocaleDateString(undefined, {
+													year: 'numeric',
+													month: 'short',
+													day: 'numeric'
+												})
+											: '—'}
+									</TableCell>
+								)}
 							</>
 						)}
 					/>
