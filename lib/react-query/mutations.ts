@@ -396,6 +396,7 @@ export function useCreateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosureCount', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure created!')
 		}
@@ -1936,6 +1937,24 @@ export function useUnsubscribeFromPush() {
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['pushSubscriptions', variables.userId] })
 			toast.success('Unsubscribed from push notifications.')
+		}
+	})
+}
+
+export function useMarkEnclosuresPrinted() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ enclosureIds }: { orgId: UUID; enclosureIds: UUID[] }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase.from('enclosures').update({ printed: true }).in('id', enclosureIds)
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			toast.success('Enclosures marked as printed.')
 		}
 	})
 }

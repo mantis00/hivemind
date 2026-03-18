@@ -1,9 +1,11 @@
 'use client'
 
-import { useOrgEnclosures, useOrgSpecies } from '@/lib/react-query/queries'
+import { type OrgSpecies, useOrgEnclosures, useOrgSpecies } from '@/lib/react-query/queries'
+import type { Enclosure } from '@/lib/react-query/queries'
 import {
 	ArrowDownIcon,
 	ArrowUpIcon,
+	Download,
 	Edit,
 	ListChecks,
 	LoaderCircle,
@@ -16,7 +18,7 @@ import {
 	XIcon
 } from 'lucide-react'
 
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
@@ -40,7 +42,19 @@ import {
 } from '../ui/dropdown-menu'
 import { EditSpeciesOrgForm } from './edit-species-org'
 import { EnclosureCounts } from './enclosure-counts'
-import { useBatchActivateEnclosures, useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
+import {
+	useBatchActivateEnclosures,
+	useBatchDeleteEnclosures,
+	useMarkEnclosuresPrinted
+} from '@/lib/react-query/mutations'
+import { toast } from 'sonner'
+
+type EnclosureExportData = {
+	enclosureName: string
+	commonName: string
+	scientificName: string
+	isActive: boolean
+}
 
 export default function EnclosureGrid() {
 	type EnclosureStatusFilter = 'active' | 'inactive' | 'all'
@@ -48,6 +62,7 @@ export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useOrgSpecies(orgId as UUID)
+	const orgSpeciesById = useMemo(() => new Map((orgSpecies ?? []).map((s) => [s.id, s])), [orgSpecies])
 	const activeOrgSpecies = useMemo(() => (orgSpecies ?? []).filter((s) => s.is_active), [orgSpecies])
 
 	const [searchValue, setSearchValue] = useState('')
@@ -121,30 +136,137 @@ export default function EnclosureGrid() {
 
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
+	const [selectedEnclosureData, setSelectedEnclosureData] = useState<Map<UUID, EnclosureExportData>>(new Map())
 	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 	const [manageOpen, setManageOpen] = useState(false)
 	const [createOpen, setCreateOpen] = useState(false)
 	const batchDeleteMutation = useBatchDeleteEnclosures()
+	const markPrintedMutation = useMarkEnclosuresPrinted()
+	const { data: orgEnclosures } = useOrgEnclosures(orgId as UUID)
 	const batchActivateMutation = useBatchActivateEnclosures()
 	const isMobile = useIsMobile()
 
-	const handleSelectChange = (enclosureId: UUID, checked: boolean) => {
+	const handleSelectChange = useCallback((enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
 		setSelectedIds((prev) => {
 			const next = new Set(prev)
 			if (checked) next.add(enclosureId)
 			else next.delete(enclosureId)
 			return next
 		})
-	}
+		setSelectedEnclosureData((prev) => {
+			const next = new Map(prev)
+			if (checked && data) next.set(enclosureId, data)
+			else next.delete(enclosureId)
+			return next
+		})
+	}, [])
+
+	const handleSelectAll = useCallback(
+		(enclosures: Enclosure[], select: boolean, species: OrgSpecies) => {
+			setSelectedIds((prev) => {
+				const next = new Set(prev)
+				for (const enc of enclosures) {
+					if (select) next.add(enc.id)
+					else next.delete(enc.id)
+				}
+				return next
+			})
+			setSelectedEnclosureData((prev) => {
+				const next = new Map(prev)
+				for (const enc of enclosures) {
+					if (select) {
+						if (enclosureStatusFilter === 'all' && !enc.is_active) {
+							toast.warning('Inactive enclosures cannot be printed. They can be selected for status updates only.')
+						}
+						next.set(enc.id, {
+							enclosureName: enc.name,
+							commonName: species.custom_common_name,
+							scientificName: species.species?.scientific_name ?? '',
+							isActive: enc.is_active
+						})
+					} else {
+						next.delete(enc.id)
+					}
+				}
+				return next
+			})
+		},
+		[enclosureStatusFilter]
+	)
 
 	const toggleSelectMode = () => {
 		setSelectMode((prev) => !prev)
-		if (selectMode) setSelectedIds(new Set())
+		if (selectMode) {
+			setSelectedIds(new Set())
+			setSelectedEnclosureData(new Map())
+		}
+	}
+
+	const buildAndDownloadCsv = (rows: string[][], filename: string) => {
+		const headers = ['Enclosure Name', 'Common Name', 'Scientific Name', 'URL']
+		const csvContent = [headers, ...rows]
+			.map((row) => row.map((cell) => `"${(cell ?? '').replace(/"/g, '""')}"`).join(','))
+			.join('\n')
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = filename
+		a.click()
+		URL.revokeObjectURL(url)
+	}
+
+	const exportToCsv = () => {
+		const printableIds = Array.from(selectedIds).filter((id) => {
+			const d = selectedEnclosureData.get(id)
+			return d ? d.isActive : true
+		})
+
+		if (printableIds.length !== selectedIds.size) {
+			toast.warning('Inactive enclosures were excluded from export.')
+		}
+
+		if (!printableIds.length) {
+			toast.info('No active enclosures selected to export.')
+			return
+		}
+
+		const baseUrl = window.location.origin
+		const rows = printableIds.map((id) => {
+			const d = selectedEnclosureData.get(id)
+			if (!d) return ['', '', '', '']
+			return [d.enclosureName, d.commonName, d.scientificName, `${baseUrl}/protected/orgs/${orgId}/enclosures/${id}`]
+		})
+		buildAndDownloadCsv(rows, 'enclosures.csv')
+		markPrintedMutation.mutate({ enclosureIds: printableIds, orgId: orgId as UUID })
+	}
+
+	const exportAllUnprinted = () => {
+		const unprinted = (orgEnclosures ?? []).filter((e) => e.is_active && !e.printed)
+		if (!unprinted.length) {
+			toast.info('All enclosures have already been printed.')
+			return
+		}
+		const baseUrl = window.location.origin
+		const rows = unprinted.map((enc) => {
+			const sp = orgSpeciesById.get(enc.species_id)
+			return [
+				enc.name,
+				sp?.custom_common_name ?? '',
+				sp?.species?.scientific_name ?? '',
+				`${baseUrl}/protected/orgs/${orgId}/enclosures/${enc.id}`
+			]
+		})
+		buildAndDownloadCsv(rows, 'unprinted-enclosures.csv')
+		markPrintedMutation.mutate({ enclosureIds: unprinted.map((e) => e.id), orgId: orgId as UUID })
 	}
 
 	const handleFilterChange = (filter: EnclosureStatusFilter) => {
 		setEnclosureStatusFilter(filter)
+		setSelectMode(false)
 		setSelectedIds(new Set())
+		setSelectedEnclosureData(new Map())
+		setDeleteConfirmOpen(false)
 	}
 
 	const executeSetInactive = () => {
@@ -232,9 +354,30 @@ export default function EnclosureGrid() {
 								<XIcon className='h-3.5 w-3.5' />
 								Cancel
 							</Button>
-							{selectedIds.size > 0 && (
+							{selectedIds.size === 0 ? (
+								<Button
+									size='sm'
+									variant='outline'
+									className='gap-1.5 text-xs'
+									onClick={exportAllUnprinted}
+									disabled={markPrintedMutation.isPending || enclosureStatusFilter === 'inactive'}
+								>
+									<Download className='h-3.5 w-3.5' />
+									Export All Unprinted
+								</Button>
+							) : (
 								<>
 									<span className='text-xs text-muted-foreground'>{selectedIds.size} selected</span>
+									<Button
+										size='sm'
+										variant='outline'
+										className='gap-1.5 text-xs'
+										onClick={exportToCsv}
+										disabled={markPrintedMutation.isPending || enclosureStatusFilter === 'inactive'}
+									>
+										<Download className='h-3.5 w-3.5' />
+										Export Selected
+									</Button>
 									{enclosureStatusFilter === 'inactive' ? (
 										<Button
 											size='sm'
@@ -451,6 +594,7 @@ export default function EnclosureGrid() {
 									selectMode={selectMode}
 									selectedIds={selectedIds}
 									onSelectChange={handleSelectChange}
+									onSelectAll={handleSelectAll}
 								/>
 							</div>
 						</div>
@@ -475,6 +619,7 @@ export default function EnclosureGrid() {
 											selectMode={selectMode}
 											selectedIds={selectedIds}
 											onSelectChange={handleSelectChange}
+											onSelectAll={handleSelectAll}
 										/>
 									</div>
 								)}

@@ -68,6 +68,7 @@ export type Enclosure = {
 	created_at: string
 	location: string
 	current_count: number
+	printed?: boolean
 	locations?: {
 		name: string
 	}
