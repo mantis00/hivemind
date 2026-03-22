@@ -64,7 +64,7 @@ export function ResponsiveDialogDrawer({
 		return (
 			<Dialog open={open} onOpenChange={setOpen}>
 				{trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-				<DialogContent className={cn('sm:max-w-[425px] p-6 rounded-2xl flex flex-col max-h-[85vh]', className)}>
+				<DialogContent className={cn('sm:max-w-106.25 p-6 rounded-2xl flex flex-col max-h-[85vh]', className)}>
 					<DialogHeader>
 						<div className='flex items-center gap-2 pr-6'>
 							<DialogTitle className='flex-1'>{title}</DialogTitle>
@@ -72,7 +72,7 @@ export function ResponsiveDialogDrawer({
 						</div>
 						<DialogDescription>{description}</DialogDescription>
 					</DialogHeader>
-					{children}
+					<div className='min-h-0 flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-2 px-0.5'>{children}</div>
 					{footer && <DialogFooter>{footer}</DialogFooter>}
 				</DialogContent>
 			</Dialog>
@@ -80,9 +80,9 @@ export function ResponsiveDialogDrawer({
 	}
 
 	return (
-		<Drawer open={open} onOpenChange={setOpen}>
+		<Drawer open={open} onOpenChange={setOpen} repositionInputs={false}>
 			{trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
-			<DrawerContent className={cn('w-full px-4 pb-6', className)}>
+			<DrawerContent className={cn('w-full px-4 pb-6', className)} onOverlayClick={() => setOpen?.(false)}>
 				<DrawerHeader className='text-left pt-5 pb-2'>
 					<div className='flex items-center gap-2'>
 						<DrawerTitle className='flex-1'>{title}</DrawerTitle>
@@ -90,7 +90,9 @@ export function ResponsiveDialogDrawer({
 					</div>
 					<DrawerDescription>{description}</DrawerDescription>
 				</DrawerHeader>
-				<div className='overflow-y-auto flex-1 flex flex-col gap-2 scrollbar-hide'>{children}</div>
+				<div className='min-h-0 flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-2 scrollbar-hide px-0.5'>
+					{children}
+				</div>
 				{footer && <DrawerFooter className='px-0'>{footer}</DrawerFooter>}
 			</DrawerContent>
 		</Drawer>

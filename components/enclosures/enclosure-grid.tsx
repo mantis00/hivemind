@@ -1,21 +1,24 @@
 'use client'
 
-import { OrgSpecies, useOrgSpecies } from '@/lib/react-query/queries'
+import { type OrgSpecies, useOrgEnclosures, useOrgSpecies } from '@/lib/react-query/queries'
+import type { Enclosure } from '@/lib/react-query/queries'
 import {
 	ArrowDownIcon,
 	ArrowUpIcon,
+	Download,
 	Edit,
 	ListChecks,
 	LoaderCircle,
 	Menu,
 	Move,
+	Power,
+	PowerOff,
 	PlusIcon,
 	Search,
-	TrashIcon,
 	XIcon
 } from 'lucide-react'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
@@ -29,24 +32,103 @@ import { UUID } from 'crypto'
 import { useIsMobile } from '@/hooks/use-mobile'
 import ManageSpeciesButton from './manage-species-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger
+} from '../ui/dropdown-menu'
 import { EditSpeciesOrgForm } from './edit-species-org'
 import { EnclosureCounts } from './enclosure-counts'
-import { useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
+import {
+	useBatchActivateEnclosures,
+	useBatchDeleteEnclosures,
+	useMarkEnclosuresPrinted
+} from '@/lib/react-query/mutations'
+import { toast } from 'sonner'
+
+type EnclosureExportData = {
+	enclosureName: string
+	commonName: string
+	scientificName: string
+	isActive: boolean
+}
 
 export default function EnclosureGrid() {
+	type EnclosureStatusFilter = 'active' | 'inactive' | 'all'
+
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useOrgSpecies(orgId as UUID)
+	const orgSpeciesById = useMemo(() => new Map((orgSpecies ?? []).map((s) => [s.id, s])), [orgSpecies])
+	const activeOrgSpecies = useMemo(() => (orgSpecies ?? []).filter((s) => s.is_active), [orgSpecies])
 
 	const [searchValue, setSearchValue] = useState('')
-	const [searchCount, setSearchCount] = useState(0)
+	const [appliedSearch, setAppliedSearch] = useState('')
 	const [sortUp, setSortUp] = useState(true)
 	const [isSorted, setIsSorted] = useState(false)
 	const [sortKey, setSortKey] = useState('')
+	const [enclosureStatusFilter, setEnclosureStatusFilter] = useState<EnclosureStatusFilter>('active')
+	const { data: filteredEnclosures } = useOrgEnclosures(orgId as UUID, enclosureStatusFilter)
+	const filteredSpeciesSource = useMemo(() => {
+		const speciesIds = new Set((filteredEnclosures ?? []).map((enc) => enc.species_id))
+		return activeOrgSpecies.filter((s) => speciesIds.has(s.id))
+	}, [activeOrgSpecies, filteredEnclosures])
 
-	const [displayedSpecies, setDisplayedSpecies] = useState<OrgSpecies[]>(orgSpecies ?? [])
-	const [prevOrgSpecies, setPrevOrgSpecies] = useState(orgSpecies)
+	const displayedSpecies = useMemo(() => {
+		const scoreMatch = (str: string | undefined, val: string): number => {
+			if (!str) return -1
+			const s = str.trim().toLowerCase()
+			if (s === val) return 0
+			if (s.startsWith(val)) return 1
+			if (s.includes(val)) return 2
+			return -1
+		}
+
+		let list = filteredSpeciesSource
+
+		if (appliedSearch) {
+			const scored = list.map((spec) => {
+				let score = -1
+				if (sortKey === 'common_name') {
+					score = scoreMatch(spec.custom_common_name, appliedSearch)
+				} else if (sortKey === 'scientific_name') {
+					score = scoreMatch(spec.species?.scientific_name, appliedSearch)
+				} else {
+					const scores = [
+						scoreMatch(spec.custom_common_name, appliedSearch),
+						scoreMatch(spec.species?.scientific_name, appliedSearch)
+					].filter((s) => s >= 0)
+					score = scores.length > 0 ? Math.min(...scores) : -1
+				}
+				return { spec, score }
+			})
+
+			list = scored
+				.filter(({ score }) => score >= 0)
+				.sort((a, b) => a.score - b.score)
+				.map(({ spec }) => spec)
+		}
+
+		if (isSorted) {
+			if (sortKey === 'common_name') {
+				list = [...list].sort((a, b) => (a.custom_common_name ?? '').localeCompare(b.custom_common_name ?? ''))
+			} else if (sortKey === 'scientific_name') {
+				list = [...list].sort((a, b) =>
+					(a.species?.scientific_name ?? '').localeCompare(b.species?.scientific_name ?? '')
+				)
+			}
+
+			if (!sortUp) {
+				list = [...list].toReversed()
+			}
+		}
+
+		return list
+	}, [filteredSpeciesSource, appliedSearch, sortKey, isSorted, sortUp])
+	const searchCount = appliedSearch ? displayedSpecies.length : 0
 	const [itemHeight, setItemHeight] = useState<number>(114)
 	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
 	const [openSpeciesId, setOpenSpeciesId] = useState<UUID | null>(null)
@@ -54,28 +136,154 @@ export default function EnclosureGrid() {
 
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
+	const [selectedEnclosureData, setSelectedEnclosureData] = useState<Map<UUID, EnclosureExportData>>(new Map())
 	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 	const [manageOpen, setManageOpen] = useState(false)
 	const [createOpen, setCreateOpen] = useState(false)
 	const batchDeleteMutation = useBatchDeleteEnclosures()
+	const markPrintedMutation = useMarkEnclosuresPrinted()
+	const { data: orgEnclosures } = useOrgEnclosures(orgId as UUID)
+	const batchActivateMutation = useBatchActivateEnclosures()
 	const isMobile = useIsMobile()
 
-	const handleSelectChange = (enclosureId: UUID, checked: boolean) => {
+	const handleSelectChange = useCallback((enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
 		setSelectedIds((prev) => {
 			const next = new Set(prev)
 			if (checked) next.add(enclosureId)
 			else next.delete(enclosureId)
 			return next
 		})
-	}
+		setSelectedEnclosureData((prev) => {
+			const next = new Map(prev)
+			if (checked && data) next.set(enclosureId, data)
+			else next.delete(enclosureId)
+			return next
+		})
+	}, [])
+
+	const handleSelectAll = useCallback(
+		(enclosures: Enclosure[], select: boolean, species: OrgSpecies) => {
+			setSelectedIds((prev) => {
+				const next = new Set(prev)
+				for (const enc of enclosures) {
+					if (select) next.add(enc.id)
+					else next.delete(enc.id)
+				}
+				return next
+			})
+			setSelectedEnclosureData((prev) => {
+				const next = new Map(prev)
+				for (const enc of enclosures) {
+					if (select) {
+						if (enclosureStatusFilter === 'all' && !enc.is_active) {
+							toast.warning('Inactive enclosures cannot be printed. They can be selected for status updates only.')
+						}
+						next.set(enc.id, {
+							enclosureName: enc.name,
+							commonName: species.custom_common_name,
+							scientificName: species.species?.scientific_name ?? '',
+							isActive: enc.is_active
+						})
+					} else {
+						next.delete(enc.id)
+					}
+				}
+				return next
+			})
+		},
+		[enclosureStatusFilter]
+	)
 
 	const toggleSelectMode = () => {
 		setSelectMode((prev) => !prev)
-		if (selectMode) setSelectedIds(new Set())
+		if (selectMode) {
+			setSelectedIds(new Set())
+			setSelectedEnclosureData(new Map())
+		}
 	}
 
-	const executeDelete = () => {
+	const buildAndDownloadCsv = (rows: string[][], filename: string) => {
+		const headers = ['Enclosure Name', 'Common Name', 'Scientific Name', 'URL']
+		const csvContent = [headers, ...rows]
+			.map((row) => row.map((cell) => `"${(cell ?? '').replace(/"/g, '""')}"`).join(','))
+			.join('\n')
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = filename
+		a.click()
+		URL.revokeObjectURL(url)
+	}
+
+	const exportToCsv = () => {
+		const printableIds = Array.from(selectedIds).filter((id) => {
+			const d = selectedEnclosureData.get(id)
+			return d ? d.isActive : true
+		})
+
+		if (printableIds.length !== selectedIds.size) {
+			toast.warning('Inactive enclosures were excluded from export.')
+		}
+
+		if (!printableIds.length) {
+			toast.info('No active enclosures selected to export.')
+			return
+		}
+
+		const baseUrl = window.location.origin
+		const rows = printableIds.map((id) => {
+			const d = selectedEnclosureData.get(id)
+			if (!d) return ['', '', '', '']
+			return [d.enclosureName, d.commonName, d.scientificName, `${baseUrl}/protected/orgs/${orgId}/enclosures/${id}`]
+		})
+		buildAndDownloadCsv(rows, 'enclosures.csv')
+		markPrintedMutation.mutate({ enclosureIds: printableIds, orgId: orgId as UUID })
+	}
+
+	const exportAllUnprinted = () => {
+		const unprinted = (orgEnclosures ?? []).filter((e) => e.is_active && !e.printed)
+		if (!unprinted.length) {
+			toast.info('All enclosures have already been printed.')
+			return
+		}
+		const baseUrl = window.location.origin
+		const rows = unprinted.map((enc) => {
+			const sp = orgSpeciesById.get(enc.species_id)
+			return [
+				enc.name,
+				sp?.custom_common_name ?? '',
+				sp?.species?.scientific_name ?? '',
+				`${baseUrl}/protected/orgs/${orgId}/enclosures/${enc.id}`
+			]
+		})
+		buildAndDownloadCsv(rows, 'unprinted-enclosures.csv')
+		markPrintedMutation.mutate({ enclosureIds: unprinted.map((e) => e.id), orgId: orgId as UUID })
+	}
+
+	const handleFilterChange = (filter: EnclosureStatusFilter) => {
+		setEnclosureStatusFilter(filter)
+		setSelectMode(false)
+		setSelectedIds(new Set())
+		setSelectedEnclosureData(new Map())
+		setDeleteConfirmOpen(false)
+	}
+
+	const executeSetInactive = () => {
 		batchDeleteMutation.mutate(
+			{ ids: Array.from(selectedIds), orgId: orgId as UUID },
+			{
+				onSuccess: () => {
+					setSelectedIds(new Set())
+					setSelectMode(false)
+					setDeleteConfirmOpen(false)
+				}
+			}
+		)
+	}
+
+	const executeActivate = () => {
+		batchActivateMutation.mutate(
 			{ ids: Array.from(selectedIds), orgId: orgId as UUID },
 			{
 				onSuccess: () => {
@@ -93,16 +301,7 @@ export default function EnclosureGrid() {
 	const measureRef = useRef<HTMLDivElement>(null)
 	const virtuosoRef = useRef<HTMLDivElement>(null)
 
-	// Sync displayedSpecies when the query data changes ("setState during render" pattern)
-	if (prevOrgSpecies !== orgSpecies) {
-		setPrevOrgSpecies(orgSpecies)
-		if (searchValue.trim() === '') {
-			setDisplayedSpecies(orgSpecies ?? [])
-			setSearchCount(0)
-		}
-	}
-
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (measureRef.current) {
 			const height = measureRef.current.getBoundingClientRect().height
 			if (height > 0) {
@@ -121,90 +320,18 @@ export default function EnclosureGrid() {
 		if (!displayedSpecies?.length) return
 
 		if (sortOn === 'sort') {
-			setDisplayedSpecies(orgSpecies ?? [])
 			setIsSorted(false)
 			setSortUp(true)
 			setSortKey('')
 			return
 		}
-		let sorted: OrgSpecies[] = []
-
-		if (sortOn === 'common_name') {
-			sorted = [...displayedSpecies].sort((a, b) => {
-				const na = a.custom_common_name ?? ''
-				const nb = b.custom_common_name ?? ''
-				return na.localeCompare(nb)
-			})
-		} else if (sortOn === 'scientific_name') {
-			sorted = [...displayedSpecies].sort((a, b) => {
-				const na = a.species?.scientific_name ?? ''
-				const nb = b.species?.scientific_name ?? ''
-				return na.localeCompare(nb)
-			})
-		}
-		// else if (sortOn === 'enclosure_count') {
-		//   sorted = [...displayedSpecies].sort((a, b) => {
-		//     const na = a.species?.common_name ?? ''
-		//     const nb = b.species?.common_name ?? ''
-		//     return na.localeCompare(nb)
-		//   })
-		// }
-
-		if (sorted.length > 0) {
-			setDisplayedSpecies(sorted)
-		}
 		setSortKey(sortOn)
 		setIsSorted(true)
 	}
 
-	const handleSearch = async () => {
-		if (!searchValue.length || searchValue.trim() === '') return
-		const val = searchValue.trim().toLowerCase()
-
-		const scoreMatch = (str: string | undefined): number => {
-			if (!str) return -1
-			const s = str.trim().toLowerCase()
-			if (s === val) return 0
-			if (s.startsWith(val)) return 1
-			if (s.includes(val)) return 2
-			return -1
-		}
-
-		const scored = (orgSpecies ?? []).map((spec) => {
-			let score = -1
-			if (sortKey === 'common_name') {
-				score = scoreMatch(spec.custom_common_name)
-			} else if (sortKey === 'scientific_name') {
-				score = scoreMatch(spec.species?.scientific_name)
-			} else {
-				const scores = [scoreMatch(spec.custom_common_name), scoreMatch(spec.species?.scientific_name)].filter(
-					(s) => s >= 0
-				)
-				score = scores.length > 0 ? Math.min(...scores) : -1
-			}
-			return { spec, score }
-		})
-
-		const results = scored
-			.filter(({ score }) => score >= 0)
-			.sort((a, b) => a.score - b.score)
-			.map(({ spec }) => spec)
-
-		setDisplayedSpecies(results)
-		setSearchCount(results.length)
-	}
-
-	const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-		if (event.key === 'Enter') {
-			event.preventDefault()
-			handleSearch()
-		}
-	}
-
 	const handleClearSearch = () => {
 		setSearchValue('')
-		setDisplayedSpecies(orgSpecies ?? [])
-		setSearchCount(0)
+		setAppliedSearch('')
 	}
 
 	// Calculate initial table height based on item count
@@ -227,19 +354,53 @@ export default function EnclosureGrid() {
 								<XIcon className='h-3.5 w-3.5' />
 								Cancel
 							</Button>
-							{selectedIds.size > 0 && (
+							{selectedIds.size === 0 ? (
+								<Button
+									size='sm'
+									variant='outline'
+									className='gap-1.5 text-xs'
+									onClick={exportAllUnprinted}
+									disabled={markPrintedMutation.isPending || enclosureStatusFilter === 'inactive'}
+								>
+									<Download className='h-3.5 w-3.5' />
+									Export All Unprinted
+								</Button>
+							) : (
 								<>
 									<span className='text-xs text-muted-foreground'>{selectedIds.size} selected</span>
 									<Button
 										size='sm'
-										variant='destructive'
+										variant='outline'
 										className='gap-1.5 text-xs'
-										onClick={() => setDeleteConfirmOpen(true)}
-										disabled={batchDeleteMutation.isPending}
+										onClick={exportToCsv}
+										disabled={markPrintedMutation.isPending || enclosureStatusFilter === 'inactive'}
 									>
-										<TrashIcon className='h-3.5 w-3.5' />
-										Delete
+										<Download className='h-3.5 w-3.5' />
+										Export Selected
 									</Button>
+									{enclosureStatusFilter === 'inactive' ? (
+										<Button
+											size='sm'
+											variant='outline'
+											className='gap-1.5 text-xs'
+											onClick={() => setDeleteConfirmOpen(true)}
+											disabled={batchActivateMutation.isPending}
+										>
+											<Power className='h-3.5 w-3.5' />
+											Set Active
+										</Button>
+									) : (
+										<Button
+											size='sm'
+											variant='outline'
+											className='gap-1.5 text-xs'
+											onClick={() => setDeleteConfirmOpen(true)}
+											disabled={batchDeleteMutation.isPending}
+										>
+											<PowerOff className='h-3.5 w-3.5' />
+											Set Inactive
+										</Button>
+									)}
 								</>
 							)}
 						</div>
@@ -253,14 +414,26 @@ export default function EnclosureGrid() {
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align='end'>
-									<DropdownMenuItem onSelect={() => setManageOpen(true)}>
-										<Move className='h-4 w-4' />
-										Manage Species
-									</DropdownMenuItem>
+									<DropdownMenuLabel className='text-muted-foreground'>Enclosure View</DropdownMenuLabel>
 									<DropdownMenuItem onSelect={() => setCreateOpen(true)}>
 										<PlusIcon className='h-4 w-4' />
 										Add Enclosure
 									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => setManageOpen(true)}>
+										<Move className='h-4 w-4' />
+										Manage Species
+									</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									<DropdownMenuLabel className='text-muted-foreground'>Status Filter</DropdownMenuLabel>
+									<DropdownMenuItem onSelect={() => handleFilterChange('active')}>
+										Show Active Enclosures
+									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => handleFilterChange('inactive')}>
+										Show Inactive Enclosures
+									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => handleFilterChange('all')}>Show All Enclosures</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									<DropdownMenuLabel className='text-muted-foreground'>Selection</DropdownMenuLabel>
 									<DropdownMenuItem onSelect={toggleSelectMode}>
 										<ListChecks className='h-4 w-4' />
 										Select
@@ -272,7 +445,13 @@ export default function EnclosureGrid() {
 						</>
 					) : (
 						<>
-							<Button variant='outline' size='sm' onClick={toggleSelectMode} className='gap-1.5'>
+							<Button
+								variant='outline'
+								size='sm'
+								onClick={toggleSelectMode}
+								className='gap-1.5'
+								disabled={enclosureStatusFilter === 'all'}
+							>
 								<ListChecks className='h-4 w-4' />
 								Select
 							</Button>
@@ -284,6 +463,28 @@ export default function EnclosureGrid() {
 
 				{/* Sort and Search */}
 				<div className='w-full py-2 flex flex-row gap-3'>
+					{!isMobile && (
+						<Select
+							onValueChange={(value) => handleFilterChange(value as EnclosureStatusFilter)}
+							value={enclosureStatusFilter}
+							disabled={isLoading}
+						>
+							<SelectTrigger className='w-46'>
+								<SelectValue placeholder='Enclosures' className='flex-1 min-w-0 truncate' />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value='active' className='text-l cursor-pointer'>
+									Active Enclosures
+								</SelectItem>
+								<SelectItem value='inactive' className='text-l cursor-pointer'>
+									Inactive Enclosures
+								</SelectItem>
+								<SelectItem value='all' className='text-l cursor-pointer'>
+									All Enclosures
+								</SelectItem>
+							</SelectContent>
+						</Select>
+					)}
 					<Select onValueChange={handleSortChange} value={sortKey} disabled={isLoading}>
 						<SelectTrigger className='w-45'>
 							<SelectValue placeholder='Sort' className='flex-1 min-w-0 truncate' />
@@ -320,25 +521,22 @@ export default function EnclosureGrid() {
 						onClick={() => {
 							const newSortUp = !sortUp
 							setSortUp(newSortUp)
-							if (displayedSpecies?.length > 0) {
-								setDisplayedSpecies([...displayedSpecies].toReversed())
-							}
 						}}
 						disabled={isLoading || !isSorted}
 					>
 						{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
 					</Button>
-					<InputGroup className='w-40 sm:w-60 ml-auto' onKeyDown={handleKeyDown}>
+					<InputGroup className='w-40 sm:w-60 ml-auto'>
+						<InputGroupAddon>
+							<Search className='h-4 w-4 text-muted-foreground' />
+						</InputGroupAddon>
 						<InputGroupInput
 							placeholder='Search...'
 							value={searchValue}
 							onChange={(e) => {
 								const val = e.target.value
 								setSearchValue(val)
-								if (val.trim() === '') {
-									setDisplayedSpecies(orgSpecies ?? [])
-									setSearchCount(0)
-								}
+								setAppliedSearch(val.trim().toLowerCase())
 							}}
 						/>
 						{searchValue && (
@@ -351,14 +549,11 @@ export default function EnclosureGrid() {
 								</InputGroupButton>
 							</InputGroupAddon>
 						)}
-						<InputGroupAddon>
-							<InputGroupButton onClick={handleSearch} disabled={isLoading}>
-								<Search />
-							</InputGroupButton>
-						</InputGroupAddon>
-						<InputGroupAddon className='hidden sm:block' align='inline-end'>
-							{searchCount > 0 ? searchCount + ' Results' : ''}{' '}
-						</InputGroupAddon>
+						{searchCount > 0 && (
+							<InputGroupAddon align='inline-end' className='hidden sm:block pr-2 text-xs text-muted-foreground'>
+								{searchCount} Results
+							</InputGroupAddon>
+						)}
 					</InputGroup>
 				</div>
 
@@ -395,9 +590,11 @@ export default function EnclosureGrid() {
 									species={displayedSpecies[0]}
 									onDetailsOpenChange={() => {}}
 									sortKey={sortKey}
+									enclosureStatusFilter={enclosureStatusFilter}
 									selectMode={selectMode}
 									selectedIds={selectedIds}
 									onSelectChange={handleSelectChange}
+									onSelectAll={handleSelectAll}
 								/>
 							</div>
 						</div>
@@ -418,9 +615,11 @@ export default function EnclosureGrid() {
 												setOpenSpeciesId(sp.id)
 											}}
 											sortKey={sortKey}
+											enclosureStatusFilter={enclosureStatusFilter}
 											selectMode={selectMode}
 											selectedIds={selectedIds}
 											onSelectChange={handleSelectChange}
+											onSelectAll={handleSelectAll}
 										/>
 									</div>
 								)}
@@ -497,16 +696,26 @@ export default function EnclosureGrid() {
 			)}
 
 			<ResponsiveDialogDrawer
-				title='Delete Enclosures'
-				description={`Are you sure you want to delete ${selectedIds.size} enclosure${selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.`}
+				title={enclosureStatusFilter === 'inactive' ? 'Activate Enclosures' : 'Set Enclosures Inactive'}
+				description={
+					enclosureStatusFilter === 'inactive'
+						? `Set ${selectedIds.size} enclosure${selectedIds.size !== 1 ? 's' : ''} to active?`
+						: `Set ${selectedIds.size} enclosure${selectedIds.size !== 1 ? 's' : ''} to inactive? They will be hidden from active views but their data will be preserved.`
+				}
 				trigger={null}
 				open={deleteConfirmOpen}
 				onOpenChange={setDeleteConfirmOpen}
 			>
-				<div className='flex flex-col gap-3 px-4 pb-4'>
-					<Button variant='destructive' disabled={batchDeleteMutation.isPending} onClick={executeDelete}>
-						{batchDeleteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm Delete'}
-					</Button>
+				<div className='flex flex-col gap-3'>
+					{enclosureStatusFilter === 'inactive' ? (
+						<Button disabled={batchActivateMutation.isPending} onClick={executeActivate}>
+							{batchActivateMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Set Active'}
+						</Button>
+					) : (
+						<Button disabled={batchDeleteMutation.isPending} onClick={executeSetInactive}>
+							{batchDeleteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Set Inactive'}
+						</Button>
+					)}
 					<Button
 						variant='outline'
 						onClick={() => setDeleteConfirmOpen(false)}

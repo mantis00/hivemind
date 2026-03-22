@@ -93,8 +93,31 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 			open={open}
 			onOpenChange={handleOpenChange}
 			trigger={<span className='hidden' />}
+			footer={
+				<div className='flex flex-col gap-2 w-full'>
+					<Button type='submit' form='edit-species-form' disabled={isPending}>
+						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
+					</Button>
+					<div className='flex gap-2'>
+						<Button
+							type='button'
+							variant='outline'
+							onClick={() => handleOpenChange(false)}
+							disabled={isPending}
+							className='flex-1'
+						>
+							Cancel
+						</Button>
+						<DeleteSpeciesButton species_id={species.id} onDeleted={() => handleOpenChange(false)} />
+					</div>
+				</div>
+			}
 		>
-			<form onSubmit={handleSubmit} className='flex flex-col gap-4 overflow-y-auto px-1'>
+			<form
+				id='edit-species-form'
+				onSubmit={handleSubmit}
+				className='overflow-y-auto flex-1 min-h-0 flex flex-col gap-4 px-1'
+			>
 				{/* Current image */}
 				{species.picture_url && !previewUrl && (
 					<div className='flex flex-col gap-1.5'>
@@ -148,25 +171,6 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 							rows={4}
 							placeholder='Enter care instructions…'
 						/>
-					</div>
-				</div>
-
-				<div className='flex flex-col gap-2'>
-					<Button type='submit' disabled={isPending}>
-						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
-					</Button>
-
-					<div className='flex gap-2'>
-						<Button
-							type='button'
-							variant='outline'
-							onClick={() => handleOpenChange(false)}
-							disabled={isPending}
-							className='flex-1'
-						>
-							Cancel
-						</Button>
-						<DeleteSpeciesButton species_id={species.id} onDeleted={() => handleOpenChange(false)} />
 					</div>
 				</div>
 			</form>

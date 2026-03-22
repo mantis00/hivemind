@@ -35,14 +35,16 @@ export function useCreateOrg() {
 			}
 
 			// Add all other existing superadmins to the org
-			const { data: superadmins } = await supabase
+			const { data: superadmins, error: superadminsError } = await supabase
 				.from('profiles')
 				.select('id')
 				.eq('is_superadmin', true)
 				.neq('id', userId)
 
+			if (superadminsError) throw superadminsError
+
 			if (superadmins && superadmins.length > 0) {
-				await supabase.from('user_org_role').upsert(
+				const { error: upsertError } = await supabase.from('user_org_role').upsert(
 					superadmins.map((s) => ({
 						user_id: s.id,
 						org_id: org.org_id,
@@ -50,6 +52,7 @@ export function useCreateOrg() {
 					})),
 					{ onConflict: 'user_id,org_id' }
 				)
+				if (upsertError) throw upsertError
 			}
 		},
 		onSuccess: (data, variables) => {
@@ -393,34 +396,9 @@ export function useCreateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosureCount', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure created!')
-		}
-	})
-}
-
-export function useDeleteEnclosure() {
-	const queryClient = useQueryClient()
-
-	return useMutation({
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		mutationFn: async ({ id, orgId }: { id: UUID; orgId: UUID }) => {
-			const supabase = createClient()
-
-			// Delete user_org_role relationships
-			const { error: enclosureRelationError } = await supabase.from('tasks').delete().eq('enclosure_id', id)
-			if (enclosureRelationError) throw enclosureRelationError
-
-			const { error: enclosureNoteRelationError } = await supabase.from('tank_notes').delete().eq('enclosure_id', id)
-			if (enclosureNoteRelationError) throw enclosureNoteRelationError
-
-			// Delete the organization
-			const { error: enclosureError } = await supabase.from('enclosures').delete().eq('id', id)
-			if (enclosureError) throw enclosureError
-		},
-		onSuccess: (data, variables) => {
-			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
-			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
-			toast.success('Enclosure deleted.')
 		}
 	})
 }
@@ -432,22 +410,46 @@ export function useBatchDeleteEnclosures() {
 		mutationFn: async ({ ids }: { ids: UUID[]; orgId: UUID }) => {
 			const supabase = createClient()
 
-			// Delete tasks for all enclosures
-			const { error: tasksError } = await supabase.from('tasks').delete().in('enclosure_id', ids)
-			if (tasksError) throw tasksError
+			const { error } = await supabase.from('enclosures').update({ is_active: false }).in('id', ids)
+			if (error) throw error
 
-			// Delete tank notes for all enclosures
-			const { error: notesError } = await supabase.from('tank_notes').delete().in('enclosure_id', ids)
-			if (notesError) throw notesError
-
-			// Delete all enclosures
-			const { error: enclosuresError } = await supabase.from('enclosures').delete().in('id', ids)
-			if (enclosuresError) throw enclosuresError
+			const { error: scheduleError } = await supabase
+				.from('enclosure_schedules')
+				.update({ is_active: false })
+				.in('enclosure_id', ids)
+			if (scheduleError) throw scheduleError
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
-			toast.success('Enclosures deleted.')
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success('Enclosures set to inactive.')
+		}
+	})
+}
+
+export function useBatchActivateEnclosures() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ ids }: { ids: UUID[]; orgId: UUID }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase.from('enclosures').update({ is_active: true }).in('id', ids)
+			if (error) throw error
+
+			const { error: scheduleError } = await supabase
+				.from('enclosure_schedules')
+				.update({ is_active: true })
+				.in('enclosure_id', ids)
+			if (scheduleError) throw scheduleError
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success('Enclosures set to active.')
 		}
 	})
 }
@@ -496,19 +498,21 @@ export function useUpdateEnclosure() {
 			enclosure_id,
 			species_id,
 			location_id,
-			count
+			count,
+			is_active
 		}: {
 			orgId: UUID
 			enclosure_id: UUID
 			species_id: UUID
 			location_id: UUID
 			count: number
+			is_active: boolean
 		}) => {
 			const supabase = createClient()
 
 			const { error } = await supabase
 				.from('enclosures')
-				.update({ species_id: species_id, location: location_id, current_count: count })
+				.update({ species_id: species_id, location: location_id, current_count: count, is_active })
 				.eq('id', enclosure_id)
 
 			if (error) throw error
@@ -516,6 +520,32 @@ export function useUpdateEnclosure() {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success('Enclosure updated!')
+		}
+	})
+}
+
+export function useUpdateEnclosureActive() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ enclosure_id, is_active }: { orgId: UUID; enclosure_id: UUID; is_active: boolean }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase.from('enclosures').update({ is_active }).eq('id', enclosure_id)
+			if (error) throw error
+
+			const { error: scheduleError } = await supabase
+				.from('enclosure_schedules')
+				.update({ is_active })
+				.eq('enclosure_id', enclosure_id)
+			if (scheduleError) throw scheduleError
+		},
+		onSuccess: (data, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			toast.success('Enclosure updated!')
 		}
 	})
@@ -784,6 +814,7 @@ export function useCreateTaskTemplate() {
 				type: string
 				required: boolean
 				choices: string[]
+				order: number
 			}[]
 		}) => {
 			const supabase = createClient()
@@ -803,7 +834,8 @@ export function useCreateTaskTemplate() {
 					label: f.label,
 					type: f.type,
 					required: f.required,
-					choices: f.choices.length > 0 ? f.choices : null
+					choices: f.choices.length > 0 ? f.choices : null,
+					order: f.order
 				}))
 			)
 
@@ -834,76 +866,136 @@ export function useUpdateTaskTemplate() {
 			type: string
 			description: string
 			fields: {
+				dbId?: string
 				question_key: string
 				label: string
 				type: string
 				required: boolean
 				choices: string[]
+				order: number
 			}[]
 		}) => {
 			const supabase = createClient()
 
+			// Update template metadata
 			const { error: templateError } = await supabase
 				.from('task_templates')
 				.update({ type, description: description || null })
 				.eq('id', templateId)
-
 			if (templateError) throw templateError
 
-			// Replace all question_templates: delete existing then re-insert
-			const { error: deleteError } = await supabase
+			// Fetch current question IDs for this template
+			const { data: currentQuestions, error: fetchError } = await supabase
 				.from('question_templates')
-				.delete()
+				.select('id')
 				.eq('task_template_id', templateId)
+			if (fetchError) throw fetchError
 
-			if (deleteError) throw deleteError
+			const currentIds = new Set((currentQuestions ?? []).map((q) => q.id as string))
+			const keptDbIds = new Set(fields.filter((f) => f.dbId).map((f) => f.dbId as string))
+			const removedIds = [...currentIds].filter((id) => !keptDbIds.has(id))
 
-			const { error: insertError } = await supabase.from('question_templates').insert(
-				fields.map((f) => ({
-					task_template_id: templateId,
-					question_key: f.question_key,
-					label: f.label,
-					type: f.type,
-					required: f.required,
-					choices: f.choices.length > 0 ? f.choices : null
-				}))
-			)
+			// Handle removed questions — delete unreferenced ones, orphan referenced ones
+			if (removedIds.length > 0) {
+				const { data: referenced } = await supabase
+					.from('task_form_data')
+					.select('question_id')
+					.in('question_id', removedIds)
+				const referencedIds = new Set((referenced ?? []).map((r) => r.question_id as string))
 
-			if (insertError) throw insertError
+				// Safe to fully delete — no past answers reference them
+				const safeToDelete = removedIds.filter((id) => !referencedIds.has(id))
+				if (safeToDelete.length > 0) {
+					const { error } = await supabase.from('question_templates').delete().in('id', safeToDelete)
+					if (error) throw error
+				}
+
+				// Referenced by past answers — null out task_template_id so they're orphaned
+				// from the template (won't appear in new tasks) but still satisfy the FK
+				const mustOrphan = removedIds.filter((id) => referencedIds.has(id))
+				if (mustOrphan.length > 0) {
+					const { error } = await supabase
+						.from('question_templates')
+						.update({ task_template_id: null })
+						.in('id', mustOrphan)
+					if (error) throw error
+				}
+			}
+
+			// UPDATE existing questions (preserves their IDs so task_form_data FKs remain valid)
+			const existingFields = fields.filter((f) => f.dbId)
+			for (const f of existingFields) {
+				const { error } = await supabase
+					.from('question_templates')
+					.update({
+						question_key: f.question_key,
+						label: f.label,
+						type: f.type,
+						required: f.required,
+						choices: f.choices.length > 0 ? f.choices : null,
+						order: f.order
+					})
+					.eq('id', f.dbId!)
+				if (error) throw error
+			}
+
+			// INSERT truly new questions
+			const newFields = fields.filter((f) => !f.dbId)
+			if (newFields.length > 0) {
+				const { error } = await supabase.from('question_templates').insert(
+					newFields.map((f) => ({
+						task_template_id: templateId,
+						question_key: f.question_key,
+						label: f.label,
+						type: f.type,
+						required: f.required,
+						choices: f.choices.length > 0 ? f.choices : null
+					}))
+				)
+				if (error) throw error
+			}
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
+			queryClient.invalidateQueries({ queryKey: ['taskTemplateById'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById'] })
 			queryClient.invalidateQueries({ queryKey: ['taskTemplatesForOrgSpecies'] })
 			toast.success('Template updated!')
 		}
 	})
 }
 
-export function useDeleteTaskTemplate() {
+export function useToggleTaskTemplate() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ templateId }: { templateId: UUID; speciesId: UUID }) => {
+		mutationFn: async ({ templateId, is_active }: { templateId: UUID; speciesId: UUID; is_active: boolean }) => {
 			const supabase = createClient()
 
-			const { error: deleteQuestionsError } = await supabase
-				.from('question_templates')
-				.delete()
-				.eq('task_template_id', templateId)
-
-			if (deleteQuestionsError) throw deleteQuestionsError
-
-			const { error } = await supabase.from('task_templates').delete().eq('id', templateId)
+			const { error } = await supabase.from('task_templates').update({ is_active }).eq('id', templateId)
 			if (error) throw error
+
+			// When disabling a template, also disable any schedules that reference it
+			if (!is_active) {
+				const { error: scheduleError } = await supabase
+					.from('enclosure_schedules')
+					.update({ is_active: false })
+					.eq('template_id', templateId)
+					.eq('is_active', true)
+				if (scheduleError) throw scheduleError
+			}
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['taskTemplates', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['usedTaskTypes', variables.speciesId] })
 			queryClient.invalidateQueries({ queryKey: ['allTaskTypes'] })
 			queryClient.invalidateQueries({ queryKey: ['taskTemplatesForOrgSpecies'] })
-			toast.success('Template deleted!')
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success(variables.is_active ? 'Template enabled!' : 'Template disabled!')
 		}
 	})
 }
@@ -956,6 +1048,7 @@ export function useCompleteTask() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 		}
 	})
 }
@@ -1007,6 +1100,7 @@ export function useCreateTask() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Task created!')
 		}
 	})
@@ -1026,8 +1120,10 @@ export function useCreateSchedule() {
 			assigned_to,
 			priority,
 			time_window,
+			start_date,
 			end_date,
-			max_occurrences
+			max_occurrences,
+			advance_task_count
 		}: {
 			enclosure_id: UUID
 			template_id: UUID | null
@@ -1038,8 +1134,10 @@ export function useCreateSchedule() {
 			assigned_to: UUID | null
 			priority: string
 			time_window: string
+			start_date?: string
 			end_date: string | null
 			max_occurrences: number | null
+			advance_task_count?: number
 		}) => {
 			const supabase = createClient()
 
@@ -1055,8 +1153,10 @@ export function useCreateSchedule() {
 					assigned_to,
 					priority,
 					time_window,
+					start_date,
 					end_date,
 					max_occurrences,
+					advance_task_count,
 					is_active: true
 				})
 				.select()
@@ -1066,8 +1166,10 @@ export function useCreateSchedule() {
 			return data
 		},
 		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Recurring schedule created!')
 		}
 	})
@@ -1117,7 +1219,60 @@ export function useSubmitTaskForm() {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Task completed!')
+		}
+	})
+}
+
+export function useResubmitTaskForm() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			task_id,
+			user_id,
+			answers
+		}: {
+			task_id: UUID
+			user_id: UUID
+			answers: { question_id: UUID; answer: string }[]
+		}) => {
+			const supabase = createClient()
+
+			// Delete existing form data for this task
+			const { error: deleteError } = await supabase.from('task_form_data').delete().eq('task_id', task_id)
+			if (deleteError) throw deleteError
+
+			// Re-insert updated answers
+			if (answers.length > 0) {
+				const { error: formError } = await supabase.from('task_form_data').insert(
+					answers.map((a) => ({
+						task_id,
+						question_id: a.question_id,
+						answer: a.answer
+					}))
+				)
+				if (formError) throw formError
+			}
+
+			// Update completed_time to now
+			const { error: taskError } = await supabase
+				.from('tasks')
+				.update({
+					completed_time: new Date().toISOString(),
+					completed_by: user_id
+				})
+				.eq('id', task_id)
+			if (taskError) throw taskError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
+			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success('Submission updated!')
 		}
 	})
 }
@@ -1357,61 +1512,96 @@ export function useAddBatchSpeciesToOrg() {
 			if (fetchError) throw fetchError
 			if (!data || data.length === 0) throw new Error('No species found')
 
-			// Insert one org_species row per species
-			const rows = data.map((s) => ({
-				org_id,
-				master_species_id: s.id,
-				custom_common_name: s.common_name,
-				custom_care_instructions: s.care_instructions
-			}))
+			// Find existing org_species rows so we can reactivate without relying on DB unique constraints.
+			const { data: existingOrgSpecies, error: existingError } = await supabase
+				.from('org_species')
+				.select('id, master_species_id, is_active')
+				.eq('org_id', org_id)
+				.in('master_species_id', species_ids)
 
-			const { error } = await supabase.from('org_species').insert(rows)
-			if (error) throw error
+			if (existingError) throw existingError
+
+			const existingMasterIds = new Set((existingOrgSpecies ?? []).map((row) => row.master_species_id))
+			const idsToReactivate = (existingOrgSpecies ?? []).filter((row) => row.is_active === false).map((row) => row.id)
+
+			if (idsToReactivate.length > 0) {
+				const { error: reactivateError } = await supabase
+					.from('org_species')
+					.update({ is_active: true })
+					.eq('org_id', org_id)
+					.in('id', idsToReactivate)
+
+				if (reactivateError) throw reactivateError
+
+				const { error: enclosureReactivateError } = await supabase
+					.from('enclosures')
+					.update({ is_active: true })
+					.eq('org_id', org_id)
+					.in('species_id', idsToReactivate)
+				if (enclosureReactivateError) throw enclosureReactivateError
+			}
+
+			// Insert only species that do not already exist for this org.
+			const rowsToInsert = data
+				.filter((s) => !existingMasterIds.has(s.id))
+				.map((s) => ({
+					org_id,
+					master_species_id: s.id,
+					custom_common_name: s.common_name,
+					custom_care_instructions: s.care_instructions,
+					is_active: true
+				}))
+
+			if (rowsToInsert.length > 0) {
+				const { error: insertError } = await supabase.from('org_species').insert(rowsToInsert)
+				if (insertError) throw insertError
+			}
 		},
 		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.org_id] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.org_id] })
 			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.org_id] })
 			queryClient.invalidateQueries({ queryKey: ['species'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Species added to organization!')
 		}
 	})
 }
 
-export function useDeleteSpeciesFromOrg() {
+export function useDeactivateOrgSpecies() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
 		mutationFn: async ({ species_id, orgId }: { species_id: UUID; orgId: UUID }) => {
 			const supabase = createClient()
 
-			// Get all enclosures for this species in the org
-			const { data: enclosures, error: enclosuresError } = await supabase
+			const { data: enclosures, error: enclosureFetchError } = await supabase
 				.from('enclosures')
 				.select('id')
-				.eq('species_id', species_id)
 				.eq('org_id', orgId)
+				.eq('species_id', species_id)
+			if (enclosureFetchError) throw enclosureFetchError
 
-			if (enclosuresError) throw enclosuresError
+			const enclosureIds = (enclosures ?? []).map((row) => row.id as UUID)
 
-			const enclosure_ids = enclosures?.map((e) => e.id) || []
+			if (enclosureIds.length > 0) {
+				const { error: enclosureUpdateError } = await supabase
+					.from('enclosures')
+					.update({ is_active: false })
+					.in('id', enclosureIds)
+				if (enclosureUpdateError) throw enclosureUpdateError
 
-			// Delete tasks for all enclosures
-			if (enclosure_ids.length > 0) {
-				const { error: tasksError } = await supabase.from('tasks').delete().in('enclosure_id', enclosure_ids)
-				if (tasksError) throw tasksError
-
-				// Delete tank notes for all enclosures
-				const { error: notesError } = await supabase.from('tank_notes').delete().in('enclosure_id', enclosure_ids)
-				if (notesError) throw notesError
-
-				// Delete all enclosures
-				const { error: deleteError } = await supabase.from('enclosures').delete().in('id', enclosure_ids)
-				if (deleteError) throw deleteError
+				const { error: scheduleUpdateError } = await supabase
+					.from('enclosure_schedules')
+					.update({ is_active: false })
+					.in('enclosure_id', enclosureIds)
+				if (scheduleUpdateError) throw scheduleUpdateError
 			}
 
-			// Delete the species from org
+			// Soft-delete the species from org
 			const { error: speciesError } = await supabase
 				.from('org_species')
-				.delete()
+				.update({ is_active: false })
 				.eq('id', species_id)
 				.eq('org_id', orgId)
 			if (speciesError) throw speciesError
@@ -1419,48 +1609,48 @@ export function useDeleteSpeciesFromOrg() {
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Species removed from organization')
 		}
 	})
 }
 
-export function useDeleteBatchSpeciesFromOrg() {
+export function useDeactivateBatchOrgSpecies() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
 		mutationFn: async ({ species_ids, orgId }: { species_ids: UUID[]; orgId: UUID }) => {
 			const supabase = createClient()
 
-			// Get all enclosures for these species in the org
-			const { data: enclosures, error: enclosuresError } = await supabase
+			const { data: enclosures, error: enclosureFetchError } = await supabase
 				.from('enclosures')
 				.select('id')
-				.in('species_id', species_ids)
 				.eq('org_id', orgId)
+				.in('species_id', species_ids)
+			if (enclosureFetchError) throw enclosureFetchError
 
-			if (enclosuresError) throw enclosuresError
+			const enclosureIds = (enclosures ?? []).map((row) => row.id as UUID)
 
-			const enclosure_ids = enclosures?.map((e) => e.id) || []
+			if (enclosureIds.length > 0) {
+				const { error: enclosureUpdateError } = await supabase
+					.from('enclosures')
+					.update({ is_active: false })
+					.in('id', enclosureIds)
+				if (enclosureUpdateError) throw enclosureUpdateError
 
-			if (enclosure_ids.length > 0) {
-				// Delete tasks for all enclosures
-				const { error: tasksError } = await supabase.from('tasks').delete().in('enclosure_id', enclosure_ids)
-				if (tasksError) throw tasksError
-
-				// Delete tank notes for all enclosures
-				const { error: notesError } = await supabase.from('tank_notes').delete().in('enclosure_id', enclosure_ids)
-				if (notesError) throw notesError
-
-				// Delete all enclosures
-				const { error: deleteEnclosuresError } = await supabase.from('enclosures').delete().in('id', enclosure_ids)
-				if (deleteEnclosuresError) throw deleteEnclosuresError
+				const { error: scheduleUpdateError } = await supabase
+					.from('enclosure_schedules')
+					.update({ is_active: false })
+					.in('enclosure_id', enclosureIds)
+				if (scheduleUpdateError) throw scheduleUpdateError
 			}
 
-			// Delete all org_species records
+			// Soft-delete org_species records
 			const { error: speciesError } = await supabase
 				.from('org_species')
-				.delete()
+				.update({ is_active: false })
 				.in('id', species_ids)
 				.eq('org_id', orgId)
 			if (speciesError) throw speciesError
@@ -1468,7 +1658,9 @@ export function useDeleteBatchSpeciesFromOrg() {
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['orgSpecies', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Removed species from organization')
 		}
 	})
@@ -1518,12 +1710,89 @@ export function useToggleScheduleActive() {
 	return useMutation({
 		mutationFn: async ({ scheduleId, is_active }: { scheduleId: UUID; is_active: boolean }) => {
 			const supabase = createClient()
+
+			// When re-enabling, check if the linked template is still active
+			if (is_active) {
+				const { data: schedule, error: scheduleError } = await supabase
+					.from('enclosure_schedules')
+					.select('template_id')
+					.eq('id', scheduleId)
+					.single()
+				if (scheduleError) throw scheduleError
+
+				if (schedule.template_id) {
+					const { data: template, error: templateError } = await supabase
+						.from('task_templates')
+						.select('is_active')
+						.eq('id', schedule.template_id)
+						.single()
+					if (templateError) throw templateError
+
+					if (!template.is_active) {
+						throw new Error(
+							'A superadmin has disabled the task template for this schedule. It cannot be re-enabled until the template is re-enabled.'
+						)
+					}
+				}
+			}
+
 			const { error } = await supabase.from('enclosure_schedules').update({ is_active }).eq('id', scheduleId)
 			if (error) throw error
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
 			toast.success(variables.is_active ? 'Schedule activated!' : 'Schedule paused!')
+		}
+	})
+}
+
+export function useUpdateSchedule() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			scheduleId,
+			task_name,
+			task_description,
+			time_window,
+			priority,
+			max_occurrences,
+			end_date,
+			schedule_rule,
+			advance_task_count
+		}: {
+			scheduleId: UUID
+			task_name: string | null
+			task_description: string | null
+			time_window: string | null
+			priority: string | null
+			max_occurrences: number | null
+			end_date: string | null
+			schedule_rule: string
+			advance_task_count: number
+		}) => {
+			const supabase = createClient()
+			const { error } = await supabase
+				.from('enclosure_schedules')
+				.update({
+					task_name,
+					task_description,
+					time_window,
+					priority,
+					max_occurrences,
+					end_date,
+					schedule_rule,
+					advance_task_count
+				})
+				.eq('id', scheduleId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success('Schedule updated!')
 		}
 	})
 }
@@ -1569,6 +1838,7 @@ export function useReassignTask() {
 	return useMutation({
 		mutationFn: async ({ taskId, memberId }: { taskId: UUID; memberId: UUID | null }) => {
 			const supabase = createClient()
+
 			const { error } = await supabase.from('tasks').update({ assigned_to: memberId }).eq('id', taskId)
 			if (error) throw error
 		},
@@ -1577,6 +1847,53 @@ export function useReassignTask() {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['taskById'] })
 			toast.success('Task reassigned!')
+		}
+	})
+}
+
+export function useChangeOrgName() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ org_id, new_name }: { org_id: UUID; new_name: string }) => {
+			const supabase = createClient()
+
+			if (!new_name.trim()) {
+				throw new Error('New name cannot be empty!')
+			}
+
+			const { error } = await supabase
+				.from('orgs')
+				.update({
+					name: new_name
+				})
+				.eq('org_id', org_id)
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
+			queryClient.invalidateQueries({ queryKey: ['orgDetails', variables.org_id] })
+			queryClient.invalidateQueries({ queryKey: ['invites'] })
+			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
+			toast.success('Org name changed!')
+		}
+	})
+}
+
+export function useDeleteTask() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ taskId }: { taskId: UUID }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			toast.success('Task deleted!')
 		}
 	})
 }
@@ -1681,6 +1998,24 @@ export function useUnsubscribeFromPush() {
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['pushSubscriptions', variables.userId] })
 			toast.success('Unsubscribed from push notifications.')
+		}
+	})
+}
+
+export function useMarkEnclosuresPrinted() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ enclosureIds }: { orgId: UUID; enclosureIds: UUID[] }) => {
+			const supabase = createClient()
+
+			const { error } = await supabase.from('enclosures').update({ printed: true }).in('id', enclosureIds)
+
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			toast.success('Enclosures marked as printed.')
 		}
 	})
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useDeleteSpeciesFromOrg } from '@/lib/react-query/mutations'
+import { useDeactivateOrgSpecies } from '@/lib/react-query/mutations'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, TrashIcon } from 'lucide-react'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
@@ -10,7 +10,7 @@ import { useParams } from 'next/navigation'
 
 export function DeleteSpeciesOrgButton({ species_id, onDeleted }: { species_id: UUID; onDeleted?: () => void }) {
 	const [open, setOpen] = useState(false)
-	const deleteSpecies = useDeleteSpeciesFromOrg()
+	const deleteSpecies = useDeactivateOrgSpecies()
 	const params = useParams()
 	const orgId = params?.orgId
 

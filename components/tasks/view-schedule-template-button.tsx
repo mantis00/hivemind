@@ -103,7 +103,7 @@ export function ViewScheduleTemplateButton({ templateId, taskName }: ViewSchedul
 const TYPE_LABELS: Record<string, string> = {
 	text: 'Text',
 	number: 'Number',
-	boolean: 'Checkbox (Yes / No)',
+	boolean: 'Boolean (Yes / No)',
 	select: 'Select / Dropdown'
 }
 

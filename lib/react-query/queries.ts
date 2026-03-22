@@ -3,6 +3,18 @@ import { createClient } from '@/lib/supabase/client'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { UUID } from 'crypto'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
+import {
+	DASHBOARD_MAX_AT_RISK_ITEMS,
+	DASHBOARD_MAX_RECENT_ACTIVITY_ITEMS,
+	compareIsoDatesDesc,
+	compareNullableIsoDatesAsc,
+	getCompletionStateLabels,
+	getDashboardTaskEnclosure,
+	getServerDayBounds,
+	getTaskTitle,
+	isHighPriority,
+	isValidDate
+} from '@/components/features/dashboard/dashboard-helpers'
 
 export type Org = {
 	org_id: UUID
@@ -51,10 +63,12 @@ export type Enclosure = {
 	id: UUID
 	org_id: UUID
 	species_id: UUID
+	is_active: boolean
 	name: string
 	created_at: string
 	location: string
 	current_count: number
+	printed?: boolean
 	locations?: {
 		name: string
 	}
@@ -73,6 +87,7 @@ export type Species = {
 export type OrgSpecies = {
 	id: UUID
 	created_at: string
+	is_active: boolean
 	custom_common_name: string
 	custom_care_instructions: string
 	master_species_id: UUID
@@ -166,9 +181,11 @@ export type EnclosureSchedule = {
 	task_description: string | null
 	priority: 'low' | 'medium' | 'high' | null
 	assigned_to: UUID | null
+	start_date: string | null
 	end_date: string | null
 	max_occurrences: number | null
 	occurrence_count: number
+	advance_task_count: number
 }
 
 export type TaskFormData = {
@@ -188,6 +205,7 @@ export type QuestionTemplate = {
 	required: boolean
 	choices: string[] | null
 	created_at: string
+	order: number
 }
 
 export type TaskTemplate = {
@@ -196,6 +214,7 @@ export type TaskTemplate = {
 	type: string
 	description: string | null
 	created_at: string
+	is_active: boolean
 	question_templates?: QuestionTemplate[]
 }
 
@@ -226,6 +245,70 @@ export type SpeciesRequest = {
 	reviewed_at?: string
 }
 
+export type DashboardKpis = {
+	activeEnclosures: number
+	tasksDueToday: number
+	upcomingTasks: number
+	alerts: number
+}
+
+export type AtRiskEnclosureSummary = {
+	enclosureId: string
+	enclosureName: string
+	overdueCount: number
+	highPriorityCount: number
+	nextDueAt: string | null
+}
+
+export type UpcomingScheduleItem = {
+	taskId: string
+	enclosureId: string
+	enclosureName: string
+	taskTitle: string
+	dueAt: string | null
+	priority: string | null
+}
+
+export type RecentActivityItem = {
+	id: string
+	type: 'task_completed' | 'task_created' | 'note_added' | 'enclosure_created' | 'invite_sent'
+	label: string
+	occurredAt: string
+	href: string
+}
+
+export type DashboardWarning = {
+	stage: string
+	message: string
+}
+
+export type DashboardData = {
+	generatedAt: string
+	timeZone: string
+	kpis: DashboardKpis
+	atRiskEnclosures: AtRiskEnclosureSummary[]
+	upcomingSchedule: UpcomingScheduleItem[]
+	recentActivity: RecentActivityItem[]
+	warnings: DashboardWarning[]
+}
+
+export type DashboardAtRiskData = {
+	items: AtRiskEnclosureSummary[]
+	attentionNeededCount: number
+}
+
+type DashboardTaskRow = {
+	id: UUID
+	enclosure_id: UUID | null
+	name: string | null
+	description: string | null
+	due_date: string | null
+	priority: string | null
+	status: string | null
+	completed_time: string | null
+	enclosures: { id: UUID; name: string | null } | { id: UUID; name: string | null }[] | null
+}
+
 export type PushSubscription = {
 	id: UUID
 	user_id: string
@@ -240,7 +323,7 @@ export type PushSubscription = {
 
 export function useUserOrgs(userId: string) {
 	return useQuery({
-		queryKey: ['orgs', userId],
+		queryKey: ['orgs'],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
@@ -376,20 +459,38 @@ export function useOrgDetails(orgId: UUID) {
 	})
 }
 
-export function useOrgEnclosures(orgId: UUID) {
+export function useOrgEnclosures(orgId: UUID, enclosureStatus: 'active' | 'inactive' | 'all' = 'active') {
 	return useQuery({
-		queryKey: ['orgEnclosures', orgId],
+		queryKey: ['orgEnclosures', orgId, enclosureStatus],
 		queryFn: async () => {
 			const supabase = createClient()
 			const PAGE_SIZE = 1000
 			const allEnclosures: Enclosure[] = []
 			let from = 0
 
+			const { data: activeSpecies, error: activeSpeciesError } = await supabase
+				.from('org_species')
+				.select('id')
+				.eq('org_id', orgId)
+				.eq('is_active', true)
+
+			if (activeSpeciesError) throw activeSpeciesError
+
+			const activeSpeciesIds = (activeSpecies ?? []).map((s) => s.id)
+			if (activeSpeciesIds.length === 0) return []
+
 			while (true) {
-				const { data, error } = (await supabase
+				let enclosureQuery = supabase
 					.from('enclosures')
 					.select('*, locations(name, description)')
 					.eq('org_id', orgId)
+					.in('species_id', activeSpeciesIds)
+
+				if (enclosureStatus !== 'all') {
+					enclosureQuery = enclosureQuery.eq('is_active', enclosureStatus === 'active')
+				}
+
+				const { data, error } = (await enclosureQuery
 					.order('current_count', { ascending: true })
 					.range(from, from + PAGE_SIZE - 1)) as { data: Enclosure[] | null; error: PostgrestError | null }
 
@@ -410,10 +511,23 @@ export function useOrgEnclosureCount(orgId: UUID) {
 		queryKey: ['orgEnclosureCount', orgId],
 		queryFn: async () => {
 			const supabase = createClient()
+
+			const { data: activeSpecies, error: activeSpeciesError } = await supabase
+				.from('org_species')
+				.select('id')
+				.eq('org_id', orgId)
+				.eq('is_active', true)
+
+			if (activeSpeciesError) throw activeSpeciesError
+
+			const activeSpeciesIds = (activeSpecies ?? []).map((s) => s.id)
+			if (activeSpeciesIds.length === 0) return 0
+
 			const { count, error } = await supabase
 				.from('enclosures')
 				.select('*', { count: 'exact', head: true })
 				.eq('org_id', orgId)
+				.in('species_id', activeSpeciesIds)
 
 			if (error) throw error
 			return count ?? 0
@@ -470,7 +584,8 @@ export function useSpecies(orgId: UUID) {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('org_species')
-				.select('*, species(scientific_name, picture_url)')) as {
+				.select('*, species(scientific_name, picture_url)')
+				.eq('is_active', true)) as {
 				data: OrgSpecies[] | null
 				error: PostgrestError | null
 			}
@@ -593,16 +708,40 @@ export function useLiveNotificationsRealtime(recipientId: string | undefined) {
 	})
 }
 
-export function useOrgEnclosuresForSpecies(orgId: UUID, speciesId: UUID) {
+export function useOrgEnclosuresForSpecies(
+	orgId: UUID,
+	speciesId: UUID,
+	enclosureStatus: 'active' | 'inactive' | 'all' = 'active'
+) {
 	return useQuery({
-		queryKey: ['speciesEnclosures', orgId, speciesId],
+		queryKey: ['speciesEnclosures', orgId, speciesId, enclosureStatus],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
+
+			const { data: activeSpecies, error: activeSpeciesError } = await supabase
+				.from('org_species')
+				.select('id')
+				.eq('id', speciesId)
+				.eq('org_id', orgId)
+				.eq('is_active', true)
+				.maybeSingle()
+
+			if (activeSpeciesError) throw activeSpeciesError
+			if (!activeSpecies) return []
+
+			let enclosureQuery = supabase
 				.from('enclosures')
-				.select('id, org_id, name, location, current_count, locations(name, description), created_at')
+				.select(
+					'id, org_id, species_id, is_active, name, location, current_count, locations(name, description), created_at'
+				)
 				.eq('species_id', speciesId)
-				.eq('org_id', orgId)) as { data: Enclosure[] | null; error: PostgrestError | null }
+				.eq('org_id', orgId)
+
+			if (enclosureStatus !== 'all') {
+				enclosureQuery = enclosureQuery.eq('is_active', enclosureStatus === 'active')
+			}
+
+			const { data, error } = (await enclosureQuery) as { data: Enclosure[] | null; error: PostgrestError | null }
 			if (error) throw error
 
 			return data
@@ -735,12 +874,19 @@ export function useTasksForEnclosuresInRange(enclosureIds: UUID[], startDate: st
 					const tasks: Task[] = []
 					let from = 0
 					while (true) {
+						// Compute the exclusive upper bound (day after endDate) so that all
+						// timestamps on the end date are included regardless of time component.
+						const endDateExclusive = (() => {
+							const d = new Date(endDate + 'T00:00:00Z')
+							d.setUTCDate(d.getUTCDate() + 1)
+							return d.toISOString().slice(0, 10)
+						})()
 						const { data, error } = (await supabase
 							.from('tasks')
 							.select('*, task_templates(type, description)')
 							.in('enclosure_id', chunk)
 							.gte('due_date', startDate)
-							.lte('due_date', endDate)
+							.lt('due_date', endDateExclusive)
 							.order('due_date', { ascending: true })
 							.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
 
@@ -828,7 +974,11 @@ export function useUsedTaskTypesForSpecies(speciesId: UUID) {
 		queryKey: ['usedTaskTypes', speciesId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = await supabase.from('task_templates').select('type').eq('species_id', speciesId)
+			const { data, error } = await supabase
+				.from('task_templates')
+				.select('type')
+				.eq('species_id', speciesId)
+				.eq('is_active', true)
 			if (error) throw error
 			return (data ?? []).map((t) => t.type) as string[]
 		},
@@ -867,6 +1017,7 @@ export function useTaskTemplatesForOrgSpecies(orgSpeciesId: UUID) {
 				.from('task_templates')
 				.select('id, type, description, created_at')
 				.eq('species_id', orgSpecies.master_species_id)
+				.eq('is_active', true)
 				.order('type', { ascending: true })
 			if (error) throw error
 			return (data ?? []) as { id: UUID; type: string; description: string | null; created_at: string }[]
@@ -953,6 +1104,7 @@ export function useOrgSpecies(org_id: UUID) {
 				.from('org_species')
 				.select('*, species(scientific_name, picture_url)')
 				.eq('org_id', org_id)
+				.eq('is_active', true)
 				.order('custom_common_name', { ascending: true })) as {
 				data: OrgSpecies[] | null
 				error: PostgrestError | null
@@ -1022,6 +1174,246 @@ export function useSchedulesForEnclosures(enclosureIds: UUID[]) {
 			return results.flatMap((r) => r.data ?? []) as EnclosureSchedule[]
 		},
 		enabled: enclosureIds.length > 0
+	})
+}
+
+export function useDashboardActiveEnclosureCount(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'activeEnclosureCount', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { count, error } = await supabase
+				.from('enclosures')
+				.select('id', { count: 'exact', head: true })
+				.eq('org_id', orgId as UUID)
+				.eq('is_active', true)
+			if (error) throw error
+			return count ?? 0
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useDashboardAtRiskEnclosures(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'atRiskEnclosures', orgId],
+		queryFn: async (): Promise<DashboardAtRiskData> => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('tasks')
+				.select(
+					'id, enclosure_id, due_date, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
+				)
+				.eq('enclosures.org_id', orgId as UUID)
+				.eq('enclosures.is_active', true)
+				.is('completed_time', null)
+				.or('status.is.null,status.eq.pending,status.eq.late')) as {
+				data: DashboardTaskRow[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+
+			const now = new Date()
+			const byEnclosure = new Map<string, AtRiskEnclosureSummary>()
+			const attentionTaskIds = new Set<string>()
+
+			for (const task of data ?? []) {
+				const enclosure = getDashboardTaskEnclosure(task)
+				const enclosureId = task.enclosure_id ? String(task.enclosure_id) : enclosure ? String(enclosure.id) : null
+				if (!enclosureId) {
+					continue
+				}
+
+				const hasHighPriority = isHighPriority(task.priority)
+				const hasValidDueDate = isValidDate(task.due_date)
+				const isOverdue = hasValidDueDate ? new Date(task.due_date!).getTime() < now.getTime() : false
+
+				if (!isOverdue && !hasHighPriority) {
+					continue
+				}
+
+				attentionTaskIds.add(String(task.id))
+
+				const existing = byEnclosure.get(enclosureId) ?? {
+					enclosureId,
+					enclosureName: enclosure?.name ?? enclosureId,
+					overdueCount: 0,
+					highPriorityCount: 0,
+					nextDueAt: null
+				}
+
+				if (isOverdue) {
+					existing.overdueCount += 1
+				}
+				if (hasHighPriority) {
+					existing.highPriorityCount += 1
+				}
+				if (hasValidDueDate && compareNullableIsoDatesAsc(task.due_date, existing.nextDueAt) < 0) {
+					existing.nextDueAt = task.due_date
+				}
+
+				byEnclosure.set(enclosureId, existing)
+			}
+
+			const items = Array.from(byEnclosure.values())
+				.sort((a, b) => {
+					if (b.overdueCount !== a.overdueCount) {
+						return b.overdueCount - a.overdueCount
+					}
+					if (b.highPriorityCount !== a.highPriorityCount) {
+						return b.highPriorityCount - a.highPriorityCount
+					}
+					return compareNullableIsoDatesAsc(a.nextDueAt, b.nextDueAt)
+				})
+				.slice(0, DASHBOARD_MAX_AT_RISK_ITEMS)
+
+			return {
+				items,
+				attentionNeededCount: attentionTaskIds.size
+			}
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useDashboardTasksDueToday(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'tasksDueToday', orgId],
+		queryFn: async (): Promise<UpcomingScheduleItem[]> => {
+			const supabase = createClient()
+			const { start, end } = getServerDayBounds()
+			const { data, error } = (await supabase
+				.from('tasks')
+				.select(
+					'id, enclosure_id, name, description, due_date, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
+				)
+				.eq('enclosures.org_id', orgId as UUID)
+				.eq('enclosures.is_active', true)
+				.is('completed_time', null)
+				.or('status.is.null,status.eq.pending,status.eq.late')
+				.gte('due_date', start.toISOString())
+				.lt('due_date', end.toISOString())
+				.order('due_date', { ascending: true })) as { data: DashboardTaskRow[] | null; error: PostgrestError | null }
+			if (error) throw error
+
+			return (data ?? [])
+				.sort((a, b) => {
+					const aPrioritySort = isHighPriority(a.priority) ? 0 : 1
+					const bPrioritySort = isHighPriority(b.priority) ? 0 : 1
+					if (aPrioritySort !== bPrioritySort) {
+						return aPrioritySort - bPrioritySort
+					}
+					return compareNullableIsoDatesAsc(a.due_date, b.due_date)
+				})
+				.map((task) => {
+					const enclosure = getDashboardTaskEnclosure(task)
+					const enclosureId = task.enclosure_id ? String(task.enclosure_id) : enclosure ? String(enclosure.id) : ''
+					return {
+						taskId: String(task.id),
+						enclosureId,
+						enclosureName: enclosure?.name ?? enclosureId,
+						taskTitle: getTaskTitle(task),
+						dueAt: task.due_date,
+						priority: typeof task.priority === 'string' ? task.priority : null
+					}
+				})
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useDashboardUpcomingTaskCount(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'upcomingTaskCount', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { end: tomorrowStart } = getServerDayBounds()
+			const sevenDaysOut = new Date(tomorrowStart)
+			sevenDaysOut.setUTCDate(sevenDaysOut.getUTCDate() + 7)
+
+			const { count, error } = await supabase
+				.from('tasks')
+				.select('id, enclosures!inner(org_id, is_active)', { count: 'exact', head: true })
+				.eq('enclosures.org_id', orgId as UUID)
+				.eq('enclosures.is_active', true)
+				.is('completed_time', null)
+				.or('status.is.null,status.eq.pending,status.eq.late')
+				.gte('due_date', tomorrowStart.toISOString())
+				.lt('due_date', sevenDaysOut.toISOString())
+			if (error) throw error
+			return count ?? 0
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useDashboardRecentActivity(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'recentActivity', orgId],
+		queryFn: async (): Promise<RecentActivityItem[]> => {
+			const supabase = createClient()
+			const { start, end } = getServerDayBounds()
+			const { data, error } = (await supabase
+				.from('tasks')
+				.select(
+					'id, enclosure_id, name, description, due_date, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
+				)
+				.eq('enclosures.org_id', orgId as UUID)
+				.eq('enclosures.is_active', true)
+				.eq('status', 'completed')
+				.gte('completed_time', start.toISOString())
+				.lt('completed_time', end.toISOString())
+				.order('completed_time', { ascending: false })
+				.limit(DASHBOARD_MAX_RECENT_ACTIVITY_ITEMS)) as {
+				data: DashboardTaskRow[] | null
+				error: PostgrestError | null
+			}
+			if (error) throw error
+
+			const orgIdString = orgId ? String(orgId) : ''
+			const items: RecentActivityItem[] = []
+			for (const task of data ?? []) {
+				if (!isValidDate(task.completed_time)) {
+					continue
+				}
+
+				const enclosure = getDashboardTaskEnclosure(task)
+				const enclosureId = task.enclosure_id ? String(task.enclosure_id) : enclosure ? String(enclosure.id) : null
+				const enclosureName = enclosure?.name ?? 'Enclosure'
+				const href = enclosureId
+					? `/protected/orgs/${orgIdString}/enclosures/${enclosureId}`
+					: `/protected/orgs/${orgIdString}`
+				const completionStateLabels = getCompletionStateLabels(task)
+				const completionStateSuffix = completionStateLabels.length > 0 ? ` (${completionStateLabels.join(', ')})` : ''
+
+				items.push({
+					id: `task-completed-${task.id}`,
+					type: 'task_completed',
+					label: `${getTaskTitle(task)} completed in ${enclosureName}${completionStateSuffix}`,
+					occurredAt: task.completed_time!,
+					href
+				})
+			}
+
+			return items.sort((a, b) => compareIsoDatesDesc(a.occurredAt, b.occurredAt))
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useIsSpeciesInUse(speciesId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['isSpeciesInUse', speciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { count, error } = await supabase
+				.from('org_species')
+				.select('id', { count: 'exact', head: true })
+				.eq('master_species_id', speciesId!)
+			if (error) throw error
+			return (count ?? 0) > 0
+		},
+		enabled: !!speciesId
 	})
 }
 

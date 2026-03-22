@@ -58,25 +58,14 @@ export function SpeciesAdminTable() {
 		setSortUp((prev) => !prev)
 	}
 
-	const handleSearch = () => {
-		setActiveSearch(search)
-	}
-
 	const handleSearchChange = (val: string) => {
 		setSearch(val)
-		if (val.trim() === '') setActiveSearch('')
+		setActiveSearch(val)
 	}
 
 	const handleClearSearch = () => {
 		setSearch('')
 		setActiveSearch('')
-	}
-
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === 'Enter') {
-			e.preventDefault()
-			handleSearch()
-		}
 	}
 
 	const [listHeight, setListHeight] = useState(ROW_HEIGHT)
@@ -123,7 +112,10 @@ export function SpeciesAdminTable() {
 				<Button variant='outline' size='icon' onClick={handleToggleDirection} disabled={isLoading || !isSorted}>
 					{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
 				</Button>
-				<InputGroup className='w-40 sm:w-60 ml-auto' onKeyDown={handleKeyDown}>
+				<InputGroup className='w-40 sm:w-60 ml-auto'>
+					<InputGroupAddon>
+						<Search className='h-4 w-4 text-muted-foreground' />
+					</InputGroupAddon>
 					<InputGroupInput placeholder='Search…' value={search} onChange={(e) => handleSearchChange(e.target.value)} />
 					{search && (
 						<InputGroupAddon align='inline-end' className='pr-1'>
@@ -135,14 +127,11 @@ export function SpeciesAdminTable() {
 							</InputGroupButton>
 						</InputGroupAddon>
 					)}
-					<InputGroupAddon>
-						<InputGroupButton onClick={handleSearch} disabled={isLoading}>
-							<Search />
-						</InputGroupButton>
-					</InputGroupAddon>
-					<InputGroupAddon className='hidden sm:block' align='inline-end'>
-						{searchCount > 0 ? `${searchCount} Results` : ''}
-					</InputGroupAddon>
+					{searchCount > 0 && (
+						<InputGroupAddon align='inline-end' className='hidden sm:block pr-2 text-xs text-muted-foreground'>
+							{searchCount} Results
+						</InputGroupAddon>
+					)}
 				</InputGroup>
 			</div>
 

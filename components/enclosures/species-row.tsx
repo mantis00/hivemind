@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Card, CardContent } from '../ui/card'
 import { Bug, ChevronRight, EyeIcon } from 'lucide-react'
 import { Badge } from '../ui/badge'
+import { Checkbox } from '../ui/checkbox'
 import { Button } from '../ui/button'
 import { EnclosureCard } from './enclosure-card'
 import { Virtuoso } from 'react-virtuoso'
@@ -15,25 +16,36 @@ import { EnclosureDialog } from './enclosure-dialog'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { UUID } from 'crypto'
 
+type EnclosureExportData = {
+	enclosureName: string
+	commonName: string
+	scientificName: string
+	isActive: boolean
+}
+
 export default function SpeciesRow({
 	species,
 	onDetailsOpenChange,
 	sortKey,
+	enclosureStatusFilter,
 	selectMode,
 	selectedIds,
-	onSelectChange
+	onSelectChange,
+	onSelectAll
 }: {
 	species: OrgSpecies
 	onDetailsOpenChange: () => void
 	sortKey: string
+	enclosureStatusFilter: 'active' | 'inactive' | 'all'
 	selectMode: boolean
 	selectedIds: Set<UUID>
-	onSelectChange: (enclosureId: UUID, checked: boolean) => void
+	onSelectChange: (enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => void
+	onSelectAll?: (enclosures: Enclosure[], select: boolean, species: OrgSpecies) => void
 }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 
-	const { data: enclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id)
+	const { data: enclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id, enclosureStatusFilter)
 
 	const [isOpen, setIsOpen] = useState(false)
 	const [selectedEnclosure, setSelectedEnclosure] = useState<Enclosure | null>(null)
@@ -111,6 +123,25 @@ export default function SpeciesRow({
 							{/* Enclosures Virtuoso list */}
 							{enclosures?.length && enclosures?.length > 0 ? (
 								<div className='rounded-md border bg-background'>
+									{selectMode &&
+										onSelectAll &&
+										(() => {
+											const allSelected = enclosures.every((e) => selectedIds.has(e.id))
+											const someSelected = enclosures.some((e) => selectedIds.has(e.id))
+											return (
+												<div
+													className='flex items-center gap-2 px-3 py-2 border-b cursor-pointer select-none'
+													onClick={() => onSelectAll(enclosures, !allSelected, species)}
+												>
+													<Checkbox
+														checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+														onCheckedChange={(checked) => onSelectAll(enclosures, !!checked, species)}
+														onClick={(e) => e.stopPropagation()}
+													/>
+													<span className='text-xs text-muted-foreground'>Select all</span>
+												</div>
+											)
+										})()}
 									<Virtuoso
 										style={{
 											height: enclosures?.length && enclosures?.length <= 4 ? `${enclosures?.length * 114}px` : '352px'
@@ -123,7 +154,14 @@ export default function SpeciesRow({
 													onClick={() => handleEnclosureClick(enclosure)}
 													selectable={selectMode}
 													selected={selectedIds.has(enclosure.id)}
-													onSelectChange={(checked) => onSelectChange(enclosure.id, checked)}
+													onSelectChange={(checked) =>
+														onSelectChange(enclosure.id, checked, {
+															enclosureName: enclosure.name,
+															commonName: species.custom_common_name,
+															scientificName: species.species?.scientific_name ?? '',
+															isActive: enclosure.is_active
+														})
+													}
 												/>
 											</div>
 										)}
@@ -171,7 +209,9 @@ export default function SpeciesRow({
 					)}
 					<div className='rounded-md bg-muted p-3'>
 						<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
-						<p className='text-sm leading-relaxed'>{species.custom_care_instructions}</p>
+						<div className='max-h-48 overflow-y-auto overscroll-contain pr-2'>
+							<p className='text-sm leading-relaxed whitespace-pre-wrap'>{species.custom_care_instructions}</p>
+						</div>
 					</div>
 				</div>
 			</ResponsiveDialogDrawer>
