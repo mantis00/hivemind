@@ -66,7 +66,7 @@ export type Enclosure = {
 	is_active: boolean
 	name: string
 	created_at: string
-	location: string
+	location: UUID
 	current_count: number
 	printed?: boolean
 	locations?: {

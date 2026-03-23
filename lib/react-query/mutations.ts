@@ -496,14 +496,12 @@ export function useUpdateEnclosure() {
 	return useMutation({
 		mutationFn: async ({
 			enclosure_id,
-			species_id,
 			location_id,
 			count,
 			is_active
 		}: {
 			orgId: UUID
 			enclosure_id: UUID
-			species_id: UUID
 			location_id: UUID
 			count: number
 			is_active: boolean
@@ -512,7 +510,7 @@ export function useUpdateEnclosure() {
 
 			const { error } = await supabase
 				.from('enclosures')
-				.update({ species_id: species_id, location: location_id, current_count: count, is_active })
+				.update({ location: location_id, current_count: count, is_active })
 				.eq('id', enclosure_id)
 
 			if (error) throw error

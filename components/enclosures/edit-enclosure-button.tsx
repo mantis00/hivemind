@@ -80,9 +80,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 		e.preventDefault()
 		if (!species || !location) return
 
-		const species_id = orgSpecies?.find((spec) => spec?.custom_common_name === species)
-		if (!species_id) return
-
 		let resolvedLocationId: UUID
 
 		if (createLocation) {
@@ -97,8 +94,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			resolvedLocationId = existing.id as UUID
 
 			if (
-				species_id.custom_common_name === species &&
-				existing.name === location &&
+				enclosure?.location === resolvedLocationId &&
 				enclosure.current_count === count &&
 				enclosure.is_active === isActive
 			) {
@@ -111,20 +107,13 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			{
 				orgId: orgId as UUID,
 				enclosure_id: enclosure.id,
-				species_id: species_id.id,
 				location_id: resolvedLocationId,
 				count: count,
 				is_active: isActive
 			},
 			{
 				onSuccess: () => {
-					setOpen(false)
-					setSpecies('')
-					setCreateLocation(false)
-					setLocation('')
-					setLocationQuery('')
-					setCount(0)
-					setIsActive(true)
+					handleOpenChange(false)
 				}
 			}
 		)
@@ -144,7 +133,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 								<Button
 									className='w-full'
 									variant='secondary'
-									onClick={() => setOpen(true)}
+									onClick={() => handleOpenChange(true)}
 									disabled={!enclosure?.is_active}
 								>
 									<Edit2Icon className='w-4 h-4' /> Edit Enclosure
@@ -248,7 +237,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 					<Button type='submit' disabled={isPending || !user}>
 						{isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
 					</Button>
-					<Button type='button' variant='outline' disabled={isPending} onClick={() => setOpen(false)}>
+					<Button type='button' variant='outline' disabled={isPending} onClick={() => handleOpenChange(false)}>
 						Cancel
 					</Button>
 				</div>
