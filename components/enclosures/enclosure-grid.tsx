@@ -52,7 +52,6 @@ import { toast } from 'sonner'
 type EnclosureExportData = {
 	enclosureName: string
 	commonName: string
-	scientificName: string
 	isActive: boolean
 }
 
@@ -181,7 +180,6 @@ export default function EnclosureGrid() {
 						next.set(enc.id, {
 							enclosureName: enc.name,
 							commonName: species.custom_common_name,
-							scientificName: species.species?.scientific_name ?? '',
 							isActive: enc.is_active
 						})
 					} else {
@@ -203,7 +201,7 @@ export default function EnclosureGrid() {
 	}
 
 	const buildAndDownloadCsv = (rows: string[][], filename: string) => {
-		const headers = ['Enclosure Name', 'Common Name', 'Scientific Name', 'URL']
+		const headers = ['Enclosure Name', 'Common Name', 'URL']
 		const csvContent = [headers, ...rows]
 			.map((row) => row.map((cell) => `"${(cell ?? '').replace(/"/g, '""')}"`).join(','))
 			.join('\n')
@@ -234,8 +232,8 @@ export default function EnclosureGrid() {
 		const baseUrl = window.location.origin
 		const rows = printableIds.map((id) => {
 			const d = selectedEnclosureData.get(id)
-			if (!d) return ['', '', '', '']
-			return [d.enclosureName, d.commonName, d.scientificName, `${baseUrl}/protected/orgs/${orgId}/enclosures/${id}`]
+			if (!d) return ['', '', '']
+			return [d.enclosureName, d.commonName, `${baseUrl}/protected/orgs/${orgId}/enclosures/${id}`]
 		})
 		buildAndDownloadCsv(rows, 'enclosures.csv')
 		markPrintedMutation.mutate({ enclosureIds: printableIds, orgId: orgId as UUID })
@@ -250,12 +248,7 @@ export default function EnclosureGrid() {
 		const baseUrl = window.location.origin
 		const rows = unprinted.map((enc) => {
 			const sp = orgSpeciesById.get(enc.species_id)
-			return [
-				enc.name,
-				sp?.custom_common_name ?? '',
-				sp?.species?.scientific_name ?? '',
-				`${baseUrl}/protected/orgs/${orgId}/enclosures/${enc.id}`
-			]
+			return [enc.name, sp?.custom_common_name ?? '', `${baseUrl}/protected/orgs/${orgId}/enclosures/${enc.id}`]
 		})
 		buildAndDownloadCsv(rows, 'unprinted-enclosures.csv')
 		markPrintedMutation.mutate({ enclosureIds: unprinted.map((e) => e.id), orgId: orgId as UUID })
