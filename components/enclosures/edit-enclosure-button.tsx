@@ -38,7 +38,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 
-	const { data: orgSpecies } = useSpecies(orgId as UUID)
 	const { data: orgLocations } = useOrgLocations(orgId as UUID)
 
 	const scoreMatch = (str: string | undefined, val: string): number => {
