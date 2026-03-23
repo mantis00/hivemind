@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { XIcon, LoaderCircle, ChevronDownIcon } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { useSentInvites } from '@/lib/react-query/queries'
+import { useMemberProfiles, useSentInvites } from '@/lib/react-query/queries'
 import { useRetractInvite } from '@/lib/react-query/mutations'
 import getAccessLevelName from '@/context/access-levels'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
@@ -38,6 +38,9 @@ export function ViewSentInvites() {
 	const isOwnerOrSuperadmin = useIsOwnerOrSuperadmin(orgId)
 	const [pendingInviteId, setPendingInviteId] = useState<string | null>(null)
 	const [now] = useState(() => Date.now())
+	const inviteeIds = Array.from(new Set((invites ?? []).map((invite) => invite.invitee_id).filter(Boolean))) as string[]
+	const { data: inviteeProfiles } = useMemberProfiles(inviteeIds)
+	const inviteeProfileById = new Map((inviteeProfiles ?? []).map((profile) => [String(profile.id), profile]))
 
 	if (!isOwnerOrSuperadmin) return null
 
@@ -81,56 +84,67 @@ export function ViewSentInvites() {
 					<p className='py-2 text-sm text-muted-foreground text-center'>No invites sent yet.</p>
 				) : (
 					<div className='divide-y divide-border'>
-						{visibleInvites!.map((invite) => (
-							<div key={invite.invite_id} className='flex items-center justify-between gap-3 py-3 first:pt-1'>
-								<div className='flex min-w-0 flex-1 flex-col gap-1'>
-									<div className='flex flex-wrap items-center gap-2'>
-										<p className='truncate text-sm font-medium text-foreground'>{invite.invitee_email}</p>
-										<Badge variant='secondary' className='h-5 px-1.5 py-0 text-[11px] font-normal'>
-											{getAccessLevelName(invite.access_lvl)}
-										</Badge>
+						{visibleInvites.map((invite) => {
+							const inviteeProfile = invite.invitee_id ? inviteeProfileById.get(invite.invitee_id) : null
+							const inviteeDisplayName =
+								inviteeProfile?.full_name || inviteeProfile?.first_name || invite.invitee_email || 'Unknown User'
+
+							return (
+								<div key={invite.invite_id} className='flex items-center justify-between gap-3 py-3 first:pt-1'>
+									<div className='flex min-w-0 flex-1 flex-col gap-1'>
+										<div className='flex flex-wrap items-center gap-2'>
+											<div className='min-w-0'>
+												<p className='truncate text-sm font-medium text-foreground'>{inviteeDisplayName}</p>
+												{invite.invitee_email && (
+													<p className='truncate text-xs text-muted-foreground'>{invite.invitee_email}</p>
+												)}
+											</div>
+											<Badge variant='secondary' className='h-5 px-1.5 py-0 text-[11px] font-normal'>
+												{getAccessLevelName(invite.access_lvl)}
+											</Badge>
+										</div>
+										<div className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
+											<StatusDot status={invite.status} />
+											<span className='capitalize'>{invite.status}</span>
+											<span className='text-border'>/</span>
+											<span>Sent {formatDate(invite.created_at)}</span>{' '}
+											{invite.status !== 'pending' && invite.updated_at && (
+												<>
+													<span className='text-border'>/</span>
+													<span className='capitalize'>
+														{invite.status} {formatDate(invite.updated_at)}
+													</span>
+												</>
+											)}{' '}
+											{invite.status === 'pending' && (
+												<>
+													<span className='text-border'>/</span>
+													<span>Expires {formatDate(invite.expires_at, false)}</span>
+												</>
+											)}
+										</div>
 									</div>
-									<div className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
-										<StatusDot status={invite.status} />
-										<span className='capitalize'>{invite.status}</span>
-										<span className='text-border'>/</span>
-										<span>Sent {formatDate(invite.created_at)}</span>{' '}
-										{invite.status !== 'pending' && invite.updated_at && (
-											<>
-												<span className='text-border'>/</span>
-												<span className='capitalize'>
-													{invite.status} {formatDate(invite.updated_at)}
-												</span>
-											</>
-										)}{' '}
-										{invite.status === 'pending' && (
-											<>
-												<span className='text-border'>/</span>
-												<span>Expires {formatDate(invite.expires_at, false)}</span>
-											</>
-										)}
-									</div>
+									{invite.status === 'pending' && (
+										<Button
+											size='sm'
+											variant='ghost'
+											onClick={() => handleRetract(invite.invite_id)}
+											disabled={pendingInviteId === invite.invite_id}
+											className='ml-2 h-8 shrink-0 text-xs text-muted-foreground hover:text-destructive'
+										>
+											{pendingInviteId === invite.invite_id && retractMutation.isPending ? (
+												<LoaderCircle className='h-3.5 w-3.5 animate-spin' />
+											) : (
+												<>
+													<XIcon className='h-3.5 w-3.5' />
+													<span className='hidden sm:inline'>Cancel</span>
+												</>
+											)}
+										</Button>
+									)}
 								</div>
-								{invite.status === 'pending' && (
-									<Button
-										size='sm'
-										variant='ghost'
-										onClick={() => handleRetract(invite.invite_id)}
-										disabled={pendingInviteId === invite.invite_id}
-										className='ml-2 h-8 shrink-0 text-xs text-muted-foreground hover:text-destructive'
-									>
-										{pendingInviteId === invite.invite_id && retractMutation.isPending ? (
-											<LoaderCircle className='h-3.5 w-3.5 animate-spin' />
-										) : (
-											<>
-												<XIcon className='h-3.5 w-3.5' />
-												<span className='hidden sm:inline'>Cancel</span>
-											</>
-										)}
-									</Button>
-								)}
-							</div>
-						))}
+							)
+						})}
 					</div>
 				)}
 			</CollapsibleContent>

@@ -148,76 +148,78 @@ export function useInviteMember() {
 		mutationFn: async ({
 			orgId,
 			inviterId,
+			inviteeId,
 			inviteeEmail,
 			accessLvl
 		}: {
 			orgId: UUID
 			inviterId: string
+			inviteeId: string
 			inviteeEmail: string
 			accessLvl: number
 		}) => {
 			const supabase = createClient()
+			const normalizedInviteeEmail = inviteeEmail.trim().toLowerCase()
 
-			// get inviter email
+			if (!inviteeId) {
+				throw new Error('Invitee is required')
+			}
+
+			if (!normalizedInviteeEmail) {
+				throw new Error('Invitee email is required')
+			}
+
+			// validate inviter identity from auth context
 			const {
 				data: { user },
 				error: userError
 			} = await supabase.auth.getUser()
 
 			if (userError) throw userError
-			const inviterEmail = user?.email
-			if (!inviterEmail) {
-				throw new Error('Inviter email not found')
+			if (!user?.id || user.id !== inviterId) {
+				throw new Error('Unable to verify inviter identity')
 			}
 
-			// make sure inviter is not inviting themselves
-			if (inviterEmail === inviteeEmail.trim().toLowerCase()) {
+			if (inviterId === inviteeId) {
 				throw new Error('You cannot invite yourself!')
 			}
 
-			// Check if email already has a user account and is a member
-			const { data: existingUser } = await supabase
-				.from('profiles')
-				.select('id')
-				.eq('email', inviteeEmail.trim().toLowerCase())
+			// check if invitee is already an org member
+			const { data: existingMember, error: memberError } = await supabase
+				.from('user_org_role')
+				.select('user_id')
+				.eq('org_id', orgId)
+				.eq('user_id', inviteeId)
 				.maybeSingle()
 
-			if (existingUser) {
-				// User exists, check if they're already a member
-				const { data: existingMember, error: memberError } = await supabase
-					.from('user_org_role')
-					.select('user_id')
-					.eq('org_id', orgId)
-					.eq('user_id', existingUser.id)
-					.maybeSingle()
+			if (memberError) throw memberError
 
-				if (memberError) throw memberError
-
-				if (existingMember) {
-					throw new Error('User is already a member of the organization')
-				}
+			if (existingMember) {
+				throw new Error('User is already a member of the organization')
 			}
 
-			// make sure there is not already a pending invite for this email and org
+			// make sure there is not already a pending invite for this user and org
 			const { data: existingInvite, error: inviteError } = await supabase
 				.from('invites')
 				.select('invite_id')
 				.eq('org_id', orgId)
-				.eq('invitee_email', inviteeEmail.trim().toLowerCase())
+				.eq('invitee_id', inviteeId)
 				.eq('status', 'pending')
+				.gt('expires_at', new Date().toISOString())
 				.maybeSingle()
 
 			if (inviteError) throw inviteError
 
 			if (existingInvite) {
-				throw new Error('There is already a pending invite for this email and organization')
+				throw new Error('There is already a pending invite for this user and organization')
 			}
 
 			// Create the invite
 			const { error } = await supabase.from('invites').insert({
 				org_id: orgId,
 				inviter_id: inviterId,
-				invitee_email: inviteeEmail.trim().toLowerCase(),
+				invitee_id: inviteeId,
+				invitee_email: normalizedInviteeEmail,
 				access_lvl: accessLvl,
 				status: 'pending'
 			})
