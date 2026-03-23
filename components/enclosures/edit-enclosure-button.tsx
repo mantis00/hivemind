@@ -8,7 +8,7 @@ import { LoaderCircle, Edit2Icon } from 'lucide-react'
 import { useState, useMemo, useRef } from 'react'
 import { useUpdateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { Enclosure, OrgSpecies, useOrgLocations, useSpecies } from '@/lib/react-query/queries'
+import { Enclosure, OrgSpecies, useOrgLocations } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import {
 	Combobox,
