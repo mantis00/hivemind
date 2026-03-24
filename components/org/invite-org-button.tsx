@@ -57,6 +57,13 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 	const isLoadingInviteCandidates = isLoadingProfiles || isLoadingOrgMembers
 	const commandHeight = `${Math.min(Math.max(inviteOptions.length * FALLBACK_ROW_HEIGHT, 220), 320)}px`
 
+	const handleOpenChange = (isOpen: boolean) => {
+		if (!isOpen) {
+			setUserDropdownOpen(false)
+		}
+		setOpen(isOpen)
+	}
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!user?.id || !selectedInviteeId || !selectedInvitee?.email) return
@@ -85,17 +92,12 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 			title='Invite Member'
 			description='Select a user and access level for the new member.'
 			trigger={
-				<Button variant='default'>
+				<Button variant='default' onClick={() => setOpen(true)}>
 					Invite Member <UserPlusIcon className='w-4 h-4' />
 				</Button>
 			}
 			open={open}
-			onOpenChange={(isOpen) => {
-				setOpen(isOpen)
-				if (!isOpen) {
-					setUserDropdownOpen(false)
-				}
-			}}
+			onOpenChange={handleOpenChange}
 		>
 			<form onSubmit={handleSubmit} data-vaul-no-drag>
 				<div className='grid gap-4 py-4'>
