@@ -87,7 +87,7 @@ export function InviteMemberButton() {
 	const dropdownHeight =
 		isLoadingInviteCandidates || filteredInviteCandidates.length === 0
 			? 120
-			: Math.min(listHeight + HEADER_HEIGHT, isMobile ? 4 * FALLBACK_ROW_HEIGHT + HEADER_HEIGHT : MAX_HEIGHT)
+			: Math.min(listHeight + HEADER_HEIGHT, MAX_HEIGHT)
 
 	useEffect(() => {
 		if (!isMobile || !open) return
@@ -115,7 +115,8 @@ export function InviteMemberButton() {
 
 	const handleMobileSearch = () => {
 		if (!isMobile) return
-		setMobileAppliedSearch(userSearch)
+		setMobileAppliedSearch(userSearch.trim())
+		setUserDropdownOpen(true)
 		searchInputRef.current?.blur()
 	}
 
@@ -210,8 +211,9 @@ export function InviteMemberButton() {
 										? 'w-[calc(100vw-2rem)] p-2 overflow-hidden'
 										: 'w-(--radix-popover-trigger-width) p-2 overflow-hidden'
 								}
+								data-vaul-no-drag
 								align='start'
-								side='bottom'
+								side={isMobile ? 'top' : 'bottom'}
 							>
 								<div className='grid gap-2'>
 									<div className='flex items-center gap-2'>
@@ -219,7 +221,10 @@ export function InviteMemberButton() {
 											ref={searchInputRef}
 											placeholder='Search by first or last name'
 											value={userSearch}
-											onChange={(event) => setUserSearch(event.target.value)}
+											onChange={(event) => {
+												setUserSearch(event.target.value)
+												if (isMobile) setMobileAppliedSearch('')
+											}}
 											onFocus={handleMobileSearchFocus}
 											onKeyDown={(event) => {
 												if (isMobile && event.key === 'Enter') {
@@ -250,6 +255,36 @@ export function InviteMemberButton() {
 											<div className='py-6 text-center text-sm text-muted-foreground'>Tap Search to load users.</div>
 										) : filteredInviteCandidates.length === 0 ? (
 											<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
+										) : isMobile ? (
+											<div data-vaul-no-drag className='max-h-[45vh] overflow-y-auto'>
+												<div className='grid grid-cols-2 gap-0 border-b bg-card text-xs font-medium text-muted-foreground'>
+													<div className='px-3 py-2'>Name</div>
+													<div className='px-3 py-2'>Email</div>
+												</div>
+												{filteredInviteCandidates.map((candidate) => {
+													const isSelected = selectedInviteeId === String(candidate.id)
+													const rowClass = isSelected ? 'bg-accent/60' : ''
+
+													const handleSelect = () => {
+														setSelectedInviteeId(String(candidate.id))
+														setUserDropdownOpen(false)
+													}
+
+													return (
+														<button
+															key={String(candidate.id)}
+															type='button'
+															onClick={handleSelect}
+															className={`grid w-full grid-cols-2 border-b text-left ${rowClass}`}
+														>
+															<div className='truncate px-3 py-2 text-sm font-medium'>{candidate.full_name || '—'}</div>
+															<div className='truncate px-3 py-2 text-sm text-muted-foreground'>
+																{candidate.email || '—'}
+															</div>
+														</button>
+													)
+												})}
+											</div>
 										) : (
 											<TableVirtuoso<AllProfile>
 												style={{ height: dropdownHeight }}
