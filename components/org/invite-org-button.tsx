@@ -41,6 +41,14 @@ const MAX_HEIGHT = 5 * FALLBACK_ROW_HEIGHT + HEADER_HEIGHT
 export function InviteMemberButton() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
+	const isOwnerOrSuperadmin = useIsOwnerOrSuperadmin(orgId)
+
+	if (!isOwnerOrSuperadmin || !orgId) return null
+
+	return <InviteMemberButtonContent orgId={orgId} />
+}
+
+function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 	const [open, setOpen] = useState(false)
 	const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 	const [userSearch, setUserSearch] = useState('')
@@ -53,9 +61,8 @@ export function InviteMemberButton() {
 	const { data: user } = useCurrentClientUser()
 	const isMobile = useIsMobile()
 	const inviteMutation = useInviteMember()
-	const isOwnerOrSuperadmin = useIsOwnerOrSuperadmin(orgId)
 	const { data: profiles, isLoading: isLoadingProfiles } = useAllProfiles()
-	const { data: orgMembers, isLoading: isLoadingOrgMembers } = useOrgMembers(orgId as UUID)
+	const { data: orgMembers, isLoading: isLoadingOrgMembers } = useOrgMembers(orgId)
 
 	// Filter out users who are already members of the organization
 	const inviteCandidates = useMemo(() => {
@@ -127,15 +134,13 @@ export function InviteMemberButton() {
 		}, 300)
 	}
 
-	if (!isOwnerOrSuperadmin) return null
-
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!user?.id || !selectedInviteeId || !selectedInvitee?.email) return
 
 		inviteMutation.mutate(
 			{
-				orgId: orgId as UUID,
+				orgId: orgId,
 				inviterId: user.id,
 				inviteeId: selectedInviteeId,
 				inviteeEmail: selectedInvitee.email,
