@@ -37,6 +37,7 @@ export function VirtualizedInviteCommand({
 
 	const parentRef = React.useRef<HTMLDivElement | null>(null)
 
+	// eslint-disable-next-line
 	const virtualizer = useVirtualizer({
 		count: filteredOptions.length,
 		getScrollElement: () => parentRef.current,
