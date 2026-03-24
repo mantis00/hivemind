@@ -5,7 +5,7 @@ import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { UserPlusIcon, LoaderCircle } from 'lucide-react'
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useInviteMember } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -48,6 +48,7 @@ export function InviteMemberButton() {
 	const [selectedInviteeId, setSelectedInviteeId] = useState<string>('')
 	const [listHeight, setListHeight] = useState(FALLBACK_ROW_HEIGHT)
 	const [accessLvl, setAccessLvl] = useState('1')
+	const [mobileKeyboardInset, setMobileKeyboardInset] = useState(0)
 	const searchInputRef = useRef<HTMLInputElement | null>(null)
 	const { data: user } = useCurrentClientUser()
 	const isMobile = useIsMobile()
@@ -88,13 +89,44 @@ export function InviteMemberButton() {
 			? 120
 			: Math.min(listHeight + HEADER_HEIGHT, isMobile ? 4 * FALLBACK_ROW_HEIGHT + HEADER_HEIGHT : MAX_HEIGHT)
 
-	if (!isOwnerOrSuperadmin) return null
+	useEffect(() => {
+		if (!isMobile || !open) return
+
+		const updateInset = () => {
+			const vv = window.visualViewport
+			if (!vv) {
+				setMobileKeyboardInset(0)
+				return
+			}
+
+			const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+			setMobileKeyboardInset(inset)
+		}
+
+		updateInset()
+		window.visualViewport?.addEventListener('resize', updateInset)
+		window.visualViewport?.addEventListener('scroll', updateInset)
+
+		return () => {
+			window.visualViewport?.removeEventListener('resize', updateInset)
+			window.visualViewport?.removeEventListener('scroll', updateInset)
+		}
+	}, [isMobile, open])
 
 	const handleMobileSearch = () => {
 		if (!isMobile) return
 		setMobileAppliedSearch(userSearch)
 		searchInputRef.current?.blur()
 	}
+
+	const handleMobileSearchFocus = () => {
+		if (!isMobile) return
+		setTimeout(() => {
+			searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+		}, 300)
+	}
+
+	if (!isOwnerOrSuperadmin) return null
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -136,11 +168,16 @@ export function InviteMemberButton() {
 				if (!isOpen) {
 					setMobileAppliedSearch('')
 					setUserSearch('')
+					setMobileKeyboardInset(0)
 					setUserDropdownOpen(false)
 				}
 			}}
 		>
-			<form onSubmit={handleSubmit}>
+			<form
+				onSubmit={handleSubmit}
+				data-vaul-no-drag
+				style={isMobile && mobileKeyboardInset > 0 ? { paddingBottom: `${mobileKeyboardInset + 12}px` } : undefined}
+			>
 				<div className='grid gap-4 py-4'>
 					<div className='grid gap-2'>
 						<Label htmlFor='invitee-search'>Select User</Label>
@@ -183,6 +220,7 @@ export function InviteMemberButton() {
 											placeholder='Search by first or last name'
 											value={userSearch}
 											onChange={(event) => setUserSearch(event.target.value)}
+											onFocus={handleMobileSearchFocus}
 											onKeyDown={(event) => {
 												if (isMobile && event.key === 'Enter') {
 													event.preventDefault()
