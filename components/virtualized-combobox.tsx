@@ -8,36 +8,46 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import * as React from 'react'
 
-type Option = {
+export type VirtualizedOption = {
 	value: string
 	label: string
+	subLabel?: string
 }
 
 interface VirtualizedCommandProps {
 	height: string
-	options: Option[]
+	options: VirtualizedOption[]
 	placeholder: string
 	selectedOption: string
 	onSelectOption?: (option: string) => void
+	emptyMessage?: string
+	rowHeight?: number
 }
 
-const VirtualizedCommand = ({
+const FALLBACK_ROW_HEIGHT = 44
+
+export function VirtualizedCommand({
 	height,
 	options,
 	placeholder,
 	selectedOption,
-	onSelectOption
-}: VirtualizedCommandProps) => {
-	const [filteredOptions, setFilteredOptions] = React.useState<Option[]>(options)
-	const [focusedIndex, setFocusedIndex] = React.useState(0)
+	onSelectOption,
+	emptyMessage = 'No item found.',
+	rowHeight = FALLBACK_ROW_HEIGHT
+}: VirtualizedCommandProps) {
+	const [filteredOptions, setFilteredOptions] = React.useState<VirtualizedOption[]>(options)
+	const [focusedIndex, setFocusedIndex] = React.useState(-1)
+	const [hoveredIndex, setHoveredIndex] = React.useState(-1)
 	const [isKeyboardNavActive, setIsKeyboardNavActive] = React.useState(false)
 
-	const parentRef = React.useRef(null)
+	const parentRef = React.useRef<HTMLDivElement | null>(null)
 
+	// eslint-disable-next-line
 	const virtualizer = useVirtualizer({
 		count: filteredOptions.length,
 		getScrollElement: () => parentRef.current,
-		estimateSize: () => 35
+		estimateSize: () => rowHeight,
+		overscan: 6
 	})
 
 	const virtualOptions = virtualizer.getVirtualItems()
@@ -50,7 +60,23 @@ const VirtualizedCommand = ({
 
 	const handleSearch = (search: string) => {
 		setIsKeyboardNavActive(false)
-		setFilteredOptions(options.filter((option) => option.value.toLowerCase().includes(search.toLowerCase() ?? [])))
+		setHoveredIndex(-1)
+		const normalizedSearch = search.trim().toLowerCase()
+		if (!normalizedSearch) {
+			setFilteredOptions(options)
+			return
+		}
+
+		setFilteredOptions(
+			options.filter((option) => {
+				const label = option.label.toLowerCase()
+				const subLabel = option.subLabel?.toLowerCase() ?? ''
+				const value = option.value.toLowerCase()
+				return (
+					label.includes(normalizedSearch) || subLabel.includes(normalizedSearch) || value.includes(normalizedSearch)
+				)
+			})
+		)
 	}
 
 	const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -88,8 +114,19 @@ const VirtualizedCommand = ({
 	}
 
 	React.useEffect(() => {
+		setFilteredOptions(options)
+		if (!selectedOption) {
+			setFocusedIndex(-1)
+			return
+		}
+
+		const selectedIndex = options.findIndex((entry) => entry.value === selectedOption)
+		setFocusedIndex(selectedIndex >= 0 ? selectedIndex : -1)
+	}, [options, selectedOption])
+
+	React.useEffect(() => {
 		if (selectedOption) {
-			const option = filteredOptions.find((option) => option.value === selectedOption)
+			const option = filteredOptions.find((entry) => entry.value === selectedOption)
 			if (option) {
 				const index = filteredOptions.indexOf(option)
 				setFocusedIndex(index)
@@ -106,14 +143,18 @@ const VirtualizedCommand = ({
 			<CommandList
 				ref={parentRef}
 				style={{
-					height: height,
+					height,
 					width: '100%',
 					overflow: 'auto'
 				}}
-				onMouseDown={() => setIsKeyboardNavActive(false)}
+				onMouseDown={() => {
+					setIsKeyboardNavActive(false)
+					setHoveredIndex(-1)
+				}}
 				onMouseMove={() => setIsKeyboardNavActive(false)}
+				onMouseLeave={() => setHoveredIndex(-1)}
 			>
-				<CommandEmpty>No item found.</CommandEmpty>
+				<CommandEmpty>{emptyMessage}</CommandEmpty>
 				<CommandGroup>
 					<div
 						style={{
@@ -122,35 +163,48 @@ const VirtualizedCommand = ({
 							position: 'relative'
 						}}
 					>
-						{virtualOptions.map((virtualOption) => (
-							<CommandItem
-								key={filteredOptions[virtualOption.index].value}
-								disabled={isKeyboardNavActive}
-								className={cn(
-									'absolute left-0 top-0 w-full bg-transparent',
-									focusedIndex === virtualOption.index && 'bg-accent text-accent-foreground',
-									isKeyboardNavActive &&
-										focusedIndex !== virtualOption.index &&
-										'aria-selected:bg-transparent aria-selected:text-primary'
-								)}
-								style={{
-									height: `${virtualOption.size}px`,
-									transform: `translateY(${virtualOption.start}px)`
-								}}
-								value={filteredOptions[virtualOption.index].value}
-								onMouseEnter={() => !isKeyboardNavActive && setFocusedIndex(virtualOption.index)}
-								onMouseLeave={() => !isKeyboardNavActive && setFocusedIndex(-1)}
-								onSelect={onSelectOption}
-							>
-								<Check
+						{virtualOptions.map((virtualOption) => {
+							const option = filteredOptions[virtualOption.index]
+							if (!option) return null
+
+							const isHighlighted = isKeyboardNavActive
+								? focusedIndex === virtualOption.index
+								: hoveredIndex === virtualOption.index
+
+							return (
+								<CommandItem
+									key={option.value}
+									disabled={isKeyboardNavActive}
 									className={cn(
-										'mr-2 h-4 w-4',
-										selectedOption === filteredOptions[virtualOption.index].value ? 'opacity-100' : 'opacity-0'
+										'absolute left-0 top-0 w-full bg-transparent data-[selected=true]:bg-transparent data-[selected=true]:text-foreground aria-selected:bg-transparent aria-selected:text-foreground',
+										isHighlighted && 'bg-accent! text-accent-foreground!',
+										isKeyboardNavActive &&
+											focusedIndex !== virtualOption.index &&
+											'aria-selected:bg-transparent aria-selected:text-primary'
 									)}
-								/>
-								<span className='w-[300px] truncate'>{filteredOptions[virtualOption.index].label}</span>
-							</CommandItem>
-						))}
+									style={{
+										height: `${virtualOption.size}px`,
+										transform: `translateY(${virtualOption.start}px)`
+									}}
+									value={option.value}
+									onMouseEnter={() => !isKeyboardNavActive && setHoveredIndex(virtualOption.index)}
+									onMouseLeave={() => !isKeyboardNavActive && setHoveredIndex(-1)}
+									onSelect={onSelectOption}
+								>
+									<Check
+										className={cn('mr-2 h-4 w-4', selectedOption === option.value ? 'opacity-100' : 'opacity-0')}
+									/>
+									{option.subLabel ? (
+										<div className='flex min-w-0 flex-col'>
+											<span className='truncate'>{option.label || '—'}</span>
+											<span className='truncate text-xs text-muted-foreground'>{option.subLabel}</span>
+										</div>
+									) : (
+										<span className='w-75 truncate'>{option.label || '—'}</span>
+									)}
+								</CommandItem>
+							)
+						})}
 					</div>
 				</CommandGroup>
 			</CommandList>
@@ -198,6 +252,7 @@ export function VirtualizedCombobox({
 					options={options.map((option) => ({ value: option, label: option }))}
 					placeholder={searchPlaceholder}
 					selectedOption={selectedOption}
+					emptyMessage='No item found.'
 					onSelectOption={(currentValue) => {
 						setSelectedOption(currentValue === selectedOption ? '' : currentValue)
 						setOpen(false)

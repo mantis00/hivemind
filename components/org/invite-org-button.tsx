@@ -12,7 +12,7 @@ import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import { useAllProfiles, useIsOwnerOrSuperadmin, useOrgMembers } from '@/lib/react-query/queries'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { VirtualizedInviteCommand, type InviteOption } from './virtualized-invite-command'
+import { VirtualizedCommand, type VirtualizedOption } from '@/components/virtualized-combobox'
 
 const FALLBACK_ROW_HEIGHT = 44
 
@@ -43,12 +43,12 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 			return !memberIds.has(String(profile.id))
 		})
 	}, [orgMembers, profiles])
-	const inviteOptions = useMemo<InviteOption[]>(
+	const inviteOptions = useMemo<VirtualizedOption[]>(
 		() =>
 			(inviteCandidates ?? []).map((candidate) => ({
 				value: String(candidate.id),
 				label: candidate.full_name || '',
-				email: candidate.email || ''
+				subLabel: candidate.email || ''
 			})),
 		[inviteCandidates]
 	)
@@ -134,11 +134,12 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 								) : inviteOptions.length === 0 ? (
 									<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
 								) : (
-									<VirtualizedInviteCommand
+									<VirtualizedCommand
 										height={commandHeight}
 										options={inviteOptions}
 										placeholder='Search users...'
 										selectedOption={selectedInviteeId}
+										emptyMessage='No eligible users found.'
 										onSelectOption={(currentValue) => {
 											setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
 											setUserDropdownOpen(false)
