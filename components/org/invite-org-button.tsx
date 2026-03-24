@@ -2,56 +2,222 @@
 
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { UserPlusIcon, LoaderCircle } from 'lucide-react'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { UserPlusIcon, LoaderCircle, Check } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useInviteMember } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
-import { AllProfile, useAllProfiles, useIsOwnerOrSuperadmin, useOrgMembers } from '@/lib/react-query/queries'
+import { useAllProfiles, useIsOwnerOrSuperadmin, useOrgMembers } from '@/lib/react-query/queries'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
-import { useIsMobile } from '@/hooks/use-mobile'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { cn } from '@/lib/utils'
 
-const tableComponents: TableComponents<AllProfile> = {
-	Table: ({ style, ...props }) => (
-		<table style={style} className='w-full table-fixed caption-bottom text-sm' {...props} />
-	),
-	TableHead: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
-		function TableHeadWrapper(props, ref) {
-			return <TableHeader ref={ref} className='sticky top-0 z-10 bg-card [&_tr]:border-b' {...props} />
-		}
-	),
-	TableRow: (props: { item: AllProfile } & React.HTMLAttributes<HTMLTableRowElement>) => <TableRow {...props} />,
-	TableBody: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
-		function TableBodyWrapper(props, ref) {
-			return <TableBody ref={ref} {...props} />
-		}
-	)
+type InviteOption = {
+	value: string
+	label: string
+	email: string
 }
 
-const HEADER_HEIGHT = 40
-const FALLBACK_ROW_HEIGHT = 39
-const MAX_HEIGHT = 5 * FALLBACK_ROW_HEIGHT + HEADER_HEIGHT
+interface VirtualizedInviteCommandProps {
+	height: string
+	options: InviteOption[]
+	placeholder: string
+	selectedOption: string
+	onSelectOption?: (option: string) => void
+}
+
+const FALLBACK_ROW_HEIGHT = 44
+
+const VirtualizedInviteCommand = ({
+	height,
+	options,
+	placeholder,
+	selectedOption,
+	onSelectOption
+}: VirtualizedInviteCommandProps) => {
+	const [filteredOptions, setFilteredOptions] = React.useState<InviteOption[]>(options)
+	const [focusedIndex, setFocusedIndex] = React.useState(-1)
+	const [hoveredIndex, setHoveredIndex] = React.useState(-1)
+	const [isKeyboardNavActive, setIsKeyboardNavActive] = React.useState(false)
+
+	const parentRef = React.useRef<HTMLDivElement | null>(null)
+
+	const virtualizer = useVirtualizer({
+		count: filteredOptions.length,
+		getScrollElement: () => parentRef.current,
+		estimateSize: () => FALLBACK_ROW_HEIGHT,
+		overscan: 6
+	})
+
+	const virtualOptions = virtualizer.getVirtualItems()
+
+	const scrollToIndex = (index: number) => {
+		virtualizer.scrollToIndex(index, {
+			align: 'center'
+		})
+	}
+
+	const handleSearch = (search: string) => {
+		setIsKeyboardNavActive(false)
+		setHoveredIndex(-1)
+		const normalizedSearch = search.trim().toLowerCase()
+		if (!normalizedSearch) {
+			setFilteredOptions(options)
+			return
+		}
+
+		setFilteredOptions(
+			options.filter((option) => {
+				const label = option.label.toLowerCase()
+				const email = option.email.toLowerCase()
+				return label.includes(normalizedSearch) || email.includes(normalizedSearch)
+			})
+		)
+	}
+
+	const handleKeyDown = (event: React.KeyboardEvent) => {
+		switch (event.key) {
+			case 'ArrowDown': {
+				event.preventDefault()
+				setIsKeyboardNavActive(true)
+				setFocusedIndex((prev) => {
+					const newIndex = prev === -1 ? 0 : Math.min(prev + 1, filteredOptions.length - 1)
+					scrollToIndex(newIndex)
+					return newIndex
+				})
+				break
+			}
+			case 'ArrowUp': {
+				event.preventDefault()
+				setIsKeyboardNavActive(true)
+				setFocusedIndex((prev) => {
+					const newIndex = prev === -1 ? filteredOptions.length - 1 : Math.max(prev - 1, 0)
+					scrollToIndex(newIndex)
+					return newIndex
+				})
+				break
+			}
+			case 'Enter': {
+				event.preventDefault()
+				if (filteredOptions[focusedIndex]) {
+					onSelectOption?.(filteredOptions[focusedIndex].value)
+				}
+				break
+			}
+			default:
+				break
+		}
+	}
+
+	useEffect(() => {
+		setFilteredOptions(options)
+		if (!selectedOption) {
+			setFocusedIndex(-1)
+			return
+		}
+
+		const selectedIndex = options.findIndex((entry) => entry.value === selectedOption)
+		setFocusedIndex(selectedIndex >= 0 ? selectedIndex : -1)
+	}, [options, selectedOption])
+
+	useEffect(() => {
+		if (selectedOption) {
+			const option = filteredOptions.find((entry) => entry.value === selectedOption)
+			if (option) {
+				const index = filteredOptions.indexOf(option)
+				setFocusedIndex(index)
+				virtualizer.scrollToIndex(index, {
+					align: 'center'
+				})
+			}
+		}
+	}, [selectedOption, filteredOptions, virtualizer])
+
+	return (
+		<Command shouldFilter={false} onKeyDown={handleKeyDown}>
+			<CommandInput onValueChange={handleSearch} placeholder={placeholder} />
+			<CommandList
+				ref={parentRef}
+				style={{
+					height,
+					width: '100%',
+					overflow: 'auto'
+				}}
+				onMouseDown={() => {
+					setIsKeyboardNavActive(false)
+					setHoveredIndex(-1)
+				}}
+				onMouseMove={() => setIsKeyboardNavActive(false)}
+				onMouseLeave={() => setHoveredIndex(-1)}
+			>
+				<CommandEmpty>No eligible users found.</CommandEmpty>
+				<CommandGroup>
+					<div
+						style={{
+							height: `${virtualizer.getTotalSize()}px`,
+							width: '100%',
+							position: 'relative'
+						}}
+					>
+						{virtualOptions.map((virtualOption) => {
+							const option = filteredOptions[virtualOption.index]
+							if (!option) return null
+
+							return (() => {
+								const isHighlighted = isKeyboardNavActive
+									? focusedIndex === virtualOption.index
+									: hoveredIndex === virtualOption.index
+
+								return (
+									<CommandItem
+										key={option.value}
+										disabled={isKeyboardNavActive}
+										className={cn(
+											'absolute left-0 top-0 w-full bg-transparent data-[selected=true]:bg-transparent data-[selected=true]:text-foreground aria-selected:bg-transparent aria-selected:text-foreground',
+											isHighlighted && 'bg-accent! text-accent-foreground!',
+											isKeyboardNavActive &&
+												focusedIndex !== virtualOption.index &&
+												'aria-selected:bg-transparent aria-selected:text-primary'
+										)}
+										style={{
+											height: `${virtualOption.size}px`,
+											transform: `translateY(${virtualOption.start}px)`
+										}}
+										value={option.value}
+										onMouseEnter={() => !isKeyboardNavActive && setHoveredIndex(virtualOption.index)}
+										onMouseLeave={() => !isKeyboardNavActive && setHoveredIndex(-1)}
+										onSelect={onSelectOption}
+									>
+										<Check
+											className={cn('mr-2 h-4 w-4', selectedOption === option.value ? 'opacity-100' : 'opacity-0')}
+										/>
+										<div className='flex min-w-0 flex-col'>
+											<span className='truncate'>{option.label || '—'}</span>
+											<span className='truncate text-xs text-muted-foreground'>{option.email || '—'}</span>
+										</div>
+									</CommandItem>
+								)
+							})()
+						})}
+					</div>
+				</CommandGroup>
+			</CommandList>
+		</Command>
+	)
+}
 
 export function InviteMemberButton() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const [open, setOpen] = useState(false)
 	const [userDropdownOpen, setUserDropdownOpen] = useState(false)
-	const [userSearch, setUserSearch] = useState('')
-	const [mobileAppliedSearch, setMobileAppliedSearch] = useState('')
 	const [selectedInviteeId, setSelectedInviteeId] = useState<string>('')
-	const [listHeight, setListHeight] = useState(FALLBACK_ROW_HEIGHT)
 	const [accessLvl, setAccessLvl] = useState('1')
-	const [mobileKeyboardInset, setMobileKeyboardInset] = useState(0)
-	const searchInputRef = useRef<HTMLInputElement | null>(null)
 	const { data: user } = useCurrentClientUser()
-	const isMobile = useIsMobile()
 	const inviteMutation = useInviteMember()
 	const isOwnerOrSuperadmin = useIsOwnerOrSuperadmin(orgId)
 	const { data: profiles, isLoading: isLoadingProfiles } = useAllProfiles()
@@ -64,68 +230,19 @@ export function InviteMemberButton() {
 			return !memberIds.has(String(profile.id))
 		})
 	}, [orgMembers, profiles])
-
-	const filteredInviteCandidates = useMemo(() => {
-		const searchValue = isMobile ? mobileAppliedSearch : userSearch
-		const normalizedSearch = searchValue.trim().toLowerCase()
-		if (!normalizedSearch) return isMobile ? [] : (inviteCandidates ?? [])
-
-		return (inviteCandidates ?? []).filter((candidate) => {
-			const firstName = candidate.first_name?.toLowerCase() ?? ''
-			const lastName = candidate.last_name?.toLowerCase() ?? ''
-			const fullName = candidate.full_name?.toLowerCase() ?? ''
-			return (
-				firstName.includes(normalizedSearch) ||
-				lastName.includes(normalizedSearch) ||
-				fullName.includes(normalizedSearch)
-			)
-		})
-	}, [inviteCandidates, isMobile, mobileAppliedSearch, userSearch])
+	const inviteOptions = useMemo<InviteOption[]>(
+		() =>
+			(inviteCandidates ?? []).map((candidate) => ({
+				value: String(candidate.id),
+				label: candidate.full_name || '',
+				email: candidate.email || ''
+			})),
+		[inviteCandidates]
+	)
 
 	const selectedInvitee = inviteCandidates.find((candidate) => String(candidate.id) === selectedInviteeId)
 	const isLoadingInviteCandidates = isLoadingProfiles || isLoadingOrgMembers
-	const dropdownHeight =
-		isLoadingInviteCandidates || filteredInviteCandidates.length === 0
-			? 120
-			: Math.min(listHeight + HEADER_HEIGHT, MAX_HEIGHT)
-
-	useEffect(() => {
-		if (!isMobile || !open) return
-
-		const updateInset = () => {
-			const vv = window.visualViewport
-			if (!vv) {
-				setMobileKeyboardInset(0)
-				return
-			}
-
-			const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
-			setMobileKeyboardInset(inset)
-		}
-
-		updateInset()
-		window.visualViewport?.addEventListener('resize', updateInset)
-		window.visualViewport?.addEventListener('scroll', updateInset)
-
-		return () => {
-			window.visualViewport?.removeEventListener('resize', updateInset)
-			window.visualViewport?.removeEventListener('scroll', updateInset)
-		}
-	}, [isMobile, open])
-
-	const handleMobileSearch = () => {
-		if (!isMobile) return
-		setMobileAppliedSearch(userSearch.trim())
-		setUserDropdownOpen(true)
-		searchInputRef.current?.blur()
-	}
-
-	const handleMobileSearchFocus = () => {
-		if (!isMobile) return
-		setTimeout(() => {
-			searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-		}, 300)
-	}
+	const commandHeight = `${Math.min(Math.max(inviteOptions.length * FALLBACK_ROW_HEIGHT, 220), 320)}px`
 
 	if (!isOwnerOrSuperadmin) return null
 
@@ -144,8 +261,6 @@ export function InviteMemberButton() {
 			{
 				onSuccess: () => {
 					setSelectedInviteeId('')
-					setUserSearch('')
-					setMobileAppliedSearch('')
 					setUserDropdownOpen(false)
 					setOpen(false)
 					setAccessLvl('1')
@@ -167,18 +282,11 @@ export function InviteMemberButton() {
 			onOpenChange={(isOpen) => {
 				setOpen(isOpen)
 				if (!isOpen) {
-					setMobileAppliedSearch('')
-					setUserSearch('')
-					setMobileKeyboardInset(0)
 					setUserDropdownOpen(false)
 				}
 			}}
 		>
-			<form
-				onSubmit={handleSubmit}
-				data-vaul-no-drag
-				style={isMobile && mobileKeyboardInset > 0 ? { paddingBottom: `${mobileKeyboardInset + 12}px` } : undefined}
-			>
+			<form onSubmit={handleSubmit} data-vaul-no-drag>
 				<div className='grid gap-4 py-4'>
 					<div className='grid gap-2'>
 						<Label htmlFor='invitee-search'>Select User</Label>
@@ -202,141 +310,30 @@ export function InviteMemberButton() {
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent
-								style={{
-									maxHeight: 'min(60vh, var(--radix-popover-content-available-height))',
-									maxWidth: 'min(100vw - 1rem, var(--radix-popover-content-available-width))'
-								}}
-								className={
-									isMobile
-										? 'w-[calc(100vw-2rem)] p-2 overflow-hidden'
-										: 'w-(--radix-popover-trigger-width) p-2 overflow-hidden'
-								}
+								className='w-(--radix-popover-trigger-width) p-0'
 								data-vaul-no-drag
 								align='start'
-								side={isMobile ? 'top' : 'bottom'}
+								side='bottom'
 							>
-								<div className='grid gap-2'>
-									<div className='flex items-center gap-2'>
-										<Input
-											ref={searchInputRef}
-											placeholder='Search by first or last name'
-											value={userSearch}
-											onChange={(event) => {
-												setUserSearch(event.target.value)
-												if (isMobile) setMobileAppliedSearch('')
-											}}
-											onFocus={handleMobileSearchFocus}
-											onKeyDown={(event) => {
-												if (isMobile && event.key === 'Enter') {
-													event.preventDefault()
-													handleMobileSearch()
-												}
-											}}
-											disabled={inviteMutation.isPending}
-										/>
-										{isMobile && (
-											<Button
-												type='button'
-												variant='secondary'
-												onClick={handleMobileSearch}
-												disabled={inviteMutation.isPending}
-											>
-												Search
-											</Button>
-										)}
+								{isLoadingInviteCandidates ? (
+									<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
+										<LoaderCircle className='h-4 w-4 animate-spin' />
+										Loading users...
 									</div>
-									<div className='rounded-md border'>
-										{isLoadingInviteCandidates ? (
-											<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
-												<LoaderCircle className='h-4 w-4 animate-spin' />
-												Loading users...
-											</div>
-										) : isMobile && !mobileAppliedSearch.trim() ? (
-											<div className='py-6 text-center text-sm text-muted-foreground'>Tap Search to load users.</div>
-										) : filteredInviteCandidates.length === 0 ? (
-											<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
-										) : isMobile ? (
-											<div data-vaul-no-drag className='max-h-[45vh] overflow-y-auto'>
-												<div className='grid grid-cols-2 gap-0 border-b bg-card text-xs font-medium text-muted-foreground'>
-													<div className='px-3 py-2'>Name</div>
-													<div className='px-3 py-2'>Email</div>
-												</div>
-												{filteredInviteCandidates.map((candidate) => {
-													const isSelected = selectedInviteeId === String(candidate.id)
-													const rowClass = isSelected ? 'bg-accent/60' : ''
-
-													const handleSelect = () => {
-														setSelectedInviteeId(String(candidate.id))
-														setUserDropdownOpen(false)
-													}
-
-													return (
-														<button
-															key={String(candidate.id)}
-															type='button'
-															onClick={handleSelect}
-															className={`grid w-full grid-cols-2 border-b text-left ${rowClass}`}
-														>
-															<div className='truncate px-3 py-2 text-sm font-medium'>{candidate.full_name || '—'}</div>
-															<div className='truncate px-3 py-2 text-sm text-muted-foreground'>
-																{candidate.email || '—'}
-															</div>
-														</button>
-													)
-												})}
-											</div>
-										) : (
-											<TableVirtuoso<AllProfile>
-												style={{ height: dropdownHeight }}
-												data={filteredInviteCandidates}
-												components={tableComponents}
-												totalListHeightChanged={setListHeight}
-												fixedHeaderContent={() => (
-													<TableRow className='hover:bg-transparent select-none'>
-														<TableHead className='w-1/2 select-none'>Name</TableHead>
-														<TableHead className='w-1/2 select-none'>Email</TableHead>
-													</TableRow>
-												)}
-												itemContent={(index, candidate) =>
-													(() => {
-														const isSelected = selectedInviteeId === String(candidate.id)
-														const rowClass = isSelected ? 'bg-accent/60' : ''
-
-														const handleSelect = () => {
-															setSelectedInviteeId(String(candidate.id))
-															setUserDropdownOpen(false)
-														}
-
-														return (
-															<>
-																<TableCell
-																	className={`cursor-pointer overflow-hidden ${rowClass}`}
-																	onClick={handleSelect}
-																>
-																	<div className='min-w-0'>
-																		<p className='truncate font-medium' title={candidate.full_name || undefined}>
-																			{candidate.full_name || '—'}
-																		</p>
-																	</div>
-																</TableCell>
-																<TableCell
-																	className={`cursor-pointer overflow-hidden ${rowClass}`}
-																	onClick={handleSelect}
-																>
-																	<div className='min-w-0'>
-																		<p className='truncate font-medium' title={candidate.email || undefined}>
-																			{candidate.email || '—'}
-																		</p>
-																	</div>
-																</TableCell>
-															</>
-														)
-													})()
-												}
-											/>
-										)}
-									</div>
-								</div>
+								) : inviteOptions.length === 0 ? (
+									<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
+								) : (
+									<VirtualizedInviteCommand
+										height={commandHeight}
+										options={inviteOptions}
+										placeholder='Search users...'
+										selectedOption={selectedInviteeId}
+										onSelectOption={(currentValue) => {
+											setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
+											setUserDropdownOpen(false)
+										}}
+									/>
+								)}
 							</PopoverContent>
 						</Popover>
 					</div>
