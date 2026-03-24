@@ -5,7 +5,7 @@ import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { UserPlusIcon, LoaderCircle } from 'lucide-react'
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { useInviteMember } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -44,9 +44,11 @@ export function InviteMemberButton() {
 	const [open, setOpen] = useState(false)
 	const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 	const [userSearch, setUserSearch] = useState('')
+	const [mobileAppliedSearch, setMobileAppliedSearch] = useState('')
 	const [selectedInviteeId, setSelectedInviteeId] = useState<string>('')
 	const [listHeight, setListHeight] = useState(FALLBACK_ROW_HEIGHT)
 	const [accessLvl, setAccessLvl] = useState('1')
+	const searchInputRef = useRef<HTMLInputElement | null>(null)
 	const { data: user } = useCurrentClientUser()
 	const isMobile = useIsMobile()
 	const inviteMutation = useInviteMember()
@@ -63,8 +65,9 @@ export function InviteMemberButton() {
 	}, [orgMembers, profiles])
 
 	const filteredInviteCandidates = useMemo(() => {
-		const normalizedSearch = userSearch.trim().toLowerCase()
-		if (!normalizedSearch) return inviteCandidates ?? []
+		const searchValue = isMobile ? mobileAppliedSearch : userSearch
+		const normalizedSearch = searchValue.trim().toLowerCase()
+		if (!normalizedSearch) return isMobile ? [] : (inviteCandidates ?? [])
 
 		return (inviteCandidates ?? []).filter((candidate) => {
 			const firstName = candidate.first_name?.toLowerCase() ?? ''
@@ -76,7 +79,7 @@ export function InviteMemberButton() {
 				fullName.includes(normalizedSearch)
 			)
 		})
-	}, [inviteCandidates, userSearch])
+	}, [inviteCandidates, isMobile, mobileAppliedSearch, userSearch])
 
 	const selectedInvitee = inviteCandidates.find((candidate) => String(candidate.id) === selectedInviteeId)
 	const isLoadingInviteCandidates = isLoadingProfiles || isLoadingOrgMembers
@@ -86,6 +89,12 @@ export function InviteMemberButton() {
 			: Math.min(listHeight + HEADER_HEIGHT, isMobile ? 4 * FALLBACK_ROW_HEIGHT + HEADER_HEIGHT : MAX_HEIGHT)
 
 	if (!isOwnerOrSuperadmin) return null
+
+	const handleMobileSearch = () => {
+		if (!isMobile) return
+		setMobileAppliedSearch(userSearch)
+		searchInputRef.current?.blur()
+	}
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -103,6 +112,7 @@ export function InviteMemberButton() {
 				onSuccess: () => {
 					setSelectedInviteeId('')
 					setUserSearch('')
+					setMobileAppliedSearch('')
 					setUserDropdownOpen(false)
 					setOpen(false)
 					setAccessLvl('1')
@@ -121,7 +131,14 @@ export function InviteMemberButton() {
 				</Button>
 			}
 			open={open}
-			onOpenChange={(isOpen) => setOpen(isOpen)}
+			onOpenChange={(isOpen) => {
+				setOpen(isOpen)
+				if (!isOpen) {
+					setMobileAppliedSearch('')
+					setUserSearch('')
+					setUserDropdownOpen(false)
+				}
+			}}
 		>
 			<form onSubmit={handleSubmit}>
 				<div className='grid gap-4 py-4'>
@@ -160,18 +177,39 @@ export function InviteMemberButton() {
 								side='bottom'
 							>
 								<div className='grid gap-2'>
-									<Input
-										placeholder='Search by first or last name'
-										value={userSearch}
-										onChange={(event) => setUserSearch(event.target.value)}
-										disabled={inviteMutation.isPending}
-									/>
+									<div className='flex items-center gap-2'>
+										<Input
+											ref={searchInputRef}
+											placeholder='Search by first or last name'
+											value={userSearch}
+											onChange={(event) => setUserSearch(event.target.value)}
+											onKeyDown={(event) => {
+												if (isMobile && event.key === 'Enter') {
+													event.preventDefault()
+													handleMobileSearch()
+												}
+											}}
+											disabled={inviteMutation.isPending}
+										/>
+										{isMobile && (
+											<Button
+												type='button'
+												variant='secondary'
+												onClick={handleMobileSearch}
+												disabled={inviteMutation.isPending}
+											>
+												Search
+											</Button>
+										)}
+									</div>
 									<div className='rounded-md border'>
 										{isLoadingInviteCandidates ? (
 											<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
 												<LoaderCircle className='h-4 w-4 animate-spin' />
 												Loading users...
 											</div>
+										) : isMobile && !mobileAppliedSearch.trim() ? (
+											<div className='py-6 text-center text-sm text-muted-foreground'>Tap Search to load users.</div>
 										) : filteredInviteCandidates.length === 0 ? (
 											<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
 										) : (
