@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Label } from '@/components/ui/label'
 import { UserPlusIcon, LoaderCircle } from 'lucide-react'
-import React, { useMemo, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import { useInviteMember } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -13,8 +13,7 @@ import { UUID } from 'crypto'
 import { useAllProfiles, useIsOwnerOrSuperadmin, useOrgMembers } from '@/lib/react-query/queries'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { VirtualizedCommand, type VirtualizedOption } from '@/components/virtualized-combobox'
-
-const FALLBACK_ROW_HEIGHT = 44
+import { useMediaQuery } from '@/hooks/use-media-query'
 
 export function InviteMemberButton() {
 	const params = useParams()
@@ -32,6 +31,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 	const [selectedInviteeId, setSelectedInviteeId] = useState<string>('')
 	const [accessLvl, setAccessLvl] = useState('1')
 	const { data: user } = useCurrentClientUser()
+	const isDesktop = useMediaQuery('(min-width: 768px)')
 	const inviteMutation = useInviteMember()
 	const { data: profiles, isLoading: isLoadingProfiles } = useAllProfiles()
 	const { data: orgMembers, isLoading: isLoadingOrgMembers } = useOrgMembers(orgId)
@@ -55,7 +55,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 
 	const selectedInvitee = inviteCandidates.find((candidate) => String(candidate.id) === selectedInviteeId)
 	const isLoadingInviteCandidates = isLoadingProfiles || isLoadingOrgMembers
-	const commandHeight = `${Math.min(Math.max(inviteOptions.length * FALLBACK_ROW_HEIGHT, 220), 320)}px`
+	const commandHeight = '320px'
 
 	const handleOpenChange = (isOpen: boolean) => {
 		if (!isOpen) {
@@ -64,7 +64,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 		setOpen(isOpen)
 	}
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault()
 		if (!user?.id || !selectedInviteeId || !selectedInvitee?.email) return
 
@@ -103,53 +103,82 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 				<div className='grid gap-4 py-4'>
 					<div className='grid gap-2'>
 						<Label htmlFor='invitee-search'>Select User</Label>
-						<Popover open={userDropdownOpen} onOpenChange={setUserDropdownOpen}>
-							<PopoverTrigger asChild>
-								<Button
-									id='invitee-search'
-									type='button'
-									variant='outline'
-									className='w-full justify-start text-left font-normal'
-									disabled={inviteMutation.isPending}
+						{isDesktop ? (
+							<Popover open={userDropdownOpen} onOpenChange={setUserDropdownOpen}>
+								<PopoverTrigger asChild>
+									<Button
+										id='invitee-search'
+										type='button'
+										variant='outline'
+										className='w-full justify-start text-left font-normal'
+										disabled={inviteMutation.isPending}
+									>
+										{selectedInvitee ? (
+											<span className='truncate'>
+												{selectedInvitee.full_name}
+												<span className='text-muted-foreground'> - {selectedInvitee.email}</span>
+											</span>
+										) : (
+											<span className='text-muted-foreground'>Choose a user</span>
+										)}
+									</Button>
+								</PopoverTrigger>
+								<PopoverContent
+									className='w-(--radix-popover-trigger-width) p-0'
+									data-vaul-no-drag
+									align='start'
+									side='bottom'
 								>
-									{selectedInvitee ? (
-										<span className='truncate'>
-											{selectedInvitee.full_name}
-											<span className='text-muted-foreground'> - {selectedInvitee.email}</span>
-										</span>
+									{isLoadingInviteCandidates ? (
+										<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
+											<LoaderCircle className='h-4 w-4 animate-spin' />
+											Loading users...
+										</div>
+									) : inviteOptions.length === 0 ? (
+										<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
 									) : (
-										<span className='text-muted-foreground'>Choose a user</span>
+										<VirtualizedCommand
+											height={commandHeight}
+											options={inviteOptions}
+											placeholder='Search users...'
+											selectedOption={selectedInviteeId}
+											emptyMessage='No eligible users found.'
+											onSelectOption={(currentValue) => {
+												setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
+												setUserDropdownOpen(false)
+											}}
+										/>
 									)}
-								</Button>
-							</PopoverTrigger>
-							<PopoverContent
-								className='w-(--radix-popover-trigger-width) p-0'
-								data-vaul-no-drag
-								align='start'
-								side='bottom'
-							>
-								{isLoadingInviteCandidates ? (
-									<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
-										<LoaderCircle className='h-4 w-4 animate-spin' />
-										Loading users...
-									</div>
-								) : inviteOptions.length === 0 ? (
-									<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
-								) : (
-									<VirtualizedCommand
-										height={commandHeight}
-										options={inviteOptions}
-										placeholder='Search users...'
-										selectedOption={selectedInviteeId}
-										emptyMessage='No eligible users found.'
-										onSelectOption={(currentValue) => {
-											setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
-											setUserDropdownOpen(false)
-										}}
-									/>
-								)}
-							</PopoverContent>
-						</Popover>
+								</PopoverContent>
+							</Popover>
+						) : isLoadingInviteCandidates ? (
+							<div className='flex items-center justify-center gap-2 rounded-md border py-6 text-sm text-muted-foreground'>
+								<LoaderCircle className='h-4 w-4 animate-spin' />
+								Loading users...
+							</div>
+						) : inviteOptions.length === 0 ? (
+							<div className='rounded-md border py-6 text-center text-sm text-muted-foreground'>
+								No eligible users found.
+							</div>
+						) : (
+							<div className='rounded-md border'>
+								<VirtualizedCommand
+									height={commandHeight}
+									options={inviteOptions}
+									placeholder='Search users...'
+									selectedOption={selectedInviteeId}
+									emptyMessage='No eligible users found.'
+									onSelectOption={(currentValue) => {
+										setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
+									}}
+								/>
+							</div>
+						)}
+						{selectedInvitee ? (
+							<p className='text-xs text-muted-foreground'>
+								Selected: {selectedInvitee.full_name} - {selectedInvitee.email}
+							</p>
+						) : null}
 					</div>
 					<div className='grid gap-2'>
 						<Label htmlFor='access-level'>Access Level</Label>

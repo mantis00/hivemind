@@ -51,6 +51,12 @@ export function VirtualizedCommand({
 	})
 
 	const virtualOptions = virtualizer.getVirtualItems()
+	const parsedHeight = Number.parseInt(height, 10)
+	const maxHeight = Number.isFinite(parsedHeight) ? parsedHeight : 400
+	const listHeight = Math.min(
+		Math.max(virtualizer.getTotalSize() + 8, rowHeight * (filteredOptions.length > 0 ? 1 : 2) + 8),
+		maxHeight
+	)
 
 	const scrollToIndex = (index: number) => {
 		virtualizer.scrollToIndex(index, {
@@ -143,7 +149,7 @@ export function VirtualizedCommand({
 			<CommandList
 				ref={parentRef}
 				style={{
-					height,
+					height: `${listHeight}px`,
 					width: '100%',
 					overflow: 'auto'
 				}}
