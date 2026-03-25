@@ -54,7 +54,7 @@ export function VirtualizedCommand({
 	const parsedHeight = Number.parseInt(height, 10)
 	const maxHeight = Number.isFinite(parsedHeight) ? parsedHeight : 400
 	const listHeight = Math.min(
-		Math.max(virtualizer.getTotalSize() + 8, rowHeight * (filteredOptions.length > 0 ? 1 : 2) + 8),
+		Math.max(virtualizer.getTotalSize(), rowHeight * (filteredOptions.length > 0 ? 1 : 1.4)),
 		maxHeight
 	)
 

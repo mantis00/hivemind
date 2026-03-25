@@ -12,8 +12,7 @@ import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import { useAllProfiles, useIsOwnerOrSuperadmin, useOrgMembers } from '@/lib/react-query/queries'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { VirtualizedCommand, type VirtualizedOption } from '@/components/virtualized-combobox'
-import { useMediaQuery } from '@/hooks/use-media-query'
+import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
 
 export function InviteMemberButton() {
 	const params = useParams()
@@ -31,7 +30,6 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 	const [selectedInviteeId, setSelectedInviteeId] = useState<string>('')
 	const [accessLvl, setAccessLvl] = useState('1')
 	const { data: user } = useCurrentClientUser()
-	const isDesktop = useMediaQuery('(min-width: 768px)')
 	const inviteMutation = useInviteMember()
 	const { data: profiles, isLoading: isLoadingProfiles } = useAllProfiles()
 	const { data: orgMembers, isLoading: isLoadingOrgMembers } = useOrgMembers(orgId)
@@ -100,68 +98,17 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 			onOpenChange={handleOpenChange}
 		>
 			<form onSubmit={handleSubmit} data-vaul-no-drag>
-				<div className='grid gap-4 py-4'>
+				<div className='grid gap-4 pt-2 pb-4'>
 					<div className='grid gap-2'>
 						<Label htmlFor='invitee-search'>Select User</Label>
-						{isDesktop ? (
-							<Popover open={userDropdownOpen} onOpenChange={setUserDropdownOpen}>
-								<PopoverTrigger asChild>
-									<Button
-										id='invitee-search'
-										type='button'
-										variant='outline'
-										className='w-full justify-start text-left font-normal'
-										disabled={inviteMutation.isPending}
-									>
-										{selectedInvitee ? (
-											<span className='truncate'>
-												{selectedInvitee.full_name}
-												<span className='text-muted-foreground'> - {selectedInvitee.email}</span>
-											</span>
-										) : (
-											<span className='text-muted-foreground'>Choose a user</span>
-										)}
-									</Button>
-								</PopoverTrigger>
-								<PopoverContent
-									className='w-(--radix-popover-trigger-width) p-0'
-									data-vaul-no-drag
-									align='start'
-									side='bottom'
-								>
-									{isLoadingInviteCandidates ? (
-										<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
-											<LoaderCircle className='h-4 w-4 animate-spin' />
-											Loading users...
-										</div>
-									) : inviteOptions.length === 0 ? (
-										<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
-									) : (
-										<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2'>
-											<VirtualizedCommand
-												height={commandHeight}
-												options={inviteOptions}
-												placeholder='Search users...'
-												selectedOption={selectedInviteeId}
-												emptyMessage='No eligible users found.'
-												onSelectOption={(currentValue) => {
-													setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
-													setUserDropdownOpen(false)
-												}}
-											/>
-										</div>
-									)}
-								</PopoverContent>
-							</Popover>
-						) : (
-							<>
+						<Popover open={userDropdownOpen} onOpenChange={setUserDropdownOpen}>
+							<PopoverTrigger asChild>
 								<Button
 									id='invitee-search'
 									type='button'
 									variant='outline'
 									className='w-full justify-start text-left font-normal'
 									disabled={inviteMutation.isPending}
-									onClick={() => setUserDropdownOpen((prev) => !prev)}
 								>
 									{selectedInvitee ? (
 										<span className='truncate'>
@@ -172,34 +119,37 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 										<span className='text-muted-foreground'>Choose a user</span>
 									)}
 								</Button>
-								{userDropdownOpen ? (
-									isLoadingInviteCandidates ? (
-										<div className='flex items-center justify-center gap-2 rounded-md border py-6 text-sm text-muted-foreground'>
-											<LoaderCircle className='h-4 w-4 animate-spin' />
-											Loading users...
-										</div>
-									) : inviteOptions.length === 0 ? (
-										<div className='rounded-md border py-6 text-center text-sm text-muted-foreground'>
-											No eligible users found.
-										</div>
-									) : (
-										<div className='rounded-md border **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm **:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2'>
-											<VirtualizedCommand
-												height={commandHeight}
-												options={inviteOptions}
-												placeholder='Search users...'
-												selectedOption={selectedInviteeId}
-												emptyMessage='No eligible users found.'
-												onSelectOption={(currentValue) => {
-													setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
-													setUserDropdownOpen(false)
-												}}
-											/>
-										</div>
-									)
-								) : null}
-							</>
-						)}
+							</PopoverTrigger>
+							<PopoverContent
+								className='w-(--radix-popover-trigger-width) p-0'
+								data-vaul-no-drag
+								align='start'
+								side='bottom'
+							>
+								{isLoadingInviteCandidates ? (
+									<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
+										<LoaderCircle className='h-4 w-4 animate-spin' />
+										Loading users...
+									</div>
+								) : inviteOptions.length === 0 ? (
+									<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
+								) : (
+									<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+										<VirtualizedCommand
+											height={commandHeight}
+											options={inviteOptions}
+											placeholder='Search users...'
+											selectedOption={selectedInviteeId}
+											emptyMessage='No eligible users found.'
+											onSelectOption={(currentValue) => {
+												setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
+												setUserDropdownOpen(false)
+											}}
+										/>
+									</div>
+								)}
+							</PopoverContent>
+						</Popover>
 					</div>
 					<div className='grid gap-2'>
 						<Label htmlFor='access-level'>Access Level</Label>
