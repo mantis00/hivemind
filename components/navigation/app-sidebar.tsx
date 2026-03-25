@@ -27,7 +27,8 @@ import {
 	ClipboardList,
 	FolderHeart,
 	ArrowRightLeft,
-	Calendar
+	Calendar,
+	ScanLine
 } from 'lucide-react'
 import {
 	DropdownMenu,
@@ -224,6 +225,17 @@ export function AppSidebar() {
 												>
 													<Calendar className='size-4' />
 													<span>Task Schedules</span>
+												</Link>
+											</SidebarMenuSubButton>
+										</SidebarMenuSubItem>
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild>
+												<Link
+													href={orgId ? `/protected/orgs/${orgId}/scan` : '/protected/orgs'}
+													onClick={closeMobileOnNav}
+												>
+													<ScanLine className='size-4' />
+													<span>Scan QR</span>
 												</Link>
 											</SidebarMenuSubButton>
 										</SidebarMenuSubItem>{' '}
