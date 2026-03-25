@@ -153,28 +153,52 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 									)}
 								</PopoverContent>
 							</Popover>
-						) : isLoadingInviteCandidates ? (
-							<div className='flex items-center justify-center gap-2 rounded-md border py-6 text-sm text-muted-foreground'>
-								<LoaderCircle className='h-4 w-4 animate-spin' />
-								Loading users...
-							</div>
-						) : inviteOptions.length === 0 ? (
-							<div className='rounded-md border py-6 text-center text-sm text-muted-foreground'>
-								No eligible users found.
-							</div>
 						) : (
-							<div className='rounded-md border **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm **:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2'>
-								<VirtualizedCommand
-									height={commandHeight}
-									options={inviteOptions}
-									placeholder='Search users...'
-									selectedOption={selectedInviteeId}
-									emptyMessage='No eligible users found.'
-									onSelectOption={(currentValue) => {
-										setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
-									}}
-								/>
-							</div>
+							<>
+								<Button
+									id='invitee-search'
+									type='button'
+									variant='outline'
+									className='w-full justify-start text-left font-normal'
+									disabled={inviteMutation.isPending}
+									onClick={() => setUserDropdownOpen((prev) => !prev)}
+								>
+									{selectedInvitee ? (
+										<span className='truncate'>
+											{selectedInvitee.full_name}
+											<span className='text-muted-foreground'> - {selectedInvitee.email}</span>
+										</span>
+									) : (
+										<span className='text-muted-foreground'>Choose a user</span>
+									)}
+								</Button>
+								{userDropdownOpen ? (
+									isLoadingInviteCandidates ? (
+										<div className='flex items-center justify-center gap-2 rounded-md border py-6 text-sm text-muted-foreground'>
+											<LoaderCircle className='h-4 w-4 animate-spin' />
+											Loading users...
+										</div>
+									) : inviteOptions.length === 0 ? (
+										<div className='rounded-md border py-6 text-center text-sm text-muted-foreground'>
+											No eligible users found.
+										</div>
+									) : (
+										<div className='rounded-md border **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm **:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2'>
+											<VirtualizedCommand
+												height={commandHeight}
+												options={inviteOptions}
+												placeholder='Search users...'
+												selectedOption={selectedInviteeId}
+												emptyMessage='No eligible users found.'
+												onSelectOption={(currentValue) => {
+													setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
+													setUserDropdownOpen(false)
+												}}
+											/>
+										</div>
+									)
+								) : null}
+							</>
 						)}
 					</div>
 					<div className='grid gap-2'>
