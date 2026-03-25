@@ -137,17 +137,19 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 									) : inviteOptions.length === 0 ? (
 										<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
 									) : (
-										<VirtualizedCommand
-											height={commandHeight}
-											options={inviteOptions}
-											placeholder='Search users...'
-											selectedOption={selectedInviteeId}
-											emptyMessage='No eligible users found.'
-											onSelectOption={(currentValue) => {
-												setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
-												setUserDropdownOpen(false)
-											}}
-										/>
+										<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2'>
+											<VirtualizedCommand
+												height={commandHeight}
+												options={inviteOptions}
+												placeholder='Search users...'
+												selectedOption={selectedInviteeId}
+												emptyMessage='No eligible users found.'
+												onSelectOption={(currentValue) => {
+													setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
+													setUserDropdownOpen(false)
+												}}
+											/>
+										</div>
 									)}
 								</PopoverContent>
 							</Popover>
@@ -161,7 +163,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 								No eligible users found.
 							</div>
 						) : (
-							<div className='rounded-md border'>
+							<div className='rounded-md border **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm **:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2'>
 								<VirtualizedCommand
 									height={commandHeight}
 									options={inviteOptions}
@@ -174,11 +176,6 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 								/>
 							</div>
 						)}
-						{selectedInvitee ? (
-							<p className='text-xs text-muted-foreground'>
-								Selected: {selectedInvitee.full_name} - {selectedInvitee.email}
-							</p>
-						) : null}
 					</div>
 					<div className='grid gap-2'>
 						<Label htmlFor='access-level'>Access Level</Label>
