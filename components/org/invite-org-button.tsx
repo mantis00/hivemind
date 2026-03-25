@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Label } from '@/components/ui/label'
 import { UserPlusIcon, LoaderCircle } from 'lucide-react'
-import { type FormEvent, useMemo, useState } from 'react'
+import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from 'react'
 import { useInviteMember } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -30,6 +30,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 	const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 	const [selectedInviteeId, setSelectedInviteeId] = useState<string>('')
 	const [accessLvl, setAccessLvl] = useState('1')
+	const [keyboardOffset, setKeyboardOffset] = useState(0)
 	const { data: user } = useCurrentClientUser()
 	const isDesktop = useMediaQuery('(min-width: 768px)')
 	const inviteMutation = useInviteMember()
@@ -56,13 +57,43 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 	const selectedInvitee = inviteCandidates.find((candidate) => String(candidate.id) === selectedInviteeId)
 	const isLoadingInviteCandidates = isLoadingProfiles || isLoadingOrgMembers
 	const commandHeight = '320px'
+	const shouldLiftForKeyboard = !isDesktop && keyboardOffset > 80
+	const liftAmount = shouldLiftForKeyboard ? Math.min(keyboardOffset - 16, 260) : 0
+	const mobileLiftStyle: CSSProperties | undefined = shouldLiftForKeyboard
+		? {
+				transform: `translateY(-${liftAmount}px)`,
+				transition: 'transform 160ms ease-out'
+			}
+		: undefined
 
 	const handleOpenChange = (isOpen: boolean) => {
 		if (!isOpen) {
 			setUserDropdownOpen(false)
+			setKeyboardOffset(0)
 		}
 		setOpen(isOpen)
 	}
+
+	useEffect(() => {
+		if (!open || isDesktop || typeof window === 'undefined' || !window.visualViewport) {
+			return
+		}
+
+		const viewport = window.visualViewport
+		const updateOffset = () => {
+			const offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+			setKeyboardOffset(offset)
+		}
+
+		updateOffset()
+		viewport.addEventListener('resize', updateOffset)
+		viewport.addEventListener('scroll', updateOffset)
+
+		return () => {
+			viewport.removeEventListener('resize', updateOffset)
+			viewport.removeEventListener('scroll', updateOffset)
+		}
+	}, [open, isDesktop])
 
 	const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault()
@@ -91,7 +122,6 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 		<ResponsiveDialogDrawer
 			title='Invite Member'
 			description='Select a user and access level for the new member.'
-			className='pb-[calc(env(keyboard-inset-height,0px)+1.5rem)]'
 			trigger={
 				<Button variant='default' onClick={() => setOpen(true)}>
 					Invite Member <UserPlusIcon className='w-4 h-4' />
@@ -100,7 +130,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 			open={open}
 			onOpenChange={handleOpenChange}
 		>
-			<form onSubmit={handleSubmit} data-vaul-no-drag>
+			<form onSubmit={handleSubmit} data-vaul-no-drag style={mobileLiftStyle}>
 				<div className='grid gap-4 pt-2 pb-4'>
 					<div className='grid gap-2'>
 						<Label htmlFor='invitee-search'>Select User</Label>
