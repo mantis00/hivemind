@@ -91,6 +91,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 		<ResponsiveDialogDrawer
 			title='Invite Member'
 			description='Select a user and access level for the new member.'
+			className='pb-[calc(env(keyboard-inset-height,0px)+1.5rem)]'
 			trigger={
 				<Button variant='default' onClick={() => setOpen(true)}>
 					Invite Member <UserPlusIcon className='w-4 h-4' />
@@ -173,7 +174,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 									)}
 								</Button>
 								{userDropdownOpen ? (
-									<div className='rounded-md border p-0'>
+									<div className='rounded-md border p-0 **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm'>
 										{isLoadingInviteCandidates ? (
 											<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
 												<LoaderCircle className='h-4 w-4 animate-spin' />
