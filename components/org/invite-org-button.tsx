@@ -134,7 +134,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 								) : inviteOptions.length === 0 ? (
 									<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
 								) : (
-									<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+									<div className='**:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm **:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 										<VirtualizedCommand
 											height={commandHeight}
 											options={inviteOptions}
