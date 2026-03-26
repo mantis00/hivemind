@@ -9,12 +9,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 type CameraState = 'idle' | 'starting' | 'running' | 'unsupported' | 'error'
 type ScanState = 'idle' | 'scanning' | 'detected' | 'unsupported' | 'error'
+type DecoderMode = 'unknown' | 'native' | 'fallback'
 
 type DetectedCode = { rawValue?: string | null }
 type BarcodeDetectorInstance = {
 	detect: (source: unknown) => Promise<DetectedCode[]>
 }
 type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance
+type JsQrDecodeResult = { data: string } | null
+type JsQrDecode = (
+	data: Uint8ClampedArray,
+	width: number,
+	height: number,
+	options?: { inversionAttempts?: 'dontInvert' | 'onlyInvert' | 'attemptBoth' | 'invertFirst' }
+) => JsQrDecodeResult
 
 type ScanValidationResult = { ok: true; href: string } | { ok: false; message: string }
 
@@ -66,6 +74,8 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 	const router = useRouter()
 	const videoRef = useRef<HTMLVideoElement | null>(null)
 	const streamRef = useRef<MediaStream | null>(null)
+	const fallbackCanvasRef = useRef<HTMLCanvasElement | null>(null)
+	const fallbackDecoderRef = useRef<JsQrDecode | null>(null)
 	const scanIntervalRef = useRef<number | null>(null)
 	const detectorBusyRef = useRef(false)
 	const lastRejectedValueRef = useRef<string | null>(null)
@@ -76,6 +86,7 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 	const [scanError, setScanError] = useState<string | null>(null)
 	const [scanResult, setScanResult] = useState<string | null>(null)
 	const [isNavigating, setIsNavigating] = useState(false)
+	const [decoderMode, setDecoderMode] = useState<DecoderMode>('unknown')
 
 	const stopScanningLoop = useCallback(() => {
 		if (scanIntervalRef.current !== null) {
@@ -85,21 +96,60 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 		detectorBusyRef.current = false
 	}, [])
 
+	const loadFallbackDecoder = useCallback(async (): Promise<JsQrDecode> => {
+		if (fallbackDecoderRef.current) {
+			return fallbackDecoderRef.current
+		}
+
+		const jsQrModule = await import('jsqr')
+		const decoder = (jsQrModule.default ?? jsQrModule) as unknown as JsQrDecode
+		fallbackDecoderRef.current = decoder
+		return decoder
+	}, [])
+
+	const decodeWithFallback = useCallback(async (): Promise<string | null> => {
+		const videoEl = videoRef.current
+		if (!videoEl || videoEl.readyState < 2 || videoEl.videoWidth === 0 || videoEl.videoHeight === 0) {
+			return null
+		}
+
+		let canvas = fallbackCanvasRef.current
+		if (!canvas) {
+			canvas = document.createElement('canvas')
+			fallbackCanvasRef.current = canvas
+		}
+
+		if (canvas.width !== videoEl.videoWidth || canvas.height !== videoEl.videoHeight) {
+			canvas.width = videoEl.videoWidth
+			canvas.height = videoEl.videoHeight
+		}
+
+		const context = canvas.getContext('2d', { willReadFrequently: true })
+		if (!context) {
+			throw new Error('Could not create canvas context for QR fallback decoding.')
+		}
+
+		context.drawImage(videoEl, 0, 0, canvas.width, canvas.height)
+		const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
+		const decode = await loadFallbackDecoder()
+		const decoded = decode(imageData.data, imageData.width, imageData.height, {
+			inversionAttempts: 'attemptBoth'
+		})
+		const value = decoded?.data?.trim()
+		return value ? value : null
+	}, [loadFallbackDecoder])
+
 	const startQrDetection = useCallback(() => {
 		stopScanningLoop()
 
 		const BarcodeDetector = (window as Window & { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector
-		if (!BarcodeDetector) {
-			setScanState('unsupported')
-			setScanError(
-				'QR decoding is not supported in this browser. Try a modern mobile browser with BarcodeDetector support.'
-			)
-			return
-		}
+		const detector = BarcodeDetector ? new BarcodeDetector({ formats: ['qr_code'] }) : null
+		let activeDecoderMode: DecoderMode = detector ? 'native' : 'fallback'
+		let nativeFailureCount = 0
 
+		setDecoderMode(activeDecoderMode)
 		setScanState('scanning')
 		setScanError(null)
-		const detector = new BarcodeDetector({ formats: ['qr_code'] })
 
 		const handleDetectedValue = (value: string) => {
 			setScanResult(value)
@@ -140,19 +190,43 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 
 			detectorBusyRef.current = true
 			try {
-				const codes = await detector.detect(videoEl)
-				const value = codes.find(
-					(code) => typeof code.rawValue === 'string' && code.rawValue.trim().length > 0
-				)?.rawValue
-				if (value) {
-					const shouldStop = handleDetectedValue(value)
+				if (activeDecoderMode === 'native' && detector) {
+					try {
+						const codes = await detector.detect(videoEl)
+						const value = codes.find(
+							(code) => typeof code.rawValue === 'string' && code.rawValue.trim().length > 0
+						)?.rawValue
+						if (value) {
+							const shouldStop = handleDetectedValue(value)
+							if (shouldStop) {
+								return
+							}
+						}
+						nativeFailureCount = 0
+						return
+					} catch {
+						nativeFailureCount += 1
+						if (nativeFailureCount >= 2) {
+							activeDecoderMode = 'fallback'
+							setDecoderMode('fallback')
+							setScanError('Switched to compatibility QR decoder for this browser session.')
+						} else {
+							return
+						}
+					}
+				}
+
+				const fallbackValue = await decodeWithFallback()
+				if (fallbackValue) {
+					const shouldStop = handleDetectedValue(fallbackValue)
 					if (shouldStop) {
 						return
 					}
 				}
 			} catch {
+				stopScanningLoop()
 				setScanState('error')
-				setScanError('Camera is running, but QR decoding failed. Try better lighting or reposition the code.')
+				setScanError('Unable to decode QR with compatibility mode. Try reloading or changing browser/device.')
 			} finally {
 				detectorBusyRef.current = false
 			}
@@ -161,7 +235,7 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 		scanIntervalRef.current = window.setInterval(() => {
 			void detectFrame()
 		}, 350)
-	}, [orgId, router, stopScanningLoop])
+	}, [decodeWithFallback, orgId, router, stopScanningLoop])
 
 	const stopCamera = useCallback(() => {
 		stopScanningLoop()
@@ -174,6 +248,7 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 		setCameraState('idle')
 		setScanState('idle')
 		setIsNavigating(false)
+		setDecoderMode('unknown')
 		hasNavigatedRef.current = false
 	}, [stopScanningLoop])
 
@@ -189,6 +264,7 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 		setScanError(null)
 		setScanResult(null)
 		setIsNavigating(false)
+		setDecoderMode('unknown')
 		hasNavigatedRef.current = false
 		lastRejectedValueRef.current = null
 		setCameraState('starting')
@@ -220,6 +296,7 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 		return () => {
 			stopScanningLoop()
 			streamRef.current?.getTracks().forEach((track) => track.stop())
+			fallbackCanvasRef.current = null
 		}
 	}, [stopScanningLoop])
 
@@ -237,7 +314,7 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 				<CardHeader>
 					<CardTitle className='text-base sm:text-lg'>Camera</CardTitle>
 					<CardDescription>
-						Step 4 scaffold: valid enclosure QR scans now route to the enclosure page for this organization.
+						Step 4 complete: scans use native detection when available, then fall back to compatibility decoding.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className='space-y-4'>
@@ -277,7 +354,10 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 					{isRunning && scanState === 'scanning' && (
 						<div className='flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary'>
 							<ScanLine className='size-4 shrink-0' />
-							<span>Scanning camera feed for QR codes...</span>
+							<span>
+								Scanning camera feed for QR codes. Mode:{' '}
+								{decoderMode === 'native' ? 'Native' : decoderMode === 'fallback' ? 'Compatibility' : 'Preparing'}
+							</span>
 						</div>
 					)}
 
