@@ -41,10 +41,6 @@ function validateEnclosureQrValue(rawValue: string): ScanValidationResult {
 		return { ok: false, message: 'QR code is not a valid URL.' }
 	}
 
-	if (parsed.origin !== window.location.origin) {
-		return { ok: false, message: 'QR code points to a different environment/domain.' }
-	}
-
 	const match = parsed.pathname.match(/^\/protected\/orgs\/([^/]+)\/enclosures\/([^/]+)\/?$/)
 	if (!match) {
 		return { ok: false, message: 'QR code is not an enclosure page URL.' }
