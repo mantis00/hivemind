@@ -14,7 +14,7 @@ import { UUID } from 'crypto'
 
 export default function PendingInvites() {
 	const { data: user } = useCurrentClientUser()
-	const { data: invites, isLoading } = usePendingInvites(user?.email || '')
+	const { data: invites, isLoading } = usePendingInvites(user?.id || '')
 	const acceptMutation = useAcceptInvite()
 	const rejectMutation = useRejectInvite()
 	const [pendingInviteId, setPendingInviteId] = useState<UUID | null>(null)
