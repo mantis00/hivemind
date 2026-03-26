@@ -28,7 +28,7 @@ import {
 	FolderHeart,
 	ArrowRightLeft,
 	Calendar,
-	History
+	Logs
 } from 'lucide-react'
 import {
 	DropdownMenu,
@@ -234,8 +234,8 @@ export function AppSidebar() {
 													href={orgId ? `/protected/orgs/${orgId}/history` : '/protected/orgs'}
 													onClick={closeMobileOnNav}
 												>
-													<History className='size-4' />
-													<span>History</span>
+													<Logs className='size-4' />
+													<span>Activity Log</span>
 												</Link>
 											</SidebarMenuSubButton>
 										</SidebarMenuSubItem>{' '}
