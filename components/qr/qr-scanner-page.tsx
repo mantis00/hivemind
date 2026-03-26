@@ -341,7 +341,7 @@ export function QrScannerPage() {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className='space-y-4'>
-					<div className='relative w-full overflow-hidden rounded-lg border bg-muted/30 aspect-video'>
+					<div className='relative w-full overflow-hidden rounded-lg border bg-muted/30 aspect-square sm:aspect-video'>
 						<video ref={videoRef} className='h-full w-full object-cover' autoPlay muted playsInline />
 						{!isRunning && (
 							<div className='absolute inset-0 grid place-items-center bg-background/75'>
