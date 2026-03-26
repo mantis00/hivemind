@@ -2,43 +2,115 @@
 
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { UserPlusIcon, LoaderCircle } from 'lucide-react'
-import { useState } from 'react'
+import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from 'react'
 import { useInviteMember } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
-import { useIsOwnerOrSuperadmin } from '@/lib/react-query/queries'
+import { useAllProfiles, useIsOwnerOrSuperadmin, useOrgMembers } from '@/lib/react-query/queries'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
+import { useMediaQuery } from '@/hooks/use-media-query'
 
 export function InviteMemberButton() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
-	const [open, setOpen] = useState(false)
-	const [email, setEmail] = useState('')
-	const [accessLvl, setAccessLvl] = useState('1')
-	const { data: user } = useCurrentClientUser()
-	const inviteMutation = useInviteMember()
 	const isOwnerOrSuperadmin = useIsOwnerOrSuperadmin(orgId)
 
-	if (!isOwnerOrSuperadmin) return null
+	if (!isOwnerOrSuperadmin || !orgId) return null
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	return <InviteMemberButtonContent orgId={orgId} />
+}
+
+function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
+	const [open, setOpen] = useState(false)
+	const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+	const [selectedInviteeId, setSelectedInviteeId] = useState<string>('')
+	const [accessLvl, setAccessLvl] = useState('1')
+	const [keyboardOffset, setKeyboardOffset] = useState(0)
+	const { data: user } = useCurrentClientUser()
+	const isDesktop = useMediaQuery('(min-width: 768px)')
+	const inviteMutation = useInviteMember()
+	const { data: profiles, isLoading: isLoadingProfiles } = useAllProfiles()
+	const { data: orgMembers, isLoading: isLoadingOrgMembers } = useOrgMembers(orgId)
+
+	// Filter out users who are already members of the organization
+	const inviteCandidates = useMemo(() => {
+		const memberIds = new Set((orgMembers ?? []).map((member) => member.user_id))
+		return (profiles ?? []).filter((profile) => {
+			return !memberIds.has(String(profile.id))
+		})
+	}, [orgMembers, profiles])
+	const inviteOptions = useMemo<VirtualizedOption[]>(
+		() =>
+			(inviteCandidates ?? []).map((candidate) => ({
+				value: String(candidate.id),
+				label: candidate.full_name || '',
+				subLabel: candidate.email || ''
+			})),
+		[inviteCandidates]
+	)
+
+	const selectedInvitee = inviteCandidates.find((candidate) => String(candidate.id) === selectedInviteeId)
+	const isLoadingInviteCandidates = isLoadingProfiles || isLoadingOrgMembers
+	const commandHeight = '320px'
+	const shouldLiftForKeyboard = !isDesktop && keyboardOffset > 80
+	const liftAmount = shouldLiftForKeyboard ? Math.min(keyboardOffset - 16, 260) : 0
+	const mobileLiftStyle: CSSProperties | undefined = shouldLiftForKeyboard
+		? {
+				transform: `translateY(-${liftAmount}px)`,
+				transition: 'transform 160ms ease-out'
+			}
+		: undefined
+
+	const handleOpenChange = (isOpen: boolean) => {
+		if (!isOpen) {
+			setUserDropdownOpen(false)
+			setKeyboardOffset(0)
+		}
+		setOpen(isOpen)
+	}
+
+	useEffect(() => {
+		if (!open || isDesktop || typeof window === 'undefined' || !window.visualViewport) {
+			return
+		}
+
+		const viewport = window.visualViewport
+		const updateOffset = () => {
+			const offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+			setKeyboardOffset(offset)
+		}
+
+		updateOffset()
+		viewport.addEventListener('resize', updateOffset)
+		viewport.addEventListener('scroll', updateOffset)
+
+		return () => {
+			viewport.removeEventListener('resize', updateOffset)
+			viewport.removeEventListener('scroll', updateOffset)
+		}
+	}, [open, isDesktop])
+
+	const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault()
-		if (!user?.id) return
+		if (!user?.id || !selectedInviteeId || !selectedInvitee?.email) return
 
 		inviteMutation.mutate(
 			{
-				orgId: orgId as UUID,
+				orgId: orgId,
 				inviterId: user.id,
-				inviteeEmail: email,
+				inviteeId: selectedInviteeId,
+				inviteeEmail: selectedInvitee.email,
 				accessLvl: Number(accessLvl)
 			},
 			{
 				onSuccess: () => {
-					setEmail('')
+					setSelectedInviteeId('')
+					setUserDropdownOpen(false)
 					setOpen(false)
 					setAccessLvl('1')
 				}
@@ -49,28 +121,116 @@ export function InviteMemberButton() {
 	return (
 		<ResponsiveDialogDrawer
 			title='Invite Member'
-			description='Enter the email and access level for the new member.'
+			description='Select a user and access level for the new member.'
 			trigger={
-				<Button variant='default'>
+				<Button variant='default' onClick={() => setOpen(true)}>
 					Invite Member <UserPlusIcon className='w-4 h-4' />
 				</Button>
 			}
 			open={open}
-			onOpenChange={(isOpen) => setOpen(isOpen)}
+			onOpenChange={handleOpenChange}
 		>
-			<form onSubmit={handleSubmit}>
-				<div className='grid gap-4 py-4'>
+			<form onSubmit={handleSubmit} data-vaul-no-drag style={mobileLiftStyle}>
+				<div className='grid gap-4 pt-2 pb-4'>
 					<div className='grid gap-2'>
-						<Label htmlFor='email'>Email Address</Label>
-						<Input
-							id='email'
-							type='email'
-							placeholder='user@example.com'
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
-							required
-							disabled={inviteMutation.isPending}
-						/>
+						<Label htmlFor='invitee-search'>Select User</Label>
+						{isDesktop ? (
+							<Popover open={userDropdownOpen} onOpenChange={setUserDropdownOpen}>
+								<PopoverTrigger asChild>
+									<Button
+										id='invitee-search'
+										type='button'
+										variant='outline'
+										className='w-full justify-start text-left font-normal'
+										disabled={inviteMutation.isPending}
+									>
+										{selectedInvitee ? (
+											<span className='truncate'>
+												{selectedInvitee.full_name}
+												<span className='text-muted-foreground'> - {selectedInvitee.email}</span>
+											</span>
+										) : (
+											<span className='text-muted-foreground'>Choose a user</span>
+										)}
+									</Button>
+								</PopoverTrigger>
+								<PopoverContent
+									className='w-(--radix-popover-trigger-width) p-0'
+									data-vaul-no-drag
+									align='start'
+									side='bottom'
+								>
+									{isLoadingInviteCandidates ? (
+										<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
+											<LoaderCircle className='h-4 w-4 animate-spin' />
+											Loading users...
+										</div>
+									) : inviteOptions.length === 0 ? (
+										<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
+									) : (
+										<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+											<VirtualizedCommand
+												height={commandHeight}
+												options={inviteOptions}
+												placeholder='Search users...'
+												selectedOption={selectedInviteeId}
+												emptyMessage='No eligible users found.'
+												onSelectOption={(currentValue) => {
+													setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
+													setUserDropdownOpen(false)
+												}}
+											/>
+										</div>
+									)}
+								</PopoverContent>
+							</Popover>
+						) : (
+							<>
+								<Button
+									id='invitee-search'
+									type='button'
+									variant='outline'
+									className='w-full justify-start text-left font-normal'
+									disabled={inviteMutation.isPending}
+									onClick={() => setUserDropdownOpen((prev) => !prev)}
+								>
+									{selectedInvitee ? (
+										<span className='truncate'>
+											{selectedInvitee.full_name}
+											<span className='text-muted-foreground'> - {selectedInvitee.email}</span>
+										</span>
+									) : (
+										<span className='text-muted-foreground'>Choose a user</span>
+									)}
+								</Button>
+								{userDropdownOpen ? (
+									<div className='rounded-md border p-0 **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm'>
+										{isLoadingInviteCandidates ? (
+											<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
+												<LoaderCircle className='h-4 w-4 animate-spin' />
+												Loading users...
+											</div>
+										) : inviteOptions.length === 0 ? (
+											<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
+										) : (
+											<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+												<VirtualizedCommand
+													height={commandHeight}
+													options={inviteOptions}
+													placeholder='Search users...'
+													selectedOption={selectedInviteeId}
+													emptyMessage='No eligible users found.'
+													onSelectOption={(currentValue) => {
+														setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
+														setUserDropdownOpen(false)
+													}}
+												/>
+											</div>
+										)}
+									</div>
+								) : null}
+							</>
+						)}
 					</div>
 					<div className='grid gap-2'>
 						<Label htmlFor='access-level'>Access Level</Label>
@@ -85,7 +245,7 @@ export function InviteMemberButton() {
 						</Select>
 					</div>
 				</div>
-				<Button type='submit' className='w-full' disabled={inviteMutation.isPending || !user}>
+				<Button type='submit' className='w-full' disabled={inviteMutation.isPending || !user || !selectedInviteeId}>
 					{inviteMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Send Invite'}
 				</Button>
 			</form>
