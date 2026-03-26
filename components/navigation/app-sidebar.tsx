@@ -230,10 +230,7 @@ export function AppSidebar() {
 										</SidebarMenuSubItem>
 										<SidebarMenuSubItem>
 											<SidebarMenuSubButton asChild>
-												<Link
-													href={orgId ? `/protected/orgs/${orgId}/scan` : '/protected/orgs'}
-													onClick={closeMobileOnNav}
-												>
+												<Link href='/protected/scan' onClick={closeMobileOnNav}>
 													<ScanLine className='size-4' />
 													<span>Scan QR</span>
 												</Link>

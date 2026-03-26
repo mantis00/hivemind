@@ -8,7 +8,7 @@ import InstallAppButton from '@/components/pwa/install-app-button'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { MobileActionsMenu } from '@/components/navigation/mobile-actions-menu'
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircle, ScanLine } from 'lucide-react'
 import { useState } from 'react'
 import { getOrgIdFromPathname } from '@/context/verify-org-path'
 
@@ -17,12 +17,14 @@ export function ProtectedNavActions() {
 	const isMounted = useIsMounted()
 	const router = useRouter()
 	const [isNavigating, setIsNavigating] = useState(false)
+	const [isScanNavigating, setIsScanNavigating] = useState(false)
 	const [prevPathname, setPrevPathname] = useState(pathname)
 
 	// Reset navigating state when pathname changes (render-time, avoids setState-in-effect)
 	if (prevPathname !== pathname) {
 		setPrevPathname(pathname)
 		if (isNavigating) setIsNavigating(false)
+		if (isScanNavigating) setIsScanNavigating(false)
 	}
 
 	if (!isMounted) {
@@ -32,6 +34,20 @@ export function ProtectedNavActions() {
 	if (getOrgIdFromPathname(pathname)) {
 		return (
 			<div className='flex items-center flex-row justify-end gap-2 mr-6 max-w-full'>
+				<Button
+					variant='ghost'
+					size='icon'
+					className='size-9'
+					aria-label='Open QR scanner'
+					disabled={isScanNavigating || pathname === '/protected/scan'}
+					onClick={() => {
+						if (pathname === '/protected/scan') return
+						setIsScanNavigating(true)
+						router.push('/protected/scan')
+					}}
+				>
+					{isScanNavigating ? <LoaderCircle className='size-5 animate-spin' /> : <ScanLine className='size-5' />}
+				</Button>
 				<NotificationDropdown />
 			</div>
 		)
@@ -39,6 +55,20 @@ export function ProtectedNavActions() {
 
 	return (
 		<div className='flex items-center justify-end gap-2 max-w-full'>
+			<Button
+				variant='ghost'
+				size='icon'
+				className='size-9'
+				aria-label='Open QR scanner'
+				disabled={isScanNavigating || pathname === '/protected/scan'}
+				onClick={() => {
+					if (pathname === '/protected/scan') return
+					setIsScanNavigating(true)
+					router.push('/protected/scan')
+				}}
+			>
+				{isScanNavigating ? <LoaderCircle className='size-5 animate-spin' /> : <ScanLine className='size-5' />}
+			</Button>
 			<NotificationDropdown />
 			{/* Desktop Actions */}
 			<div className='hidden sm:flex items-center gap-2'>

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camera, CameraOff, LoaderCircle, RotateCcw, ScanLine, ShieldAlert } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { useUserOrgs } from '@/lib/react-query/queries'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -24,9 +26,9 @@ type JsQrDecode = (
 	options?: { inversionAttempts?: 'dontInvert' | 'onlyInvert' | 'attemptBoth' | 'invertFirst' }
 ) => JsQrDecodeResult
 
-type ScanValidationResult = { ok: true; href: string } | { ok: false; message: string }
+type ScanValidationResult = { ok: true; orgId: string; href: string } | { ok: false; message: string }
 
-function validateEnclosureQrValue(rawValue: string, currentOrgId: string): ScanValidationResult {
+function validateEnclosureQrValue(rawValue: string): ScanValidationResult {
 	const normalized = rawValue.trim()
 	if (!normalized) {
 		return { ok: false, message: 'QR code is empty.' }
@@ -49,12 +51,10 @@ function validateEnclosureQrValue(rawValue: string, currentOrgId: string): ScanV
 	}
 
 	const [, scannedOrgId, enclosureId] = match
-	if (scannedOrgId !== currentOrgId) {
-		return { ok: false, message: 'QR code belongs to a different organization.' }
-	}
 
 	return {
 		ok: true,
+		orgId: scannedOrgId,
 		href: `/protected/orgs/${scannedOrgId}/enclosures/${enclosureId}`
 	}
 }
@@ -70,8 +70,10 @@ function getReadableError(error: unknown) {
 	return 'Unable to access camera.'
 }
 
-export function QrScannerPage({ orgId }: { orgId: string }) {
+export function QrScannerPage() {
 	const router = useRouter()
+	const { data: currentUser, isLoading: isUserLoading } = useCurrentClientUser()
+	const { data: userOrgs, isLoading: isOrgsLoading, error: userOrgsError } = useUserOrgs(currentUser?.id ?? '')
 	const videoRef = useRef<HTMLVideoElement | null>(null)
 	const streamRef = useRef<MediaStream | null>(null)
 	const fallbackCanvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -154,10 +156,35 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 		const handleDetectedValue = (value: string) => {
 			setScanResult(value)
 
-			const validation = validateEnclosureQrValue(value, orgId)
+			const validation = validateEnclosureQrValue(value)
 			if (!validation.ok) {
 				if (lastRejectedValueRef.current !== value) {
 					setScanError(validation.message)
+				}
+				lastRejectedValueRef.current = value
+				return false
+			}
+
+			if (isUserLoading || (currentUser?.id && isOrgsLoading)) {
+				if (lastRejectedValueRef.current !== value) {
+					setScanError('Checking your organization access. Hold steady and keep the code in view.')
+				}
+				lastRejectedValueRef.current = value
+				return false
+			}
+
+			if (!currentUser || userOrgsError) {
+				if (lastRejectedValueRef.current !== value) {
+					setScanError('Unable to verify organization access right now. Please retry in a moment.')
+				}
+				lastRejectedValueRef.current = value
+				return false
+			}
+
+			const hasMembership = (userOrgs ?? []).some((org) => String(org.org_id) === validation.orgId)
+			if (!hasMembership) {
+				if (lastRejectedValueRef.current !== value) {
+					setScanError('You do not belong to this organization, so this enclosure cannot be opened.')
 				}
 				lastRejectedValueRef.current = value
 				return false
@@ -235,7 +262,7 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 		scanIntervalRef.current = window.setInterval(() => {
 			void detectFrame()
 		}, 350)
-	}, [decodeWithFallback, orgId, router, stopScanningLoop])
+	}, [currentUser, decodeWithFallback, isOrgsLoading, isUserLoading, router, stopScanningLoop, userOrgs, userOrgsError])
 
 	const stopCamera = useCallback(() => {
 		stopScanningLoop()
@@ -314,7 +341,7 @@ export function QrScannerPage({ orgId }: { orgId: string }) {
 				<CardHeader>
 					<CardTitle className='text-base sm:text-lg'>Camera</CardTitle>
 					<CardDescription>
-						Step 4 complete: scans use native detection when available, then fall back to compatibility decoding.
+						Scan an enclosure QR code. You can open any org enclosure where you are a member.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className='space-y-4'>
