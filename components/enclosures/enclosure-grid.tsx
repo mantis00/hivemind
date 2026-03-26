@@ -5,7 +5,6 @@ import type { Enclosure } from '@/lib/react-query/queries'
 import {
 	ArrowDownIcon,
 	ArrowUpIcon,
-	Download,
 	Edit,
 	ListChecks,
 	LoaderCircle,
@@ -15,7 +14,8 @@ import {
 	PowerOff,
 	PlusIcon,
 	Search,
-	XIcon
+	XIcon,
+	FileDown
 } from 'lucide-react'
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -362,7 +362,7 @@ export default function EnclosureGrid() {
 									onClick={exportAllUnprinted}
 									disabled={markPrintedMutation.isPending || enclosureStatusFilter === 'inactive'}
 								>
-									<Download className='h-3.5 w-3.5' />
+									<FileDown className='h-3.5 w-3.5' />
 									Export All Unprinted
 								</Button>
 							) : (
@@ -375,7 +375,7 @@ export default function EnclosureGrid() {
 										onClick={exportToCsv}
 										disabled={markPrintedMutation.isPending || enclosureStatusFilter === 'inactive'}
 									>
-										<Download className='h-3.5 w-3.5' />
+										<FileDown className='h-3.5 w-3.5' />
 										Export Selected
 									</Button>
 									{enclosureStatusFilter === 'inactive' ? (
