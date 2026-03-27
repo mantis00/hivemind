@@ -6,14 +6,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
-import { useState } from 'react'
-import { LoaderCircle } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Eye, EyeOff, LoaderCircle } from 'lucide-react'
 import { useLogin } from '@/lib/react-query/auth'
 
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
+	const [showPassword, setShowPassword] = useState(false)
+	const passwordRef = useRef<HTMLInputElement>(null)
 	const mutation = useLogin()
+
+	const toggleShowPassword = () => {
+		const input = passwordRef.current
+		const start = input?.selectionStart ?? null
+		const end = input?.selectionEnd ?? null
+		setShowPassword((prev) => !prev)
+		requestAnimationFrame(() => {
+			if (input && start !== null && end !== null) {
+				input.focus()
+				input.setSelectionRange(start, end)
+			}
+		})
+	}
 
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -51,13 +66,29 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 										Forgot your password?
 									</Link>
 								</div>
-								<Input
-									id='password'
-									type='password'
-									required
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-								/>
+								<div className='relative'>
+									<Input									ref={passwordRef}										id='password'
+										type={showPassword ? 'text' : 'password'}
+										required
+										value={password}
+										onChange={(e) => setPassword(e.target.value)}
+										className='bg-background'
+									/>
+									<Button
+										className='absolute top-0 right-0 h-full px-3 hover:bg-transparent'
+										onClick={toggleShowPassword}
+										onMouseDown={(e) => e.preventDefault()}
+										size='icon'
+										type='button'
+										variant='ghost'
+									>
+										{showPassword ? (
+											<EyeOff className='h-4 w-4 text-muted-foreground' />
+										) : (
+											<Eye className='h-4 w-4 text-muted-foreground' />
+										)}
+									</Button>
+								</div>
 							</div>
 							<Button type='submit' className='w-full' disabled={mutation.isPending || mutation.isSuccess}>
 								{mutation.isPending || mutation.isSuccess ? (
