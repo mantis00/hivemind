@@ -16,7 +16,7 @@ import { EnclosureDialog } from './enclosure-dialog'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { UUID } from 'crypto'
 
-type EnclosureExportData = {
+export type EnclosureExportData = {
 	enclosureName: string
 	commonName: string
 	scientificName: string
