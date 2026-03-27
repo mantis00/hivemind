@@ -105,61 +105,61 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 								<div className='flex items-center'>
 									<Label htmlFor='password'>Password</Label>
 								</div>
-							<div className='relative'>
-								<Input
-									ref={passwordRef}
-									id='password'
-									type={showPassword ? 'text' : 'password'}
-									required
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-									className='bg-background'
-								/>
-								<Button
-									className='absolute top-0 right-0 h-full px-3 hover:bg-transparent'
-									onClick={toggleShowPassword}
-									onMouseDown={(e) => e.preventDefault()}
-									size='icon'
-									type='button'
-									variant='ghost'
-								>
-									{showPassword ? (
-										<EyeOff className='h-4 w-4 text-muted-foreground' />
-									) : (
-										<Eye className='h-4 w-4 text-muted-foreground' />
-									)}
-								</Button>
-							</div>
+								<div className='relative'>
+									<Input
+										ref={passwordRef}
+										id='password'
+										type={showPassword ? 'text' : 'password'}
+										required
+										value={password}
+										onChange={(e) => setPassword(e.target.value)}
+										className='bg-background'
+									/>
+									<Button
+										className='absolute top-0 right-0 h-full px-3 hover:bg-transparent'
+										onClick={toggleShowPassword}
+										onMouseDown={(e) => e.preventDefault()}
+										size='icon'
+										type='button'
+										variant='ghost'
+									>
+										{showPassword ? (
+											<EyeOff className='h-4 w-4 text-muted-foreground' />
+										) : (
+											<Eye className='h-4 w-4 text-muted-foreground' />
+										)}
+									</Button>
+								</div>
 							</div>
 							<div className='grid gap-2'>
 								<div className='flex items-center'>
 									<Label htmlFor='repeat-password'>Repeat Password</Label>
 								</div>
-							<div className='relative'>
-								<Input
-									ref={repeatPasswordRef}
-									id='repeat-password'
-									type={showRepeatPassword ? 'text' : 'password'}
-									required
-									value={repeatPassword}
-									onChange={(e) => setRepeatPassword(e.target.value)}
-									className='bg-background'
-								/>
-								<Button
-									className='absolute top-0 right-0 h-full px-3 hover:bg-transparent'
-									onClick={toggleShowRepeatPassword}
-									onMouseDown={(e) => e.preventDefault()}
-									size='icon'
-									type='button'
-									variant='ghost'
-								>
-									{showRepeatPassword ? (
-										<EyeOff className='h-4 w-4 text-muted-foreground' />
-									) : (
-										<Eye className='h-4 w-4 text-muted-foreground' />
-									)}
-								</Button>
-							</div>
+								<div className='relative'>
+									<Input
+										ref={repeatPasswordRef}
+										id='repeat-password'
+										type={showRepeatPassword ? 'text' : 'password'}
+										required
+										value={repeatPassword}
+										onChange={(e) => setRepeatPassword(e.target.value)}
+										className='bg-background'
+									/>
+									<Button
+										className='absolute top-0 right-0 h-full px-3 hover:bg-transparent'
+										onClick={toggleShowRepeatPassword}
+										onMouseDown={(e) => e.preventDefault()}
+										size='icon'
+										type='button'
+										variant='ghost'
+									>
+										{showRepeatPassword ? (
+											<EyeOff className='h-4 w-4 text-muted-foreground' />
+										) : (
+											<Eye className='h-4 w-4 text-muted-foreground' />
+										)}
+									</Button>
+								</div>
 							</div>
 							<Button type='submit' className='w-full' disabled={mutation.isPending || mutation.isSuccess}>
 								{mutation.isPending || mutation.isSuccess ? (
