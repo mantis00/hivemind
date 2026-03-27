@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
-import { useState } from 'react'
-import { LoaderCircle } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Eye, EyeOff, LoaderCircle } from 'lucide-react'
 import { useSignUp } from '@/lib/react-query/auth'
 import { toast } from 'sonner'
 
@@ -17,7 +17,37 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
 	const [repeatPassword, setRepeatPassword] = useState('')
+	const [showPassword, setShowPassword] = useState(false)
+	const [showRepeatPassword, setShowRepeatPassword] = useState(false)
+	const passwordRef = useRef<HTMLInputElement>(null)
+	const repeatPasswordRef = useRef<HTMLInputElement>(null)
 	const mutation = useSignUp()
+
+	const toggleShowPassword = () => {
+		const input = passwordRef.current
+		const start = input?.selectionStart ?? null
+		const end = input?.selectionEnd ?? null
+		setShowPassword((prev) => !prev)
+		requestAnimationFrame(() => {
+			if (input && start !== null && end !== null) {
+				input.focus()
+				input.setSelectionRange(start, end)
+			}
+		})
+	}
+
+	const toggleShowRepeatPassword = () => {
+		const input = repeatPasswordRef.current
+		const start = input?.selectionStart ?? null
+		const end = input?.selectionEnd ?? null
+		setShowRepeatPassword((prev) => !prev)
+		requestAnimationFrame(() => {
+			if (input && start !== null && end !== null) {
+				input.focus()
+				input.setSelectionRange(start, end)
+			}
+		})
+	}
 
 	const handleSignUp = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -75,25 +105,61 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 								<div className='flex items-center'>
 									<Label htmlFor='password'>Password</Label>
 								</div>
+							<div className='relative'>
 								<Input
+									ref={passwordRef}
 									id='password'
-									type='password'
+									type={showPassword ? 'text' : 'password'}
 									required
 									value={password}
 									onChange={(e) => setPassword(e.target.value)}
+									className='bg-background'
 								/>
+								<Button
+									className='absolute top-0 right-0 h-full px-3 hover:bg-transparent'
+									onClick={toggleShowPassword}
+									onMouseDown={(e) => e.preventDefault()}
+									size='icon'
+									type='button'
+									variant='ghost'
+								>
+									{showPassword ? (
+										<EyeOff className='h-4 w-4 text-muted-foreground' />
+									) : (
+										<Eye className='h-4 w-4 text-muted-foreground' />
+									)}
+								</Button>
+							</div>
 							</div>
 							<div className='grid gap-2'>
 								<div className='flex items-center'>
 									<Label htmlFor='repeat-password'>Repeat Password</Label>
 								</div>
+							<div className='relative'>
 								<Input
+									ref={repeatPasswordRef}
 									id='repeat-password'
-									type='password'
+									type={showRepeatPassword ? 'text' : 'password'}
 									required
 									value={repeatPassword}
 									onChange={(e) => setRepeatPassword(e.target.value)}
+									className='bg-background'
 								/>
+								<Button
+									className='absolute top-0 right-0 h-full px-3 hover:bg-transparent'
+									onClick={toggleShowRepeatPassword}
+									onMouseDown={(e) => e.preventDefault()}
+									size='icon'
+									type='button'
+									variant='ghost'
+								>
+									{showRepeatPassword ? (
+										<EyeOff className='h-4 w-4 text-muted-foreground' />
+									) : (
+										<Eye className='h-4 w-4 text-muted-foreground' />
+									)}
+								</Button>
+							</div>
 							</div>
 							<Button type='submit' className='w-full' disabled={mutation.isPending || mutation.isSuccess}>
 								{mutation.isPending || mutation.isSuccess ? (

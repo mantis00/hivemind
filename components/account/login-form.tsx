@@ -67,7 +67,9 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 									</Link>
 								</div>
 								<div className='relative'>
-									<Input									ref={passwordRef}										id='password'
+									<Input
+										ref={passwordRef}
+										id='password'
 										type={showPassword ? 'text' : 'password'}
 										required
 										value={password}
