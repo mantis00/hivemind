@@ -1,8 +1,8 @@
 import type { DashboardData } from '@/lib/react-query/queries'
-import { KpiStrip } from '@/components/features/dashboard/kpi-strip'
-import { AtRiskPanel } from '@/components/features/dashboard/at-risk-panel'
-import { UpcomingSchedulePanel } from '@/components/features/dashboard/upcoming-schedule-panel'
-import { RecentActivityPanel } from '@/components/features/dashboard/recent-activity-panel'
+import { KpiStrip } from '@/components/dashboard/kpi-strip'
+import { AtRiskPanel } from '@/components/dashboard/at-risk-panel'
+import { UpcomingSchedulePanel } from '@/components/dashboard/upcoming-schedule-panel'
+import { RecentActivityPanel } from '@/components/dashboard/recent-activity-panel'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 type DashboardPageProps = {
@@ -24,8 +24,6 @@ function isDashboardEmpty(data: DashboardData) {
 }
 
 export function DashboardPage({ orgId, data, loadError = null }: DashboardPageProps) {
-	const generatedAt = new Date(data.generatedAt)
-	const generatedAtLabel = Number.isNaN(generatedAt.getTime()) ? data.generatedAt : generatedAt.toLocaleString()
 	const dashboardIsEmpty = isDashboardEmpty(data)
 	const completedTodayCount = data.recentActivity.length
 	const atRiskEnclosureCount = data.atRiskEnclosures.length
@@ -34,9 +32,6 @@ export function DashboardPage({ orgId, data, loadError = null }: DashboardPagePr
 		<>
 			<div className='pb-5'>
 				<h1 className='text-2xl font-semibold'>Dashboard</h1>
-				<p className='text-sm text-muted-foreground'>
-					Timezone: {data.timeZone}. Updated: {generatedAtLabel}.
-				</p>
 			</div>
 
 			<div className='flex flex-col gap-6'>

@@ -3,8 +3,8 @@
 import { useParams } from 'next/navigation'
 import type { UUID } from 'crypto'
 
-import { DashboardPage } from '@/components/features/dashboard/dashboard-page'
-import { DASHBOARD_SERVER_TIME_ZONE } from '@/components/features/dashboard/dashboard-helpers'
+import { DashboardPage } from '@/components/dashboard/dashboard-page'
+import { DASHBOARD_SERVER_TIME_ZONE } from '@/components/dashboard/dashboard-helpers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
 	type DashboardData,
