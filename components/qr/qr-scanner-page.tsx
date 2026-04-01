@@ -1,28 +1,20 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Camera, CameraOff, LoaderCircle, RotateCcw, ScanLine, ShieldAlert } from 'lucide-react'
+import { CameraOff, LoaderCircle, RotateCcw, ScanLine, ShieldAlert } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useUserOrgs } from '@/lib/react-query/queries'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Html5Qrcode } from 'html5-qrcode'
 
 type CameraState = 'idle' | 'starting' | 'running' | 'unsupported' | 'error'
 type ScanState = 'idle' | 'scanning' | 'detected' | 'unsupported' | 'error'
-type DecoderMode = 'unknown' | 'native' | 'fallback'
-
-type DetectedCode = { rawValue?: string | null }
-type BarcodeDetectorInstance = {
-	detect: (source: unknown) => Promise<DetectedCode[]>
-}
-type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance
 
 type ScanValidationResult = { ok: true; orgId: string; href: string } | { ok: false; message: string }
 
-const HTML5_FALLBACK_REGION_ID = 'qr-scanner-html5-fallback'
+const HTML5_SCANNER_REGION_ID = 'qr-scanner-html5'
 
 function validateEnclosureQrValue(rawValue: string): ScanValidationResult {
 	const normalized = rawValue.trim()
@@ -73,15 +65,12 @@ export function QrScannerPage() {
 	const { data: currentUser, isLoading: isUserLoading } = useCurrentClientUser()
 	const { data: userOrgs, isLoading: isOrgsLoading, error: userOrgsError } = useUserOrgs(currentUser?.id ?? '')
 
-	const videoRef = useRef<HTMLVideoElement | null>(null)
-	const streamRef = useRef<MediaStream | null>(null)
-	const fallbackRegionRef = useRef<HTMLDivElement | null>(null)
+	const scannerRegionRef = useRef<HTMLDivElement | null>(null)
 	const html5QrcodeRef = useRef<Html5Qrcode | null>(null)
 	const html5StartingRef = useRef(false)
-	const scanIntervalRef = useRef<number | null>(null)
-	const detectorBusyRef = useRef(false)
 	const lastRejectedValueRef = useRef<string | null>(null)
 	const hasNavigatedRef = useRef(false)
+	const hasAutoStartedRef = useRef(false)
 
 	const [cameraState, setCameraState] = useState<CameraState>('idle')
 	const [cameraError, setCameraError] = useState<string | null>(null)
@@ -89,26 +78,8 @@ export function QrScannerPage() {
 	const [scanError, setScanError] = useState<string | null>(null)
 	const [scanResult, setScanResult] = useState<string | null>(null)
 	const [isNavigating, setIsNavigating] = useState(false)
-	const [decoderMode, setDecoderMode] = useState<DecoderMode>('unknown')
 
-	const stopScanningLoop = useCallback(() => {
-		if (scanIntervalRef.current !== null) {
-			window.clearInterval(scanIntervalRef.current)
-			scanIntervalRef.current = null
-		}
-		detectorBusyRef.current = false
-	}, [])
-
-	const stopNativeCamera = useCallback(() => {
-		streamRef.current?.getTracks().forEach((track) => track.stop())
-		streamRef.current = null
-		if (videoRef.current) {
-			videoRef.current.pause()
-			videoRef.current.srcObject = null
-		}
-	}, [])
-
-	const stopHtml5Fallback = useCallback(async () => {
+	const stopHtml5Scanner = useCallback(async () => {
 		const scanner = html5QrcodeRef.current
 		if (!scanner) {
 			return
@@ -175,236 +146,111 @@ export function QrScannerPage() {
 			setIsNavigating(true)
 			setScanError(null)
 			setScanState('detected')
-			stopScanningLoop()
-			stopNativeCamera()
-			void stopHtml5Fallback()
+			void stopHtml5Scanner()
 			setCameraState('idle')
-			setDecoderMode('unknown')
 			router.push(validation.href)
 			return true
 		},
-		[
-			currentUser,
-			isOrgsLoading,
-			isUserLoading,
-			router,
-			stopHtml5Fallback,
-			stopNativeCamera,
-			stopScanningLoop,
-			userOrgs,
-			userOrgsError
-		]
+		[currentUser, isOrgsLoading, isUserLoading, router, stopHtml5Scanner, userOrgs, userOrgsError]
 	)
 
-	const startHtml5Fallback = useCallback(
-		async (statusMessage: string | null = null) => {
-			if (html5QrcodeRef.current || html5StartingRef.current) {
-				return
-			}
-
-			const fallbackRegion = fallbackRegionRef.current
-			if (!fallbackRegion) {
-				throw new Error('Compatibility scanner region is not ready.')
-			}
-
-			html5StartingRef.current = true
-			try {
-				fallbackRegion.innerHTML = ''
-
-				const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode')
-				const scanner = new Html5Qrcode(HTML5_FALLBACK_REGION_ID, {
-					verbose: false,
-					formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
-				})
-				html5QrcodeRef.current = scanner
-
-				await scanner.start(
-					{ facingMode: 'environment' },
-					{
-						fps: 5,
-						qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-							const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.75)
-							return { width: edge, height: edge }
-						}
-					},
-					(decodedText) => {
-						handleDecodedValue(decodedText)
-					},
-					() => {
-						// Ignore "not found" callback noise.
-					}
-				)
-
-				setCameraState('running')
-				setScanState('scanning')
-				setScanError(statusMessage)
-			} finally {
-				html5StartingRef.current = false
-			}
-		},
-		[handleDecodedValue]
-	)
-
-	const startQrDetection = useCallback(() => {
-		stopScanningLoop()
-
-		const BarcodeDetector = (window as Window & { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector
-		const detector = BarcodeDetector ? new BarcodeDetector({ formats: ['qr_code'] }) : null
-		let nativeFailureCount = 0
-
-		if (!detector) {
-			setDecoderMode('fallback')
-			setScanState('scanning')
-			void (async () => {
-				try {
-					await nextAnimationFrame()
-					await startHtml5Fallback()
-				} catch (error) {
-					setScanState('error')
-					setScanError(`Unable to start compatibility scanner (${getReadableError(error)}).`)
-					setCameraState('error')
-					setDecoderMode('unknown')
-					await stopHtml5Fallback()
-				}
-			})()
+	const startHtml5Scanner = useCallback(async () => {
+		if (html5QrcodeRef.current || html5StartingRef.current) {
 			return
 		}
 
-		setDecoderMode('native')
-		setScanState('scanning')
-		setScanError(null)
-
-		const detectFrame = async () => {
-			if (detectorBusyRef.current) return
-			const videoEl = videoRef.current
-			if (!videoEl || videoEl.readyState < 2) return
-
-			detectorBusyRef.current = true
-			try {
-				const codes = await detector.detect(videoEl)
-				const value = codes.find(
-					(code) => typeof code.rawValue === 'string' && code.rawValue.trim().length > 0
-				)?.rawValue
-				if (value) {
-					const shouldStop = handleDecodedValue(value)
-					if (shouldStop) {
-						return
-					}
-				}
-				nativeFailureCount = 0
-			} catch {
-				nativeFailureCount += 1
-				if (nativeFailureCount >= 2) {
-					stopScanningLoop()
-					stopNativeCamera()
-					setDecoderMode('fallback')
-					setScanState('scanning')
-					void (async () => {
-						try {
-							await nextAnimationFrame()
-							await startHtml5Fallback('Switched to compatibility scanner for this browser session.')
-						} catch (error) {
-							setScanState('error')
-							setScanError(`Unable to start compatibility scanner (${getReadableError(error)}).`)
-							setCameraState('error')
-							setDecoderMode('unknown')
-							await stopHtml5Fallback()
-						}
-					})()
-				}
-			} finally {
-				detectorBusyRef.current = false
-			}
+		const scannerRegion = scannerRegionRef.current
+		if (!scannerRegion) {
+			throw new Error('Scanner region is not ready.')
 		}
 
-		scanIntervalRef.current = window.setInterval(() => {
-			void detectFrame()
-		}, 350)
-	}, [handleDecodedValue, startHtml5Fallback, stopHtml5Fallback, stopNativeCamera, stopScanningLoop])
+		html5StartingRef.current = true
+		try {
+			scannerRegion.innerHTML = ''
 
-	const stopCamera = useCallback(() => {
-		stopScanningLoop()
-		stopNativeCamera()
-		void stopHtml5Fallback()
-		setCameraState('idle')
-		setScanState('idle')
-		setScanError(null)
-		setIsNavigating(false)
-		setDecoderMode('unknown')
-		hasNavigatedRef.current = false
-	}, [stopHtml5Fallback, stopNativeCamera, stopScanningLoop])
+			const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode')
+			const scanner = new Html5Qrcode(HTML5_SCANNER_REGION_ID, {
+				verbose: false,
+				formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+			})
+			html5QrcodeRef.current = scanner
+
+			await scanner.start(
+				{ facingMode: 'environment' },
+				{
+					fps: 5,
+					qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+						const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.75)
+						return { width: edge, height: edge }
+					}
+				},
+				(decodedText) => {
+					handleDecodedValue(decodedText)
+				},
+				() => {
+					// Ignore "not found" callback noise.
+				}
+			)
+
+			setCameraState('running')
+			setScanState('scanning')
+			setScanError(null)
+		} finally {
+			html5StartingRef.current = false
+		}
+	}, [handleDecodedValue])
 
 	const startCamera = useCallback(async () => {
 		if (!navigator.mediaDevices?.getUserMedia) {
 			setCameraError('This browser does not support camera access.')
+			setScanState('unsupported')
 			setCameraState('unsupported')
 			return
 		}
 
-		stopCamera()
+		await stopHtml5Scanner()
+		setCameraState('idle')
+		setScanState('idle')
+		setScanError(null)
+		setIsNavigating(false)
+		hasNavigatedRef.current = false
 		setCameraError(null)
 		setScanError(null)
 		setScanResult(null)
 		setIsNavigating(false)
-		setDecoderMode('unknown')
 		hasNavigatedRef.current = false
 		lastRejectedValueRef.current = null
 		setCameraState('starting')
 
-		const hasNativeDetector = Boolean((window as Window & { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector)
-		if (!hasNativeDetector) {
-			try {
-				setCameraState('running')
-				setDecoderMode('fallback')
-				setScanState('scanning')
-				await nextAnimationFrame()
-				await startHtml5Fallback()
-				return
-			} catch (error) {
-				setCameraError(getReadableError(error))
-				setScanState('error')
-				setCameraState('error')
-				setDecoderMode('unknown')
-				await stopHtml5Fallback()
-				return
-			}
-		}
-
 		try {
-			const stream = await navigator.mediaDevices.getUserMedia({
-				audio: false,
-				video: {
-					facingMode: { ideal: 'environment' }
-				}
-			})
-
-			streamRef.current = stream
-			if (videoRef.current) {
-				videoRef.current.srcObject = stream
-				await videoRef.current.play()
-			}
-
-			setCameraState('running')
-			setScanState('scanning')
-			startQrDetection()
+			await nextAnimationFrame()
+			await startHtml5Scanner()
 		} catch (error) {
 			setCameraError(getReadableError(error))
+			setScanState('error')
 			setCameraState('error')
+			await stopHtml5Scanner()
 		}
-	}, [startHtml5Fallback, startQrDetection, stopCamera, stopHtml5Fallback])
+	}, [startHtml5Scanner, stopHtml5Scanner])
 
 	useEffect(() => {
 		return () => {
-			stopScanningLoop()
-			stopNativeCamera()
-			void stopHtml5Fallback()
+			void stopHtml5Scanner()
 		}
-	}, [stopHtml5Fallback, stopNativeCamera, stopScanningLoop])
+	}, [stopHtml5Scanner])
+
+	useEffect(() => {
+		if (hasAutoStartedRef.current) {
+			return
+		}
+
+		hasAutoStartedRef.current = true
+		void startCamera()
+	}, [startCamera])
 
 	const isStarting = cameraState === 'starting'
 	const isRunning = cameraState === 'running'
-	const isFallbackMode = decoderMode === 'fallback'
-	const isActivePreview = isRunning || isFallbackMode
+	const isActivePreview = isRunning
 
 	return (
 		<div className='space-y-4'>
@@ -416,17 +262,11 @@ export function QrScannerPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle className='text-base sm:text-lg'>Camera</CardTitle>
-					<CardDescription>
-						Scan an enclosure QR code. Uses native scanning first, then switches to compatibility mode when needed.
-					</CardDescription>
+					<CardDescription>Scan an enclosure QR code using a single compatibility scanner flow.</CardDescription>
 				</CardHeader>
 				<CardContent className='space-y-4'>
 					<div className='relative w-full overflow-hidden rounded-lg border bg-muted/30 aspect-square sm:aspect-video'>
-						{isFallbackMode ? (
-							<div id={HTML5_FALLBACK_REGION_ID} ref={fallbackRegionRef} className='h-full w-full' />
-						) : (
-							<video ref={videoRef} className='h-full w-full object-cover' autoPlay muted playsInline />
-						)}
+						<div id={HTML5_SCANNER_REGION_ID} ref={scannerRegionRef} className='h-full w-full' />
 
 						{!isActivePreview && (
 							<div className='absolute inset-0 grid place-items-center bg-background/75'>
@@ -444,28 +284,22 @@ export function QrScannerPage() {
 						)}
 					</div>
 
-					<div className='flex flex-wrap items-center gap-2'>
-						<Button onClick={() => void startCamera()} disabled={isStarting}>
-							{isStarting ? <LoaderCircle className='size-4 animate-spin' /> : <Camera className='size-4' />}
-							Start camera
-						</Button>
-						<Button variant='outline' onClick={stopCamera} disabled={isStarting || !isActivePreview}>
-							<CameraOff className='size-4' />
-							Stop camera
-						</Button>
-						<Button variant='ghost' onClick={() => void startCamera()} disabled={isStarting}>
-							<RotateCcw className='size-4' />
-							Retry
-						</Button>
-					</div>
+					{(cameraError || scanState === 'error' || cameraState === 'error' || cameraState === 'unsupported') && (
+						<button
+							type='button'
+							onClick={() => void startCamera()}
+							disabled={isStarting}
+							className='inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60'
+						>
+							{isStarting ? <LoaderCircle className='size-4 animate-spin' /> : <RotateCcw className='size-4' />}
+							Retry camera
+						</button>
+					)}
 
 					{isActivePreview && scanState === 'scanning' && (
 						<div className='flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary'>
 							<ScanLine className='size-4 shrink-0' />
-							<span>
-								Scanning camera feed for QR codes. Mode:{' '}
-								{decoderMode === 'native' ? 'Native' : decoderMode === 'fallback' ? 'Compatibility' : 'Preparing'}
-							</span>
+							<span>Scanning camera feed for QR codes.</span>
 						</div>
 					)}
 
@@ -490,12 +324,12 @@ export function QrScannerPage() {
 						</div>
 					)}
 
-					{scanResult && (
-						<div className='rounded-md border bg-muted/30 p-3'>
-							<p className='text-sm font-medium'>Detected QR content</p>
-							<p className='mt-2 break-all rounded bg-background p-2 font-mono text-xs'>{scanResult}</p>
-						</div>
-					)}
+					<div className='rounded-md border bg-muted/30 p-3'>
+						<p className='text-sm font-medium'>Detected QR content</p>
+						<p className='mt-2 break-all rounded bg-background p-2 font-mono text-xs'>
+							{scanResult ?? 'No QR code detected yet.'}
+						</p>
+					</div>
 				</CardContent>
 			</Card>
 		</div>
