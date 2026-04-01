@@ -179,6 +179,7 @@ export function QrScannerPage() {
 				{ facingMode: 'environment' },
 				{
 					fps: 5,
+					aspectRatio: 1,
 					qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
 						const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.75)
 						return { width: edge, height: edge }
@@ -265,8 +266,12 @@ export function QrScannerPage() {
 					<CardDescription>Scan an enclosure QR code using a single compatibility scanner flow.</CardDescription>
 				</CardHeader>
 				<CardContent className='space-y-4'>
-					<div className='relative w-full overflow-hidden rounded-lg border bg-muted/30 aspect-square sm:aspect-video'>
-						<div id={HTML5_SCANNER_REGION_ID} ref={scannerRegionRef} className='h-full w-full' />
+					<div className='relative mx-auto w-full max-w-md aspect-square overflow-hidden rounded-lg border bg-muted/30'>
+						<div
+							id={HTML5_SCANNER_REGION_ID}
+							ref={scannerRegionRef}
+							className='h-full w-full [&_canvas]:h-full [&_canvas]:w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover'
+						/>
 
 						{!isActivePreview && (
 							<div className='absolute inset-0 grid place-items-center bg-background/75'>
