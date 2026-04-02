@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
-export default async function Page() {
-	redirect('/protected/scan')
+export default async function Page({ params }: { params: Promise<{ orgId: string }> }) {
+	const { orgId } = await params
+	redirect(`/protected/orgs/${orgId}`)
 }

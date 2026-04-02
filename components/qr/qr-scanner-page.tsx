@@ -16,6 +16,10 @@ type ScanValidationResult = { ok: true; orgId: string; href: string } | { ok: fa
 
 const HTML5_SCANNER_REGION_ID = 'qr-scanner-html5'
 
+type QrScannerPageProps = {
+	onRequestClose?: () => void
+}
+
 function validateEnclosureQrValue(rawValue: string): ScanValidationResult {
 	const normalized = rawValue.trim()
 	if (!normalized) {
@@ -60,7 +64,7 @@ function nextAnimationFrame() {
 	})
 }
 
-export function QrScannerPage() {
+export function QrScannerPage({ onRequestClose }: QrScannerPageProps) {
 	const router = useRouter()
 	const { data: currentUser, isLoading: isUserLoading } = useCurrentClientUser()
 	const { data: userOrgs, isLoading: isOrgsLoading, error: userOrgsError } = useUserOrgs(currentUser?.id ?? '')
@@ -148,10 +152,11 @@ export function QrScannerPage() {
 			setScanState('detected')
 			void stopHtml5Scanner()
 			setCameraState('idle')
+			onRequestClose?.()
 			router.push(validation.href)
 			return true
 		},
-		[currentUser, isOrgsLoading, isUserLoading, router, stopHtml5Scanner, userOrgs, userOrgsError]
+		[currentUser, isOrgsLoading, isUserLoading, onRequestClose, router, stopHtml5Scanner, userOrgs, userOrgsError]
 	)
 
 	const startHtml5Scanner = useCallback(async () => {

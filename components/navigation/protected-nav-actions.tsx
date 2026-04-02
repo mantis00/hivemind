@@ -11,20 +11,20 @@ import { MobileActionsMenu } from '@/components/navigation/mobile-actions-menu'
 import { LoaderCircle, ScanLine } from 'lucide-react'
 import { useState } from 'react'
 import { getOrgIdFromPathname } from '@/context/verify-org-path'
+import { useQrScannerModal } from '@/components/qr/qr-scanner-modal'
 
 export function ProtectedNavActions() {
 	const pathname = usePathname()
 	const isMounted = useIsMounted()
 	const router = useRouter()
+	const { isOpen: isScannerOpen, openScanner } = useQrScannerModal()
 	const [isNavigating, setIsNavigating] = useState(false)
-	const [isScanNavigating, setIsScanNavigating] = useState(false)
 	const [prevPathname, setPrevPathname] = useState(pathname)
 
 	// Reset navigating state when pathname changes (render-time, avoids setState-in-effect)
 	if (prevPathname !== pathname) {
 		setPrevPathname(pathname)
 		if (isNavigating) setIsNavigating(false)
-		if (isScanNavigating) setIsScanNavigating(false)
 	}
 
 	if (!isMounted) {
@@ -39,14 +39,10 @@ export function ProtectedNavActions() {
 					size='icon'
 					className='size-9'
 					aria-label='Open QR scanner'
-					disabled={isScanNavigating || pathname === '/protected/scan'}
-					onClick={() => {
-						if (pathname === '/protected/scan') return
-						setIsScanNavigating(true)
-						router.push('/protected/scan')
-					}}
+					disabled={isScannerOpen}
+					onClick={openScanner}
 				>
-					{isScanNavigating ? <LoaderCircle className='size-5 animate-spin' /> : <ScanLine className='size-5' />}
+					<ScanLine className='size-5' />
 				</Button>
 				<NotificationDropdown />
 			</div>
@@ -60,14 +56,10 @@ export function ProtectedNavActions() {
 				size='icon'
 				className='size-9'
 				aria-label='Open QR scanner'
-				disabled={isScanNavigating || pathname === '/protected/scan'}
-				onClick={() => {
-					if (pathname === '/protected/scan') return
-					setIsScanNavigating(true)
-					router.push('/protected/scan')
-				}}
+				disabled={isScannerOpen}
+				onClick={openScanner}
 			>
-				{isScanNavigating ? <LoaderCircle className='size-5 animate-spin' /> : <ScanLine className='size-5' />}
+				<ScanLine className='size-5' />
 			</Button>
 			<NotificationDropdown />
 			{/* Desktop Actions */}
