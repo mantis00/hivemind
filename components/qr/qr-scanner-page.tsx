@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { useUserOrgs } from '@/lib/react-query/queries'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Html5Qrcode } from 'html5-qrcode'
 
 type CameraState = 'idle' | 'starting' | 'running' | 'unsupported' | 'error'
@@ -268,7 +268,6 @@ export function QrScannerPage({ onRequestClose }: QrScannerPageProps) {
 			<Card>
 				<CardHeader>
 					<CardTitle className='text-base sm:text-lg'>Camera</CardTitle>
-					<CardDescription>Scan an enclosure QR code using a single compatibility scanner flow.</CardDescription>
 				</CardHeader>
 				<CardContent className='space-y-4'>
 					<div className='relative mx-auto w-full max-w-md aspect-square overflow-hidden rounded-lg border bg-muted/30'>
