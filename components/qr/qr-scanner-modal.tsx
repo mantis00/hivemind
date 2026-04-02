@@ -34,7 +34,7 @@ export function QrScannerModalProvider({ children }: { children: ReactNode }) {
 		>
 			{children}
 			<Dialog open={isOpen} onOpenChange={setIsOpen}>
-				<DialogContent className='max-w-3xl overflow-visible border-0 bg-transparent p-0 shadow-none'>
+				<DialogContent className='top-3 max-h-[calc(100dvh-1.5rem)] translate-y-0 overflow-y-auto border-0 bg-transparent p-0 shadow-none sm:top-[50%] sm:max-h-[85dvh] sm:max-w-3xl sm:translate-y-[-50%]'>
 					<DialogHeader className='sr-only'>
 						<DialogTitle>Scan QR Code</DialogTitle>
 						<DialogDescription>Open the camera and scan an enclosure QR code.</DialogDescription>
