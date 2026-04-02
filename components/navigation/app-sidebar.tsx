@@ -226,7 +226,7 @@ export function AppSidebar() {
 													<span>Task Schedules</span>
 												</Link>
 											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
+										</SidebarMenuSubItem>{' '}
 									</SidebarMenuSub>
 								)}
 							</SidebarMenuItem>

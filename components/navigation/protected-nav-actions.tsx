@@ -8,17 +8,15 @@ import InstallAppButton from '@/components/pwa/install-app-button'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { MobileActionsMenu } from '@/components/navigation/mobile-actions-menu'
-import { LoaderCircle, ScanLine, X } from 'lucide-react'
+import { LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 import { getOrgIdFromPathname } from '@/context/verify-org-path'
-import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import { QrScannerContent } from '@/components/qr/qr-scanner-content'
+import { QrScannerButton } from '@/components/qr/qr-scanner-button'
 
 export function ProtectedNavActions() {
 	const pathname = usePathname()
 	const isMounted = useIsMounted()
 	const router = useRouter()
-	const [isScannerOpen, setIsScannerOpen] = useState(false)
 	const [isNavigating, setIsNavigating] = useState(false)
 	const [prevPathname, setPrevPathname] = useState(pathname)
 
@@ -32,38 +30,10 @@ export function ProtectedNavActions() {
 		return null
 	}
 
-	const scannerDialog = (
-		<ResponsiveDialogDrawer
-			title='Scan QR Code'
-			description='Open your camera and point it at an enclosure QR code.'
-			open={isScannerOpen}
-			onOpenChange={setIsScannerOpen}
-			trigger={
-				<Button variant='ghost' size='icon' className='size-9' aria-label='Open QR scanner'>
-					<ScanLine className='size-5' />
-				</Button>
-			}
-			titleAction={
-				<Button
-					variant='ghost'
-					size='icon'
-					className='size-8'
-					aria-label='Close QR scanner'
-					onClick={() => setIsScannerOpen(false)}
-				>
-					<X className='size-4' />
-				</Button>
-			}
-			className='sm:max-w-3xl'
-		>
-			<QrScannerContent onRequestClose={() => setIsScannerOpen(false)} />
-		</ResponsiveDialogDrawer>
-	)
-
 	if (getOrgIdFromPathname(pathname)) {
 		return (
 			<div className='flex items-center flex-row justify-end gap-2 mr-6 max-w-full'>
-				{scannerDialog}
+				<QrScannerButton />
 				<NotificationDropdown />
 			</div>
 		)
@@ -71,7 +41,7 @@ export function ProtectedNavActions() {
 
 	return (
 		<div className='flex items-center justify-end gap-2 max-w-full'>
-			{scannerDialog}
+			<QrScannerButton />
 			<NotificationDropdown />
 			{/* Desktop Actions */}
 			<div className='hidden sm:flex items-center gap-2'>
