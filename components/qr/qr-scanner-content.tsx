@@ -16,7 +16,7 @@ type ScanValidationResult = { ok: true; orgId: string; href: string } | { ok: fa
 
 const HTML5_SCANNER_REGION_ID = 'qr-scanner-html5'
 
-type QrScannerPageProps = {
+type QrScannerContentProps = {
 	onRequestClose?: () => void
 }
 
@@ -64,7 +64,7 @@ function nextAnimationFrame() {
 	})
 }
 
-export function QrScannerPage({ onRequestClose }: QrScannerPageProps) {
+export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 	const router = useRouter()
 	const { data: currentUser, isLoading: isUserLoading } = useCurrentClientUser()
 	const { data: userOrgs, isLoading: isOrgsLoading, error: userOrgsError } = useUserOrgs(currentUser?.id ?? '')
@@ -259,88 +259,81 @@ export function QrScannerPage({ onRequestClose }: QrScannerPageProps) {
 	const isActivePreview = isRunning
 
 	return (
-		<div className='space-y-4'>
-			<div className='pb-1'>
-				<h1 className='text-2xl font-semibold'>Scan QR Code</h1>
-				<p className='text-sm text-muted-foreground'>Open your camera and point it at an enclosure QR code.</p>
-			</div>
+		<Card>
+			<CardHeader>
+				<CardTitle className='text-base sm:text-lg'>Camera</CardTitle>
+			</CardHeader>
+			<CardContent className='space-y-4'>
+				<div className='relative mx-auto w-full max-w-md aspect-square overflow-hidden rounded-lg border bg-muted/30'>
+					<div
+						id={HTML5_SCANNER_REGION_ID}
+						ref={scannerRegionRef}
+						className='h-full w-full [&_canvas]:h-full [&_canvas]:w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover'
+					/>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className='text-base sm:text-lg'>Camera</CardTitle>
-				</CardHeader>
-				<CardContent className='space-y-4'>
-					<div className='relative mx-auto w-full max-w-md aspect-square overflow-hidden rounded-lg border bg-muted/30'>
-						<div
-							id={HTML5_SCANNER_REGION_ID}
-							ref={scannerRegionRef}
-							className='h-full w-full [&_canvas]:h-full [&_canvas]:w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover'
-						/>
-
-						{!isActivePreview && (
-							<div className='absolute inset-0 grid place-items-center bg-background/75'>
-								<div className='flex flex-col items-center gap-2 text-center px-4'>
-									{isStarting ? (
-										<LoaderCircle className='size-6 animate-spin text-muted-foreground' />
-									) : (
-										<CameraOff className='size-6 text-muted-foreground' />
-									)}
-									<p className='text-sm text-muted-foreground'>
-										{isStarting ? 'Starting camera...' : 'Camera preview is not active.'}
-									</p>
-								</div>
+					{!isActivePreview && (
+						<div className='absolute inset-0 grid place-items-center bg-background/75'>
+							<div className='flex flex-col items-center gap-2 px-4 text-center'>
+								{isStarting ? (
+									<LoaderCircle className='size-6 animate-spin text-muted-foreground' />
+								) : (
+									<CameraOff className='size-6 text-muted-foreground' />
+								)}
+								<p className='text-sm text-muted-foreground'>
+									{isStarting ? 'Starting camera...' : 'Camera preview is not active.'}
+								</p>
 							</div>
-						)}
+						</div>
+					)}
+				</div>
+
+				{(cameraError || scanState === 'error' || cameraState === 'error' || cameraState === 'unsupported') && (
+					<button
+						type='button'
+						onClick={() => void startCamera()}
+						disabled={isStarting}
+						className='inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60'
+					>
+						{isStarting ? <LoaderCircle className='size-4 animate-spin' /> : <RotateCcw className='size-4' />}
+						Retry camera
+					</button>
+				)}
+
+				{isActivePreview && scanState === 'scanning' && (
+					<div className='flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary'>
+						<ScanLine className='size-4 shrink-0' />
+						<span>Scanning camera feed for QR codes.</span>
 					</div>
+				)}
 
-					{(cameraError || scanState === 'error' || cameraState === 'error' || cameraState === 'unsupported') && (
-						<button
-							type='button'
-							onClick={() => void startCamera()}
-							disabled={isStarting}
-							className='inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60'
-						>
-							{isStarting ? <LoaderCircle className='size-4 animate-spin' /> : <RotateCcw className='size-4' />}
-							Retry camera
-						</button>
-					)}
-
-					{isActivePreview && scanState === 'scanning' && (
-						<div className='flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary'>
-							<ScanLine className='size-4 shrink-0' />
-							<span>Scanning camera feed for QR codes.</span>
-						</div>
-					)}
-
-					{isNavigating && (
-						<div className='flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary'>
-							<LoaderCircle className='size-4 shrink-0 animate-spin' />
-							<span>Valid enclosure QR detected. Opening enclosure page...</span>
-						</div>
-					)}
-
-					{cameraError && (
-						<div className='flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive'>
-							<ShieldAlert className='size-4 shrink-0 mt-0.5' />
-							<span>{cameraError}</span>
-						</div>
-					)}
-
-					{scanError && (
-						<div className='flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive'>
-							<ShieldAlert className='size-4 shrink-0 mt-0.5' />
-							<span>{scanError}</span>
-						</div>
-					)}
-
-					<div className='rounded-md border bg-muted/30 p-3'>
-						<p className='text-sm font-medium'>Detected QR content</p>
-						<p className='mt-2 break-all rounded bg-background p-2 font-mono text-xs'>
-							{scanResult ?? 'No QR code detected yet.'}
-						</p>
+				{isNavigating && (
+					<div className='flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary'>
+						<LoaderCircle className='size-4 shrink-0 animate-spin' />
+						<span>Valid enclosure QR detected. Opening enclosure page...</span>
 					</div>
-				</CardContent>
-			</Card>
-		</div>
+				)}
+
+				{cameraError && (
+					<div className='flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive'>
+						<ShieldAlert className='size-4 shrink-0 mt-0.5' />
+						<span>{cameraError}</span>
+					</div>
+				)}
+
+				{scanError && (
+					<div className='flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive'>
+						<ShieldAlert className='size-4 shrink-0 mt-0.5' />
+						<span>{scanError}</span>
+					</div>
+				)}
+
+				<div className='rounded-md border bg-muted/30 p-3'>
+					<p className='text-sm font-medium'>Detected QR content</p>
+					<p className='mt-2 break-all rounded bg-background p-2 font-mono text-xs'>
+						{scanResult ?? 'No QR code detected yet.'}
+					</p>
+				</div>
+			</CardContent>
+		</Card>
 	)
 }
