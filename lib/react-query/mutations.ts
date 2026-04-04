@@ -371,27 +371,64 @@ export function useCreateEnclosure() {
 			orgId,
 			species_id,
 			location,
-			current_count
+			current_count,
+			institutional_specimen_id,
+			institutional_external_source,
+			source_enclosure_transfers
 		}: {
 			orgId: UUID
 			species_id: UUID
 			location: UUID
 			current_count: number
+			institutional_specimen_id?: string
+			institutional_external_source?: string
+			source_enclosure_transfers?: { id: UUID; count: number }[]
 		}) => {
 			const supabase = createClient()
-			// Insert the organization
-			const { error: enclosureError } = await supabase
+			const { data: enclosure, error: enclosureError } = await supabase
 				.from('enclosures')
 				.insert({
 					org_id: orgId,
 					species_id: species_id,
 					location: location,
-					current_count: current_count
+					current_count: current_count,
+					...(institutional_specimen_id ? { institutional_specimen_id } : {}),
+					...(institutional_external_source ? { institutional_external_source } : {})
 				})
 				.select()
 				.single()
 
 			if (enclosureError) throw enclosureError
+
+			if (source_enclosure_transfers && source_enclosure_transfers.length > 0) {
+				const { error: lineageError } = await supabase.from('enclosure_lineage').insert(
+					source_enclosure_transfers.map((t) => ({
+						enclosure_id: enclosure.id,
+						source_enclosure_id: t.id
+					}))
+				)
+				if (lineageError) throw lineageError
+
+				const sourceIds = source_enclosure_transfers.map((t) => t.id)
+				const { data: currentEnclosures, error: fetchError } = await supabase
+					.from('enclosures')
+					.select('id, current_count')
+					.in('id', sourceIds)
+				if (fetchError) throw fetchError
+
+				for (const transfer of source_enclosure_transfers) {
+					const current = currentEnclosures?.find((e) => e.id === transfer.id)
+					if (!current) continue
+					const newCount = Math.max(0, current.current_count - transfer.count)
+					const { error: updateError } = await supabase
+						.from('enclosures')
+						.update({ current_count: newCount })
+						.eq('id', transfer.id)
+					if (updateError) throw updateError
+				}
+			}
+
+			return enclosure
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
@@ -460,11 +497,13 @@ export function useCreateEnclosureNote() {
 		mutationFn: async ({
 			enclosureId,
 			userId,
-			noteText
+			noteText,
+			isFlagged
 		}: {
 			enclosureId: UUID
 			userId: string // from auth
 			noteText: string
+			isFlagged?: boolean
 		}) => {
 			const supabase = createClient()
 			if (noteText.trim() === '') {
@@ -476,7 +515,8 @@ export function useCreateEnclosureNote() {
 				.insert({
 					enclosure_id: enclosureId,
 					user_id: userId,
-					note_text: noteText.trim()
+					note_text: noteText.trim(),
+					is_flagged: isFlagged ?? false
 				})
 				.select()
 				.single()
@@ -498,26 +538,53 @@ export function useUpdateEnclosure() {
 			enclosure_id,
 			location_id,
 			count,
-			is_active
+			is_active,
+			institutional_specimen_id,
+			institutional_external_source,
+			source_enclosure_ids
 		}: {
 			orgId: UUID
 			enclosure_id: UUID
 			location_id: UUID
 			count: number
 			is_active: boolean
+			institutional_specimen_id?: string
+			institutional_external_source?: string
+			source_enclosure_ids?: UUID[]
 		}) => {
 			const supabase = createClient()
 
 			const { error } = await supabase
 				.from('enclosures')
-				.update({ location: location_id, current_count: count, is_active })
+				.update({
+					location: location_id,
+					current_count: count,
+					is_active,
+					institutional_specimen_id: institutional_specimen_id ?? '',
+					institutional_external_source: institutional_external_source ?? ''
+				})
 				.eq('id', enclosure_id)
 
 			if (error) throw error
+
+			const { error: deleteError } = await supabase.from('enclosure_lineage').delete().eq('enclosure_id', enclosure_id)
+			if (deleteError) throw deleteError
+
+			if (source_enclosure_ids && source_enclosure_ids.length > 0) {
+				const { error: lineageError } = await supabase.from('enclosure_lineage').insert(
+					source_enclosure_ids.map((sourceId) => ({
+						enclosure_id: enclosure_id,
+						source_enclosure_id: sourceId
+					}))
+				)
+				if (lineageError) throw lineageError
+			}
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['enclosureLineage', variables.enclosure_id] })
+			queryClient.invalidateQueries({ queryKey: ['enclosureCountHistory', variables.enclosure_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure updated!')
 		}
@@ -1956,6 +2023,7 @@ export function useMarkEnclosuresPrinted() {
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			toast.success('Enclosures marked as printed.')
 		}
 	})

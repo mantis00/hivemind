@@ -1,5 +1,4 @@
 'use client'
-import { format } from 'date-fns'
 
 import { Calendar, MapPin, Users } from 'lucide-react'
 import { type Enclosure } from '@/lib/react-query/queries'
@@ -7,6 +6,7 @@ import { type Enclosure } from '@/lib/react-query/queries'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '../ui/badge'
 import { Checkbox } from '../ui/checkbox'
+import { formatDate } from '@/context/format-date'
 
 export function EnclosureCard({
 	enclosure,
@@ -68,9 +68,7 @@ export function EnclosureCard({
 							</div>
 							<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
 								<Calendar className='h-3 w-3 shrink-0' />
-								{enclosure.created_at && (
-									<span>{format(new Date(enclosure.created_at.substring(0, 10)), 'MMM d, yyyy')}</span>
-								)}
+								{enclosure.created_at && <span>{enclosure.created_at ? formatDate(enclosure.created_at) : '—'}</span>}
 							</div>
 						</div>
 						<Badge variant='secondary' className='gap-1 self-center shrink-0'>

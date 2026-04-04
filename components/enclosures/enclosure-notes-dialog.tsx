@@ -5,7 +5,7 @@ import CreateEnclosureNote from './create-enclosure-note'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
-import { LoaderCircle, StickyNote } from 'lucide-react'
+import { Flag, LoaderCircle, StickyNote } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function EnclosureNotesDialog({
@@ -40,8 +40,14 @@ export default function EnclosureNotesDialog({
 			) : enclosureNotes?.length && enclosureNotes.length > 0 ? (
 				<div className='space-y-2 overflow-y-auto max-h-[500px] rounded-md border p-3 scrollbar-hide'>
 					{enclosureNotes.map((note) => (
-						<div key={note.id} className='rounded-md bg-muted p-3 space-y-1'>
-							<p className='text-sm'>{note.note_text}</p>
+						<div
+							key={note.id}
+							className={`rounded-md p-3 space-y-1 ${note.is_flagged ? 'bg-destructive/10 border border-destructive/30' : 'bg-muted'}`}
+						>
+							<div className='flex items-start gap-2'>
+								{note.is_flagged && <Flag className='h-3.5 w-3.5 text-destructive shrink-0 mt-0.5' />}
+								<p className='text-sm'>{note.note_text}</p>
+							</div>
 							<div className='flex flex-row'>
 								<p className='text-xs text-muted-foreground'>
 									{note.created_at && format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}

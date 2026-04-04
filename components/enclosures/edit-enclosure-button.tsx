@@ -4,11 +4,17 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { LoaderCircle, Edit2Icon } from 'lucide-react'
+import { LoaderCircle, Edit2Icon, X, PlusIcon } from 'lucide-react'
 import { useState, useMemo, useRef } from 'react'
 import { useUpdateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { Enclosure, OrgSpecies, useOrgLocations } from '@/lib/react-query/queries'
+import {
+	Enclosure,
+	OrgSpecies,
+	useEnclosureLineage,
+	useOrgEnclosures,
+	useOrgLocations
+} from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import {
 	Combobox,
@@ -22,6 +28,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { UUID } from 'crypto'
 import { toast } from 'sonner'
+import { Badge } from '../ui/badge'
 
 export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure; spec: OrgSpecies }) {
 	const [open, setOpen] = useState(false)
@@ -30,8 +37,15 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const [locationQuery, setLocationQuery] = useState(location ?? '')
 	const [createLocation, setCreateLocation] = useState(false)
 	const savedLocationRef = useRef<string | undefined>(undefined)
-	const [count, setCount] = useState(enclosure?.current_count)
+	const [count, setCount] = useState<number | undefined>(enclosure?.current_count)
 	const [isActive, setIsActive] = useState(enclosure?.is_active ?? true)
+	const [specimenTrackingId, setSpecimenTrackingId] = useState(enclosure?.institutional_specimen_id ?? '')
+	const [sourceType, setSourceType] = useState<'institution' | 'enclosure'>('institution')
+	const [externalSource, setExternalSource] = useState('')
+	const [sourceEnclosureQuery, setSourceEnclosureQuery] = useState('')
+	const [sources, setSources] = useState<
+		{ type: 'institution' | 'enclosure' | 'deceased'; value: string; label: string; count: string; maxCount?: number }[]
+	>([])
 	const { data: user } = useCurrentClientUser()
 	const editEnclosureMutation = useUpdateEnclosure()
 	const createLocationMutation = useCreateLocation()
@@ -39,6 +53,8 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const orgId = params?.orgId as UUID | undefined
 
 	const { data: orgLocations } = useOrgLocations(orgId as UUID)
+	const { data: orgEnclosures } = useOrgEnclosures(orgId as UUID)
+	const { data: lineageData } = useEnclosureLineage(enclosure.id)
 
 	const scoreMatch = (str: string | undefined, val: string): number => {
 		if (!str) return -1
@@ -59,6 +75,24 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			.map(({ loc }) => loc)
 	}, [locationQuery, orgLocations])
 
+	const sourceEnclosureOptions = useMemo(() => {
+		const alreadyAdded = new Set(sources.filter((s) => s.type === 'enclosure').map((s) => s.value))
+		return (orgEnclosures ?? []).filter(
+			(enc) =>
+				enc.species_id === spec.id && enc.id !== enclosure.id && !alreadyAdded.has(enc.id) && enc.current_count > 0
+		)
+	}, [orgEnclosures, spec.id, enclosure.id, sources])
+
+	const filteredSourceEnclosures = useMemo(() => {
+		if (!sourceEnclosureQuery.trim()) return sourceEnclosureOptions
+		const val = sourceEnclosureQuery.trim().toLowerCase()
+		return sourceEnclosureOptions
+			.map((enc) => ({ enc, score: scoreMatch(enc.name, val) }))
+			.filter(({ score }) => score >= 0)
+			.sort((a, b) => a.score - b.score)
+			.map(({ enc }) => enc)
+	}, [sourceEnclosureOptions, sourceEnclosureQuery])
+
 	const handleOpenChange = (isOpen: boolean) => {
 		if (isOpen) {
 			// Reset form state from latest props when dialog opens
@@ -69,15 +103,69 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			savedLocationRef.current = undefined
 			setCount(enclosure?.current_count)
 			setIsActive(enclosure?.is_active ?? true)
+			setSpecimenTrackingId(enclosure?.institutional_specimen_id ?? '')
+			setSourceType('institution')
+			setExternalSource('')
+			setSourceEnclosureQuery('')
+
+			// Build sources from existing data
+			const initialSources: {
+				type: 'institution' | 'enclosure' | 'deceased'
+				value: string
+				label: string
+				count: string
+				maxCount?: number
+			}[] = []
+			if (enclosure?.institutional_external_source) {
+				enclosure.institutional_external_source
+					.split(', ')
+					.filter(Boolean)
+					.forEach((src) => {
+						initialSources.push({ type: 'institution', value: src, label: src, count: '' })
+					})
+			}
+			if (lineageData) {
+				lineageData.forEach((record) => {
+					const enc = orgEnclosures?.find((e) => e.id === record.source_enclosure_id)
+					initialSources.push({
+						type: 'enclosure',
+						value: record.source_enclosure_id,
+						label: enc ? `${enc.name} (${enc.locations?.name ?? 'Unknown'})` : record.source_enclosure_id,
+						count: ''
+					})
+				})
+			}
+			setSources(initialSources)
 		}
 		setOpen(isOpen)
 	}
 
 	const isPending = editEnclosureMutation.isPending || createLocationMutation.isPending
+	const diff = (count ?? 0) - (enclosure?.current_count ?? 0)
+	const sourcesTotal = sources.reduce((sum, s) => sum + (parseInt(s.count, 10) || 0), 0)
+	const remaining = Math.abs(diff) - sourcesTotal
+	const isAccountedFor = diff === 0 || sourcesTotal === Math.abs(diff)
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!species || !location) return
+
+		const externalSources = sources.filter((s) => s.type === 'institution').map((s) => s.value)
+		const enclosureSourceIds = sources.filter((s) => s.type === 'enclosure').map((s) => s.value as UUID)
+		const resolvedExternalSource = externalSources.length > 0 ? externalSources.join(', ') : ''
+
+		const locationUnchanged = !createLocation && location === enclosure.locations?.name
+		const hasChanges =
+			(count ?? 0) !== (enclosure?.current_count ?? 0) ||
+			!locationUnchanged ||
+			isActive !== (enclosure?.is_active ?? true) ||
+			specimenTrackingId.trim() !== (enclosure?.institutional_specimen_id ?? '') ||
+			resolvedExternalSource !== (enclosure?.institutional_external_source ?? '')
+
+		if (!hasChanges) {
+			toast.info('No changes to save!')
+			return
+		}
 
 		let resolvedLocationId: UUID
 
@@ -91,15 +179,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			const existing = orgLocations?.find((loc) => loc?.name === location)
 			if (!existing) return
 			resolvedLocationId = existing.id as UUID
-
-			if (
-				enclosure?.location === resolvedLocationId &&
-				enclosure.current_count === count &&
-				enclosure.is_active === isActive
-			) {
-				toast.info('No changes to save.')
-				return
-			}
 		}
 
 		editEnclosureMutation.mutate(
@@ -107,8 +186,11 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 				orgId: orgId as UUID,
 				enclosure_id: enclosure.id,
 				location_id: resolvedLocationId,
-				count: count,
-				is_active: isActive
+				count: count ?? 0,
+				is_active: isActive,
+				institutional_specimen_id: specimenTrackingId.trim(),
+				institutional_external_source: resolvedExternalSource,
+				source_enclosure_ids: enclosureSourceIds
 			},
 			{
 				onSuccess: () => {
@@ -224,16 +306,207 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 						className='h-9'
 						id='count'
 						placeholder='Count'
-						value={count}
+						value={count ?? ''}
 						type='number'
 						min='0'
-						onChange={(e) => setCount(Number(e.target.value))}
+						onChange={(e) => setCount(e.target.value === '' ? undefined : Number(e.target.value))}
+						onFocus={(e) => e.target.select()}
 						required
 						disabled={isPending}
 					/>
+					<Label>Specimen ID (Optional)</Label>
+					<Input
+						className='h-9'
+						placeholder='Enter internal tracking ID...'
+						value={specimenTrackingId}
+						onChange={(e) => setSpecimenTrackingId(e.target.value)}
+						disabled={isPending}
+					/>
+					<div className='flex items-center justify-between'>
+						<Label>
+							{diff !== 0
+								? diff > 0
+									? `Where are ${diff} coming from?`
+									: `Where are ${Math.abs(diff)} going?`
+								: 'Source (Optional)'}
+						</Label>
+						<div className='flex items-center rounded-md border text-xs overflow-hidden w-56'>
+							<button
+								type='button'
+								className={`w-full text-center px-2.5 py-1 transition-colors ${sourceType === 'institution' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+								onClick={() => setSourceType('institution')}
+							>
+								External
+							</button>
+							<button
+								type='button'
+								className={`w-full text-center px-2.5 py-1 transition-colors ${sourceType === 'enclosure' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
+								onClick={() => setSourceType('enclosure')}
+							>
+								Enclosure
+							</button>
+							<button
+								type='button'
+								className='w-full text-center px-2.5 py-1 transition-colors bg-muted hover:bg-background'
+								onClick={() => {
+									if (!sources.some((s) => s.type === 'deceased')) {
+										setSources((prev) => [
+											...prev,
+											{ type: 'deceased', value: 'deceased', label: 'Deceased', count: '' }
+										])
+									}
+								}}
+							>
+								Deceased
+							</button>
+						</div>
+					</div>
+
+					{sourceType === 'institution' ? (
+						<div className='flex gap-2'>
+							<Input
+								className='h-9'
+								placeholder='Institution or external source...'
+								value={externalSource}
+								onChange={(e) => setExternalSource(e.target.value)}
+								disabled={isPending}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter' && externalSource.trim()) {
+										e.preventDefault()
+										setSources((prev) => [
+											...prev,
+											{ type: 'institution', value: externalSource.trim(), label: externalSource.trim(), count: '' }
+										])
+										setExternalSource('')
+									}
+								}}
+							/>
+							<Button
+								type='button'
+								size='sm'
+								variant='secondary'
+								className='h-9 px-3'
+								disabled={!externalSource.trim() || isPending}
+								onClick={() => {
+									setSources((prev) => [
+										...prev,
+										{ type: 'institution', value: externalSource.trim(), label: externalSource.trim(), count: '' }
+									])
+									setExternalSource('')
+								}}
+							>
+								<PlusIcon className='w-4 h-4' />
+							</Button>
+						</div>
+					) : (
+						<Combobox
+							items={filteredSourceEnclosures}
+							filter={() => true}
+							value=''
+							onValueChange={(value) => {
+								if (!value) return
+								const selected = sourceEnclosureOptions.find((enc) => enc.id === value)
+								if (selected) {
+									setSources((prev) => [
+										...prev,
+										{
+											type: 'enclosure',
+											value: selected.id,
+											label: `${selected.name} (${selected.locations?.name ?? 'Unknown'})`,
+											count: '',
+											...(diff > 0 ? { maxCount: selected.current_count } : {})
+										}
+									])
+								}
+								setSourceEnclosureQuery('')
+							}}
+						>
+							<ComboboxInput
+								className='h-9'
+								placeholder='Search source enclosure...'
+								value={sourceEnclosureQuery}
+								onChange={(event) => setSourceEnclosureQuery(event.target.value)}
+								disabled={isPending}
+								showClear
+							/>
+							<ComboboxContent>
+								<ComboboxEmpty>No matching enclosures for this species.</ComboboxEmpty>
+								<ComboboxList className='max-h-42 scrollbar-no-track'>
+									<ComboboxCollection>
+										{(enc: Enclosure) => (
+											<ComboboxItem key={enc.id} value={enc.id}>
+												<span className='flex flex-col'>
+													<span>{enc.name}</span>
+													<span className='text-xs text-muted-foreground'>
+														{enc.locations?.name ?? 'Unknown location'} • Count {enc.current_count}
+													</span>
+												</span>
+											</ComboboxItem>
+										)}
+									</ComboboxCollection>
+								</ComboboxList>
+							</ComboboxContent>
+						</Combobox>
+					)}
+
+					{sources.length > 0 && (
+						<div className='flex flex-col gap-2'>
+							{sources.map((source, idx) => (
+								<div key={`${source.type}-${source.value}-${idx}`} className='flex items-center gap-2'>
+									<Badge
+										variant={
+											source.type === 'institution'
+												? 'outline'
+												: source.type === 'deceased'
+													? 'destructive'
+													: 'secondary'
+										}
+										className='flex items-center gap-1 pr-1 shrink-0'
+									>
+										<span className='text-xs'>{source.label}</span>
+										<button
+											type='button'
+											className='ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5'
+											onClick={() => setSources((prev) => prev.filter((_, i) => i !== idx))}
+										>
+											<X className='h-3 w-3' />
+										</button>
+									</Badge>
+									<Input
+										type='number'
+										min='0'
+										{...(source.maxCount !== undefined ? { max: source.maxCount } : {})}
+										placeholder={source.maxCount !== undefined ? `Max ${source.maxCount}` : 'Count'}
+										value={source.count}
+										className='h-7 w-24'
+										disabled={isPending}
+										onChange={(e) => {
+											const raw = e.target.value
+											const clamped =
+												source.maxCount !== undefined && raw !== ''
+													? String(Math.min(parseInt(raw, 10) || 0, source.maxCount))
+													: raw
+											setSources((prev) => prev.map((s, i) => (i === idx ? { ...s, count: clamped } : s)))
+										}}
+									/>
+								</div>
+							))}
+						</div>
+					)}
+					{diff !== 0 && (
+						<p
+							className={`text-xs ${isAccountedFor ? 'text-green-500' : remaining > 0 ? 'text-amber-500' : 'text-red-500'}`}
+						>
+							{isAccountedFor
+								? '✓ All individuals accounted for'
+								: remaining > 0
+									? `${remaining} more to account for`
+									: `Over by ${Math.abs(remaining)}`}
+						</p>
+					)}
 				</div>
 				<div className='flex flex-col gap-3'>
-					<Button type='submit' disabled={isPending || !user}>
+					<Button type='submit' disabled={isPending || !user || !isAccountedFor}>
 						{isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
 					</Button>
 					<Button type='button' variant='outline' disabled={isPending} onClick={() => handleOpenChange(false)}>
