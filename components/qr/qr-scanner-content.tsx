@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CameraOff, LoaderCircle, RotateCcw, ShieldAlert } from 'lucide-react'
+import { CameraOff, ImageUp, LoaderCircle, RotateCcw, ShieldAlert } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 import { useCurrentClientUser } from '@/lib/react-query/auth'
@@ -69,6 +69,7 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 	const { data: userOrgs, isLoading: isOrgsLoading, error: userOrgsError } = useUserOrgs(currentUser?.id ?? '')
 
 	const scannerRegionRef = useRef<HTMLDivElement | null>(null)
+	const photoInputRef = useRef<HTMLInputElement | null>(null)
 	const html5QrcodeRef = useRef<Html5Qrcode | null>(null)
 	const html5StartingRef = useRef(false)
 	const lastRejectedValueRef = useRef<string | null>(null)
@@ -79,6 +80,7 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 	const [cameraError, setCameraError] = useState<string | null>(null)
 	const [scanState, setScanState] = useState<ScanState>('idle')
 	const [scanError, setScanError] = useState<string | null>(null)
+	const [isPhotoScanning, setIsPhotoScanning] = useState(false)
 
 	const stopHtml5Scanner = useCallback(async () => {
 		const scanner = html5QrcodeRef.current
@@ -200,6 +202,53 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 		}
 	}, [handleDecodedValue])
 
+	const handlePhotoSelected = useCallback(
+		async (file: File) => {
+			setIsPhotoScanning(true)
+			setCameraError(null)
+			setScanError(null)
+
+			try {
+				await stopHtml5Scanner()
+
+				const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode')
+				const scanner = new Html5Qrcode(HTML5_SCANNER_REGION_ID, {
+					verbose: false,
+					formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+				})
+
+				html5QrcodeRef.current = scanner
+				const decodedText = await scanner.scanFile(file, true)
+				const accepted = handleDecodedValue(decodedText)
+
+				try {
+					scanner.clear()
+				} catch {
+					// clear() can throw when DOM was re-rendered while scanning
+				}
+				html5QrcodeRef.current = null
+
+				// If the photo was not a valid/authorized enclosure QR, resume live scanning.
+				if (!accepted) {
+					await startHtml5Scanner()
+				}
+			} catch (error) {
+				setScanError(`Unable to scan selected photo (${getReadableError(error)}).`)
+				try {
+					await startHtml5Scanner()
+				} catch {
+					// Keep the error visible if restarting the live scanner also fails.
+				}
+			} finally {
+				setIsPhotoScanning(false)
+				if (photoInputRef.current) {
+					photoInputRef.current.value = ''
+				}
+			}
+		},
+		[handleDecodedValue, startHtml5Scanner, stopHtml5Scanner]
+	)
+
 	const startCamera = useCallback(async () => {
 		if (!navigator.mediaDevices?.getUserMedia) {
 			setCameraError('This browser does not support camera access.')
@@ -285,6 +334,32 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 					Retry camera
 				</button>
 			)}
+
+			<div className='flex justify-center'>
+				<button
+					type='button'
+					onClick={() => photoInputRef.current?.click()}
+					disabled={isPhotoScanning}
+					className='inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60'
+				>
+					{isPhotoScanning ? <LoaderCircle className='size-4 animate-spin' /> : <ImageUp className='size-4' />}
+					{isPhotoScanning ? 'Scanning photo...' : 'Scan from photo'}
+				</button>
+				<input
+					ref={photoInputRef}
+					type='file'
+					accept='image/*'
+					capture='environment'
+					className='hidden'
+					onChange={(event) => {
+						const file = event.target.files?.[0]
+						if (!file) {
+							return
+						}
+						void handlePhotoSelected(file)
+					}}
+				/>
+			</div>
 
 			{cameraError && (
 				<div className='flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive'>
