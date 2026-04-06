@@ -1,4 +1,4 @@
-import { TasksTable } from '@/components/history/history-table'
+import { HistoryTable } from '@/components/history/history-table'
 import { UUID } from 'crypto'
 
 export default async function HistoryPage({ params }: { params: Promise<{ orgId: string }> }) {
@@ -10,7 +10,7 @@ export default async function HistoryPage({ params }: { params: Promise<{ orgId:
 				<h1 className='text-2xl font-bold'>History</h1>
 				<p className='text-muted-foreground text-sm mt-1'>History of enclosure modifications and task completions.</p>
 			</div>
-			<TasksTable orgId={orgId as UUID} />
+			<HistoryTable orgId={orgId as UUID} />
 		</div>
 	)
 }

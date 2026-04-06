@@ -34,7 +34,7 @@ import {
 // Main Table Component
 // ============================================================================
 
-export function TasksTable({ orgId }: { orgId: UUID }) {
+export function HistoryTable({ orgId }: { orgId: UUID }) {
 	const isMobile = useIsMobile()
 	const [filters, setFilters] = React.useState<TimelineFilters>(DEFAULT_FILTERS)
 	const [sorting, setSorting] = React.useState<SortingState>([{ id: 'event_date', desc: true }])
