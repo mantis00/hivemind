@@ -1467,8 +1467,8 @@ export function useOrgTaskHistory(orgId: UUID | undefined) {
 			const supabase = createClient()
 			const PAGE_SIZE = 1000
 
-			// Fetch org species, first page of completed tasks, and count history in parallel
-			const [orgSpeciesResult, firstPageResult, countHistoryResult] = await Promise.all([
+			// Fetch org species, first page of completed tasks, count history, and enclosure notes in parallel
+			const [orgSpeciesResult, firstPageResult, countHistoryResult, notesResult] = await Promise.all([
 				supabase
 					.from('org_species')
 					.select('id, custom_common_name, species(scientific_name)')
@@ -1491,12 +1491,19 @@ export function useOrgTaskHistory(orgId: UUID | undefined) {
 					)
 					.eq('enclosures.org_id', orgId as UUID)
 					.eq('enclosures.is_active', true)
-					.order('changed_at', { ascending: false })
+					.order('changed_at', { ascending: false }),
+				supabase
+					.from('tank_notes')
+					.select('id, note_text, user_id, created_at, enclosures!inner(id, name, org_id, species_id, is_active)')
+					.eq('enclosures.org_id', orgId as UUID)
+					.eq('enclosures.is_active', true)
+					.order('created_at', { ascending: false })
 			])
 
 			if (orgSpeciesResult.error) throw orgSpeciesResult.error
 			if (firstPageResult.error) throw firstPageResult.error
 			if (countHistoryResult.error) throw countHistoryResult.error
+			if (notesResult.error) throw notesResult.error
 
 			type TaskRow = (typeof firstPageResult.data)[number]
 			let allTasks: TaskRow[] = firstPageResult.data ?? []
@@ -1531,11 +1538,13 @@ export function useOrgTaskHistory(orgId: UUID | undefined) {
 				speciesMap.set(String(s.id), s.custom_common_name || scientific || '')
 			}
 
-			// Collect all user IDs from both tasks and count history, then fetch profiles in one query
+			// Collect all user IDs from tasks, count history, and notes, then fetch profiles in one query
 			const countHistory = countHistoryResult.data ?? []
+			const notes = notesResult.data ?? []
 			const taskUserIds = allTasks.map((t) => t.completed_by).filter(Boolean) as string[]
 			const countUserIds = countHistory.map((c) => c.changed_by).filter(Boolean) as string[]
-			const allUserIds = [...new Set([...taskUserIds, ...countUserIds])]
+			const noteUserIds = notes.map((n) => n.user_id).filter(Boolean) as string[]
+			const allUserIds = [...new Set([...taskUserIds, ...countUserIds, ...noteUserIds])]
 
 			const profileMap = new Map<string, string>()
 			if (allUserIds.length > 0) {
@@ -1595,8 +1604,24 @@ export function useOrgTaskHistory(orgId: UUID | undefined) {
 				}
 			})
 
+			// Map enclosure notes to EnclosureTimelineRow
+			const noteRows: EnclosureTimelineRow[] = notes.map((note) => {
+				const enclosure = resolveEnclosure(note.enclosures)
+				return {
+					id: `note-${note.id}`,
+					event_date: note.created_at as string,
+					record_type: 'note' as TimelineRecordType,
+					enclosure_name: enclosure?.name ?? null,
+					species_name: enclosure?.species_id ? (speciesMap.get(String(enclosure.species_id)) ?? null) : null,
+					summary: note.note_text ?? null,
+					details: null,
+					user_name: note.user_id ? (profileMap.get(String(note.user_id)) ?? null) : null,
+					template_type: null
+				}
+			})
+
 			// Merge and sort by date descending
-			return [...taskRows, ...countRows].sort(
+			return [...taskRows, ...countRows, ...noteRows].sort(
 				(a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
 			)
 		},

@@ -246,7 +246,7 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 				)}
 			</div>
 
-			<div className='text-sm text-muted-foreground'>{rows.length} completed tasks</div>
+			<div className='text-sm text-muted-foreground'>{rows.length} history logs</div>
 		</div>
 	)
 }
