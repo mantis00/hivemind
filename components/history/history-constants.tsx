@@ -20,8 +20,8 @@ export const DEFAULT_FILTERS: TimelineFilters = {
 }
 
 export const RECORD_TYPE_OPTIONS: { value: TimelineRecordType; label: string }[] = [
-	{ value: 'task', label: 'Task' },
-	{ value: 'note', label: 'Note' },
+	{ value: 'task', label: 'Task Completion' },
+	{ value: 'note', label: 'Note Creation' },
 	{ value: 'count_change', label: 'Count Change' }
 ]
 

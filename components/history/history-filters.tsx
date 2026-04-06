@@ -116,7 +116,7 @@ export function HistoryFilters({
 	return (
 		<div className='flex flex-col gap-3'>
 			{/* Search */}
-			<div className='relative w-full'>
+			<div className='relative flex-1 min-w-40 max-w-72'>
 				<Search className='absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
 				<Input
 					placeholder='Search summary or details...'
@@ -132,7 +132,7 @@ export function HistoryFilters({
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button variant='outline' className='gap-2'>
-							Type {filters.recordTypes.length > 0 && `(${filters.recordTypes.length})`}
+							Activity Type {filters.recordTypes.length > 0 && `(${filters.recordTypes.length})`}
 							<ChevronDown className='h-4 w-4' />
 						</Button>
 					</DropdownMenuTrigger>
