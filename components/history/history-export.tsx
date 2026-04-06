@@ -19,7 +19,7 @@ export function exportToCsv(data: EnclosureTimelineRow[]) {
 	const url = URL.createObjectURL(blob)
 	const link = document.createElement('a')
 	link.href = url
-	link.download = `enclosure-history-${format(new Date(), 'yyyy-MM-dd')}.csv`
+	link.download = `hivemind-history-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`
 	link.click()
 	URL.revokeObjectURL(url)
 }
