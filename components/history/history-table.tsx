@@ -109,6 +109,7 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 
 	const columns = React.useMemo(() => getTimelineColumns(isMobile), [isMobile])
 
+	// eslint-disable-next-line react-hooks/incompatible-library
 	const table = useReactTable({
 		data: filteredData,
 		columns,
