@@ -25,7 +25,9 @@ import {
 	TARGET_VISIBLE_ROWS_MOBILE,
 	HEADER_HEIGHT,
 	ESTIMATED_ROW_HEIGHT_DESKTOP,
-	ESTIMATED_ROW_HEIGHT_MOBILE
+	ESTIMATED_ROW_HEIGHT_MOBILE,
+	DESKTOP_COL_WIDTHS,
+	MOBILE_COL_WIDTHS
 } from './history-constants'
 
 // ============================================================================
@@ -41,6 +43,14 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 
 	const rowRef = React.useRef<HTMLTableRowElement | null>(null)
 	const measuredRef = React.useRef(false)
+
+	const getColWidthStyle = React.useCallback(
+		(colId: string): React.CSSProperties | undefined => {
+			const w = (isMobile ? MOBILE_COL_WIDTHS : DESKTOP_COL_WIDTHS)[colId]
+			return w ? { width: w, minWidth: w, maxWidth: w } : undefined
+		},
+		[isMobile]
+	)
 
 	const MAX_TABLE_HEIGHT = isMobile ? MAX_TABLE_HEIGHT_MOBILE : MAX_TABLE_HEIGHT_DESKTOP
 	const TARGET_VISIBLE_ROWS = isMobile ? TARGET_VISIBLE_ROWS_MOBILE : TARGET_VISIBLE_ROWS_DESKTOP
@@ -151,7 +161,7 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 					</div>
 				) : rows.length <= TARGET_VISIBLE_ROWS ? (
 					<table
-						style={{ borderCollapse: 'collapse', width: '100%', ...(isMobile ? { tableLayout: 'fixed' } : {}) }}
+						style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}
 						className='caption-bottom text-sm w-full'
 					>
 						<thead className='[&_tr]:border-b'>
@@ -160,7 +170,8 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 									{headerGroup.headers.map((header) => (
 										<th
 											key={header.id}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground`}
+											style={getColWidthStyle(header.id)}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground overflow-hidden`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>
@@ -176,7 +187,11 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 									className={`group border-b transition-colors hover:bg-orange-300/20 dark:hover:bg-orange-400/30 active:bg-orange-100 dark:active:bg-orange-950/30 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}`}
 								>
 									{row.getVisibleCells().map((cell) => (
-										<td key={cell.id} className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle`}>
+										<td
+											key={cell.id}
+											style={getColWidthStyle(cell.column.id)}
+											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle overflow-hidden`}
+										>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
 										</td>
 									))}
@@ -197,7 +212,7 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 										...style,
 										borderCollapse: 'collapse',
 										width: '100%',
-										...(isMobile ? { tableLayout: 'fixed' } : {})
+										tableLayout: 'fixed'
 									}}
 									className='w-full caption-bottom text-sm'
 								/>
@@ -217,7 +232,11 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 										className={`group border-b transition-colors hover:bg-orange-300/20 dark:hover:bg-orange-400/30 active:bg-orange-100 dark:active:bg-orange-950/30 ${isEven ? 'bg-background' : 'bg-muted/70'}`}
 									>
 										{row.getVisibleCells().map((cell) => (
-											<td key={cell.id} className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle`}>
+											<td
+												key={cell.id}
+												style={getColWidthStyle(cell.column.id)}
+												className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle overflow-hidden`}
+											>
 												{flexRender(cell.column.columnDef.cell, cell.getContext())}
 											</td>
 										))}
@@ -234,7 +253,8 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 									{headerGroup.headers.map((header) => (
 										<th
 											key={header.id}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground`}
+											style={getColWidthStyle(header.id)}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground overflow-hidden`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>

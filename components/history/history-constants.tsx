@@ -36,3 +36,20 @@ export const RECORD_TYPE_LABELS: Record<TimelineRecordType, string> = {
 	note: 'Note',
 	count_change: 'Count'
 }
+
+export const DESKTOP_COL_WIDTHS: Record<string, string> = {
+	event_date: '115px',
+	record_type: '90px',
+	enclosure_name: '250px',
+	species_name: '200px',
+	summary: '200px',
+	details: '210px',
+	user_name: '130px'
+}
+
+export const MOBILE_COL_WIDTHS: Record<string, string> = {
+	event_date: '85px',
+	record_type: '85px',
+	enclosure_name: '110px',
+	user_name: '90px'
+}

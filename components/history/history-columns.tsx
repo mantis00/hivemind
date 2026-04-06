@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import { type EnclosureTimelineRow, TimelineRecordType } from '@/lib/react-query/queries'
 import { type ColumnDef, flexRender } from '@tanstack/react-table'
 import { ArrowUpDown, Flag } from 'lucide-react'
@@ -9,6 +10,42 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { RECORD_TYPE_LABELS, RECORD_TYPE_STYLES } from './history-constants'
+
+// Only shows tooltip when the text is actually overflowing its container
+function TruncatedCell({
+	text,
+	className,
+	tooltipContent
+}: {
+	text: string
+	className?: string
+	tooltipContent?: React.ReactNode
+}) {
+	const ref = React.useRef<HTMLSpanElement>(null)
+	const [open, setOpen] = React.useState(false)
+
+	return (
+		<TooltipProvider>
+			<Tooltip
+				open={open}
+				onOpenChange={(isOpen) => {
+					if (!isOpen) {
+						setOpen(false)
+						return
+					}
+					if (ref.current && ref.current.scrollWidth > ref.current.clientWidth) setOpen(true)
+				}}
+			>
+				<TooltipTrigger asChild>
+					<span ref={ref} className={className}>
+						{text}
+					</span>
+				</TooltipTrigger>
+				<TooltipContent className='max-w-xs'>{tooltipContent ?? <p className='text-sm'>{text}</p>}</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	)
+}
 
 export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimelineRow>[] {
 	const baseColumns: ColumnDef<EnclosureTimelineRow>[] = [
@@ -58,20 +95,11 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 		},
 		{
 			accessorKey: 'enclosure_name',
-			header: 'Enclosure',
+			header: () => <span className='font-bold whitespace-nowrap'>Enclosure</span>,
 			cell: ({ row }) => {
 				const value = row.getValue('enclosure_name') as string | null
 				if (!value) return <span className='text-sm'>—</span>
-				return (
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<span className='text-sm truncate max-w-[180px] block cursor-default'>{value}</span>
-							</TooltipTrigger>
-							<TooltipContent>{value}</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-				)
+				return <TruncatedCell text={value} className='text-sm font-medium text-primary truncate block w-full' />
 			}
 		}
 	]
@@ -83,16 +111,7 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 			cell: ({ row }) => {
 				const value = row.getValue('species_name') as string | null
 				if (!value) return <span className='text-sm'>—</span>
-				return (
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<span className='text-sm truncate max-w-[150px] block italic cursor-default'>{value}</span>
-							</TooltipTrigger>
-							<TooltipContent>{value}</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-				)
+				return <TruncatedCell text={value} className='text-sm truncate block w-full italic cursor-default' />
 			}
 		})
 	}
@@ -103,18 +122,19 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 		cell: ({ row }) => {
 			const summary = row.getValue('summary') as string | null
 			if (!summary) return <span className='text-sm'>—</span>
-			return (
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<span className='text-sm line-clamp-2 cursor-default'>{summary}</span>
-						</TooltipTrigger>
-						<TooltipContent className='max-w-xs'>
-							<p className='text-sm whitespace-pre-wrap'>{summary}</p>
-						</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
-			)
+			const type = row.original.record_type
+			const colonIdx = type === 'count_change' ? summary.indexOf(': ') : -1
+			if (colonIdx !== -1) {
+				const label = summary.slice(0, colonIdx)
+				const value = summary.slice(colonIdx + 2)
+				return (
+					<div className='flex flex-col'>
+						<TruncatedCell text={label} className='text-sm truncate w-full cursor-default' />
+						<TruncatedCell text={value} className='text-xs text-muted-foreground truncate w-full cursor-default' />
+					</div>
+				)
+			}
+			return <TruncatedCell text={summary} className='text-sm truncate block w-full cursor-default' />
 		}
 	})
 
@@ -130,24 +150,13 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 					return <span className='text-muted-foreground'>—</span>
 				}
 
-				if (details.length > 50) {
-					return (
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<span className='text-sm text-muted-foreground truncate max-w-[200px] block cursor-help'>
-										{details.slice(0, 50)}...
-									</span>
-								</TooltipTrigger>
-								<TooltipContent className='max-w-xs'>
-									<p className='text-sm whitespace-pre-wrap'>{details.replace(/\|/g, '\n')}</p>
-								</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					)
-				}
-
-				return <span className='text-sm text-muted-foreground'>{details}</span>
+				return (
+					<TruncatedCell
+						text={details}
+						className='text-sm text-muted-foreground truncate block w-full cursor-default'
+						tooltipContent={<p className='text-sm whitespace-pre-wrap'>{details.replace(/\|/g, '\n')}</p>}
+					/>
+				)
 			}
 		})
 	}
@@ -158,16 +167,7 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 		cell: ({ row }) => {
 			const value = row.getValue('user_name') as string | null
 			if (!value) return <span className='text-sm'>—</span>
-			return (
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<span className='text-sm truncate max-w-[120px] block cursor-default'>{value}</span>
-						</TooltipTrigger>
-						<TooltipContent>{value}</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
-			)
+			return <TruncatedCell text={value} className='text-sm truncate block w-full cursor-default' />
 		}
 	})
 
