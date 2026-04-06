@@ -130,7 +130,7 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 				measuredRef.current = true
 			}
 		}
-	})
+	}, [rows])
 
 	const tableHeight = Math.min(
 		MAX_TABLE_HEIGHT,
