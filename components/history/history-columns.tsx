@@ -18,7 +18,7 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 				<Button
 					variant='ghost'
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-					className='-ml-4 h-8 data-[state=open]:bg-accent'
+					className='-ml-4 h-8 data-[state=open]:bg-accent font-bold'
 				>
 					Date
 					<ArrowUpDown className='ml-2 h-4 w-4' />
@@ -59,9 +59,20 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 		{
 			accessorKey: 'enclosure_name',
 			header: 'Enclosure',
-			cell: ({ row }) => (
-				<span className='text-sm truncate max-w-[180px] block'>{row.getValue('enclosure_name') ?? '—'}</span>
-			)
+			cell: ({ row }) => {
+				const value = row.getValue('enclosure_name') as string | null
+				if (!value) return <span className='text-sm'>—</span>
+				return (
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span className='text-sm truncate max-w-[180px] block cursor-default'>{value}</span>
+							</TooltipTrigger>
+							<TooltipContent>{value}</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+				)
+			}
 		}
 	]
 
@@ -69,9 +80,20 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 		baseColumns.push({
 			accessorKey: 'species_name',
 			header: 'Species',
-			cell: ({ row }) => (
-				<span className='text-sm truncate max-w-[150px] block italic'>{row.getValue('species_name') ?? '—'}</span>
-			)
+			cell: ({ row }) => {
+				const value = row.getValue('species_name') as string | null
+				if (!value) return <span className='text-sm'>—</span>
+				return (
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span className='text-sm truncate max-w-[150px] block italic cursor-default'>{value}</span>
+							</TooltipTrigger>
+							<TooltipContent>{value}</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+				)
+			}
 		})
 	}
 
@@ -80,7 +102,19 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 		header: 'Summary',
 		cell: ({ row }) => {
 			const summary = row.getValue('summary') as string | null
-			return <span className='text-sm line-clamp-2'>{summary ?? '—'}</span>
+			if (!summary) return <span className='text-sm'>—</span>
+			return (
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<span className='text-sm line-clamp-2 cursor-default'>{summary}</span>
+						</TooltipTrigger>
+						<TooltipContent className='max-w-xs'>
+							<p className='text-sm whitespace-pre-wrap'>{summary}</p>
+						</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
+			)
 		}
 	})
 
@@ -121,7 +155,20 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 	baseColumns.push({
 		accessorKey: 'user_name',
 		header: 'User',
-		cell: ({ row }) => <span className='text-sm truncate max-w-[120px] block'>{row.getValue('user_name') ?? '—'}</span>
+		cell: ({ row }) => {
+			const value = row.getValue('user_name') as string | null
+			if (!value) return <span className='text-sm'>—</span>
+			return (
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<span className='text-sm truncate max-w-[120px] block cursor-default'>{value}</span>
+						</TooltipTrigger>
+						<TooltipContent>{value}</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
+			)
+		}
 	})
 
 	return baseColumns

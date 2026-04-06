@@ -478,7 +478,7 @@ export function TasksDataTable({
 										<th
 											key={header.id}
 											style={getColWidthStyle(header.id)}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>
@@ -564,7 +564,7 @@ export function TasksDataTable({
 										<th
 											key={header.id}
 											style={getColWidthStyle(header.id)}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>

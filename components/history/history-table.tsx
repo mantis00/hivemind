@@ -160,7 +160,7 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 									{headerGroup.headers.map((header) => (
 										<th
 											key={header.id}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>
@@ -173,7 +173,7 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 								<tr
 									key={row.id}
 									ref={index === 0 ? rowRef : undefined}
-									className={`border-b transition-colors hover:bg-muted/50 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+									className={`group border-b transition-colors hover:bg-orange-300/20 dark:hover:bg-orange-400/30 active:bg-orange-100 dark:active:bg-orange-950/30 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}`}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<td key={cell.id} className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle`}>
@@ -214,7 +214,7 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 										{...props}
 										ref={index === 0 ? rowRef : undefined}
 										style={style}
-										className={`border-b transition-colors hover:bg-muted/50 ${isEven ? 'bg-background' : 'bg-muted/30'}`}
+										className={`group border-b transition-colors hover:bg-orange-300/20 dark:hover:bg-orange-400/30 active:bg-orange-100 dark:active:bg-orange-950/30 ${isEven ? 'bg-background' : 'bg-muted/70'}`}
 									>
 										{row.getVisibleCells().map((cell) => (
 											<td key={cell.id} className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle`}>
@@ -234,7 +234,7 @@ export function TasksTable({ orgId }: { orgId: UUID }) {
 									{headerGroup.headers.map((header) => (
 										<th
 											key={header.id}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>
