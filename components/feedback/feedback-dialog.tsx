@@ -203,7 +203,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
 						onChange={(e) => setTitle(e.target.value)}
 						placeholder={type === 'bug' ? 'Brief summary of the issue' : 'What is your feedback about?'}
 						className={cn(
-							'flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm',
+							'flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-base md:text-sm',
 							'ring-offset-background placeholder:text-muted-foreground',
 							'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
 							'disabled:cursor-not-allowed disabled:opacity-50',
@@ -229,7 +229,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
 								: 'Share your thoughts, suggestions, or ideas...'
 						}
 						rows={4}
-						className='resize-none rounded-lg'
+						className='resize-none rounded-lg text-base md:text-sm'
 						disabled={createFeedbackMutation.isPending}
 						maxLength={1000}
 					/>
