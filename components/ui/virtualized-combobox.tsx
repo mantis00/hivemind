@@ -19,6 +19,7 @@ interface VirtualizedCommandProps {
 	options: VirtualizedOption[]
 	placeholder: string
 	selectedOption?: string
+	selectedOptions?: string[]
 	onSelectOption?: (option: string) => void
 	emptyMessage?: string
 	rowHeight?: number
@@ -31,6 +32,7 @@ export function VirtualizedCommand({
 	options,
 	placeholder,
 	selectedOption = '',
+	selectedOptions,
 	onSelectOption,
 	emptyMessage = 'No item found.',
 	rowHeight = FALLBACK_ROW_HEIGHT
@@ -198,7 +200,12 @@ export function VirtualizedCommand({
 									onSelect={onSelectOption}
 								>
 									<Check
-										className={cn('mr-2 h-4 w-4', selectedOption === option.value ? 'opacity-100' : 'opacity-0')}
+										className={cn(
+											'mr-2 h-4 w-4',
+											(selectedOptions ? selectedOptions.includes(option.value) : selectedOption === option.value)
+												? 'opacity-100'
+												: 'opacity-0'
+										)}
 									/>
 									{option.subLabel ? (
 										<div className='flex min-w-0 flex-col'>
