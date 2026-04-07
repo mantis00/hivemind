@@ -587,6 +587,7 @@ export function useUpdateEnclosure() {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['enclosureLineage', variables.enclosure_id] })
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosureLineage', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['enclosureCountHistory', variables.enclosure_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure updated!')

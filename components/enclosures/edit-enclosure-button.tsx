@@ -43,16 +43,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const [sourceType, setSourceType] = useState<'institution' | 'enclosure'>('institution')
 	const [externalSource, setExternalSource] = useState('')
 	const [sourceEnclosureQuery, setSourceEnclosureQuery] = useState('')
-	const [sources, setSources] = useState<
-		{
-			type: 'institution' | 'enclosure' | 'deceased'
-			value: string
-			label: string
-			count: string
-			maxCount?: number
-			isNew?: boolean
-		}[]
-	>([])
+	const [sources, setSources] = useState<{ type: 'institution' | 'enclosure'; value: string; label: string }[]>([])
 	const { data: user } = useCurrentClientUser()
 	const editEnclosureMutation = useUpdateEnclosure()
 	const createLocationMutation = useCreateLocation()
@@ -83,9 +74,10 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	}, [locationQuery, orgLocations])
 
 	const sourceEnclosureOptions = useMemo(() => {
-		const alreadyAddedNew = new Set(sources.filter((s) => s.type === 'enclosure' && s.isNew).map((s) => s.value))
+		const alreadyAdded = new Set(sources.filter((s) => s.type === 'enclosure').map((s) => s.value))
 		return (orgEnclosures ?? []).filter(
-			(enc) => enc.species_id === spec.id && enc.id !== enclosure.id && !alreadyAddedNew.has(enc.id)
+			(enc) =>
+				enc.species_id === spec.id && enc.id !== enclosure.id && !alreadyAdded.has(enc.id) && enc.current_count > 0
 		)
 	}, [orgEnclosures, spec.id, enclosure.id, sources])
 
@@ -123,26 +115,18 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			setCount(enclosure?.current_count)
 			setIsActive(enclosure?.is_active ?? true)
 			setSpecimenTrackingId(enclosure?.institutional_specimen_id ?? '')
-
 			setSourceType('institution')
 			setExternalSource('')
 			setSourceEnclosureQuery('')
 
 			// Build sources from existing data
-			const initialSources: {
-				type: 'institution' | 'enclosure' | 'deceased'
-				value: string
-				label: string
-				count: string
-				maxCount?: number
-				isNew?: boolean
-			}[] = []
+			const initialSources: { type: 'institution' | 'enclosure'; value: string; label: string }[] = []
 			if (enclosure?.institutional_external_source) {
 				enclosure.institutional_external_source
 					.split(', ')
 					.filter(Boolean)
 					.forEach((src) => {
-						initialSources.push({ type: 'institution', value: src, label: src, count: '', isNew: false })
+						initialSources.push({ type: 'institution', value: src, label: src })
 					})
 			}
 			if (lineageData) {
@@ -151,9 +135,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 					initialSources.push({
 						type: 'enclosure',
 						value: record.source_enclosure_id,
-						label: enc ? `${enc.name} (${enc.locations?.name ?? 'Unknown'})` : record.source_enclosure_id,
-						count: '',
-						isNew: false
+						label: enc ? `${enc.name} (${enc.locations?.name ?? 'Unknown'})` : record.source_enclosure_id
 					})
 				})
 			}
@@ -163,11 +145,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	}
 
 	const isPending = editEnclosureMutation.isPending || createLocationMutation.isPending
-	const diff = (count ?? 0) - (enclosure?.current_count ?? 0)
-	const hasNegativeCount = sources.some((s) => s.isNew && s.count !== '' && parseInt(s.count, 10) < 0)
-	const sourcesTotal = sources.reduce((sum, s) => sum + Math.max(0, parseInt(s.count, 10) || 0), 0)
-	const remaining = Math.abs(diff) - sourcesTotal
-	const isAccountedFor = diff === 0 || sourcesTotal === Math.abs(diff)
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -178,12 +155,18 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 		const resolvedExternalSource = externalSources.length > 0 ? externalSources.join(', ') : ''
 
 		const locationUnchanged = !createLocation && location === enclosure.locations?.name
+		const originalLineageIds = new Set((lineageData ?? []).map((r) => r.source_enclosure_id))
+		const currentLineageIds = new Set(enclosureSourceIds)
+		const lineageChanged =
+			originalLineageIds.size !== currentLineageIds.size ||
+			[...originalLineageIds].some((id) => !currentLineageIds.has(id))
 		const hasChanges =
 			(count ?? 0) !== (enclosure?.current_count ?? 0) ||
 			!locationUnchanged ||
 			isActive !== (enclosure?.is_active ?? true) ||
 			specimenTrackingId.trim() !== (enclosure?.institutional_specimen_id ?? '') ||
-			resolvedExternalSource !== (enclosure?.institutional_external_source ?? '')
+			resolvedExternalSource !== (enclosure?.institutional_external_source ?? '') ||
+			lineageChanged
 
 		if (!hasChanges) {
 			toast.info('No changes to save!')
@@ -343,9 +326,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							const num = Number(e.target.value)
 							if (num < 0) return
 							setCount(num)
-							if (num >= (enclosure?.current_count ?? 0)) {
-								setSources((prev) => prev.filter((s) => s.type !== 'deceased'))
-							}
 						}}
 						onFocus={(e) => e.target.select()}
 						required
@@ -383,14 +363,8 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 						</ComboboxContent>
 					</Combobox>
 					<div className='flex items-center justify-between'>
-						<Label>
-							{diff !== 0
-								? diff > 0
-									? `Where are ${diff} coming from?`
-									: `Where are ${Math.abs(diff)} going?`
-								: 'Source/Destination'}
-						</Label>
-						<div className='flex items-center rounded-md border text-xs overflow-hidden w-56'>
+						<Label>Source</Label>
+						<div className='flex items-center rounded-md border text-xs overflow-hidden w-44'>
 							<button
 								type='button'
 								className={`w-full text-center px-2.5 py-1 transition-colors ${sourceType === 'institution' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
@@ -405,21 +379,6 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							>
 								Enclosure
 							</button>
-							<button
-								type='button'
-								className='w-full text-center px-2.5 py-1 transition-colors bg-muted hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed'
-								disabled={diff >= 0}
-								onClick={() => {
-									if (!sources.some((s) => s.type === 'deceased')) {
-										setSources((prev) => [
-											...prev,
-											{ type: 'deceased', value: 'deceased', label: 'Deceased', count: '', isNew: true }
-										])
-									}
-								}}
-							>
-								Deceased
-							</button>
 						</div>
 					</div>
 
@@ -432,18 +391,14 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 								onChange={(e) => setExternalSource(e.target.value)}
 								disabled={isPending}
 								onKeyDown={(e) => {
-									if (e.key === 'Enter' && externalSource.trim() && !hasNegativeCount) {
+									if (e.key === 'Enter' && externalSource.trim()) {
 										e.preventDefault()
-										setSources((prev) => [
-											...prev,
-											{
-												type: 'institution',
-												value: externalSource.trim(),
-												label: externalSource.trim(),
-												count: '',
-												isNew: true
-											}
-										])
+										if (!sources.some((s) => s.type === 'institution' && s.value === externalSource.trim())) {
+											setSources((prev) => [
+												...prev,
+												{ type: 'institution', value: externalSource.trim(), label: externalSource.trim() }
+											])
+										}
 										setExternalSource('')
 									}
 								}}
@@ -453,18 +408,14 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 								size='sm'
 								variant='secondary'
 								className='h-9 px-3'
-								disabled={!externalSource.trim() || isPending || hasNegativeCount}
+								disabled={!externalSource.trim() || isPending}
 								onClick={() => {
-									setSources((prev) => [
-										...prev,
-										{
-											type: 'institution',
-											value: externalSource.trim(),
-											label: externalSource.trim(),
-											count: '',
-											isNew: true
-										}
-									])
+									if (!sources.some((s) => s.type === 'institution' && s.value === externalSource.trim())) {
+										setSources((prev) => [
+											...prev,
+											{ type: 'institution', value: externalSource.trim(), label: externalSource.trim() }
+										])
+									}
 									setExternalSource('')
 								}}
 							>
@@ -477,7 +428,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							filter={() => true}
 							value=''
 							onValueChange={(value) => {
-								if (!value || hasNegativeCount) return
+								if (!value) return
 								const selected = sourceEnclosureOptions.find((enc) => enc.id === value)
 								if (selected) {
 									setSources((prev) => [
@@ -485,10 +436,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 										{
 											type: 'enclosure',
 											value: selected.id,
-											label: `${selected.name} (${selected.locations?.name ?? 'Unknown'})`,
-											count: '',
-											isNew: true,
-											...(diff > 0 ? { maxCount: selected.current_count } : {})
+											label: `${selected.name} (${selected.locations?.name ?? 'Unknown'})`
 										}
 									])
 								}
@@ -497,10 +445,10 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 						>
 							<ComboboxInput
 								className='h-9'
-								placeholder='Search enclosure...'
+								placeholder='Search source enclosure...'
 								value={sourceEnclosureQuery}
 								onChange={(event) => setSourceEnclosureQuery(event.target.value)}
-								disabled={isPending || hasNegativeCount}
+								disabled={isPending}
 								showClear
 							/>
 							<ComboboxContent>
@@ -523,77 +471,29 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 						</Combobox>
 					)}
 
-					{sources.filter((s) => !(s.type === 'enclosure' && !s.isNew)).length > 0 && (
-						<div className='flex flex-col gap-2'>
-							{sources
-								.map((source, realIdx) => ({ source, realIdx }))
-								.filter(({ source: s }) => !(s.type === 'enclosure' && !s.isNew))
-								.map(({ source, realIdx }) => (
-									<div key={`${source.type}-${source.value}-${realIdx}`} className='flex items-center gap-2'>
-										<Badge
-											variant={
-												source.type === 'institution'
-													? 'outline'
-													: source.type === 'deceased'
-														? 'destructive'
-														: 'secondary'
-											}
-											className='flex items-center gap-1 pr-1 shrink-0'
-										>
-											<span className='text-xs'>{source.label}</span>
-											<button
-												type='button'
-												className='ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5'
-												onClick={() => setSources((prev) => prev.filter((_, i) => i !== realIdx))}
-											>
-												<X className='h-3 w-3' />
-											</button>
-										</Badge>
-										{source.isNew && (
-											<Input
-												type='number'
-												min='0'
-												{...(source.maxCount !== undefined ? { max: source.maxCount } : {})}
-												placeholder={source.maxCount !== undefined ? `Max ${source.maxCount}` : 'Count'}
-												value={source.count}
-												className='h-7 w-24'
-												disabled={isPending}
-												onFocus={(e) => e.target.select()}
-												onKeyDown={(e) => {
-													if (e.key === 'e' || e.key === 'E') e.preventDefault()
-												}}
-												onChange={(e) => {
-													const raw = e.target.value
-													const num = parseInt(raw, 10)
-													const isNeg = raw !== '' && !isNaN(num) && num < 0
-													const clamped =
-														!isNeg && source.maxCount !== undefined && raw !== ''
-															? String(Math.min(isNaN(num) ? 0 : num, source.maxCount))
-															: raw
-													setSources((prev) => prev.map((s, i) => (i === realIdx ? { ...s, count: clamped } : s)))
-												}}
-											/>
-										)}
-									</div>
-								))}
+					{sources.length > 0 && (
+						<div className='flex flex-wrap gap-2'>
+							{sources.map((source, idx) => (
+								<Badge
+									key={`${source.type}-${source.value}-${idx}`}
+									variant={source.type === 'institution' ? 'outline' : 'secondary'}
+									className='flex items-center gap-1 pr-1'
+								>
+									<span className='text-xs'>{source.label}</span>
+									<button
+										type='button'
+										className='ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5'
+										onClick={() => setSources((prev) => prev.filter((_, i) => i !== idx))}
+									>
+										<X className='h-3 w-3' />
+									</button>
+								</Badge>
+							))}
 						</div>
-					)}
-					{(diff !== 0 || hasNegativeCount) && (
-						<p
-							className={`text-xs ${hasNegativeCount ? 'text-red-500' : isAccountedFor ? 'text-green-500' : remaining > 0 ? 'text-amber-500' : 'text-red-500'}`}
-						>
-							{hasNegativeCount
-								? 'Counts cannot be negative'
-								: isAccountedFor
-									? '✓ All individuals accounted for'
-									: remaining > 0
-										? `${remaining} more to account for`
-										: `Over by ${Math.abs(remaining)}`}
-						</p>
 					)}
 				</div>
 				<div className='flex flex-col gap-3'>
-					<Button type='submit' disabled={isPending || !user || !isAccountedFor || hasNegativeCount}>
+					<Button type='submit' disabled={isPending || !user}>
 						{isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
 					</Button>
 					<Button type='button' variant='outline' disabled={isPending} onClick={() => handleOpenChange(false)}>
