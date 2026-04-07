@@ -170,8 +170,8 @@ export function FeedbackAdminTable() {
 							<TableRow className='bg-muted/50 hover:bg-muted/50'>
 								<TableHead className='w-[100px]'>Type</TableHead>
 								<TableHead>Feedback</TableHead>
-								{!isMobile && <TableHead className='w-[200px]'>User</TableHead>}
-								<TableHead className='text-right w-[120px]'>Date</TableHead>
+								<TableHead className='w-[120px] md:w-[200px]'>User</TableHead>
+								<TableHead className='text-right w-[90px] md:w-[120px]'>Date</TableHead>
 							</TableRow>
 						)}
 						itemContent={(index, item) => (
@@ -179,31 +179,37 @@ export function FeedbackAdminTable() {
 								<TableCell className={`align-top ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
 									<Badge
 										variant={item.type === 'bug' ? 'destructive' : 'default'}
-										className='flex w-fit items-center gap-1 mt-1'
+										className='flex w-fit items-center justify-center gap-1 mt-1 p-1 md:px-2'
 									>
-										{item.type === 'bug' ? <Bug className='h-3 w-3' /> : <MessageSquare className='h-3 w-3' />}
-										<span className='capitalize'>{item.type}</span>
+										{item.type === 'bug' ? (
+											<Bug className='h-3 w-3 shrink-0' />
+										) : (
+											<MessageSquare className='h-3 w-3 shrink-0' />
+										)}
+										<span className='capitalize hidden md:inline'>{item.type}</span>
 									</Badge>
 								</TableCell>
 								<TableCell className={`align-top ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
-									<div className='font-medium'>{item.title}</div>
-									<div className='text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words max-w-[600px]'>
+									<div className='font-medium text-sm md:text-base'>{item.title}</div>
+									<div className='text-xs md:text-sm text-muted-foreground mt-1 line-clamp-3 md:line-clamp-none break-words max-w-[200px] sm:max-w-[400px] md:max-w-[600px]'>
 										{item.description}
 									</div>
 								</TableCell>
-								{!isMobile && (
-									<TableCell className={`align-top ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
-										<div className='font-medium'>{item.profiles?.full_name || 'Anonymous'}</div>
-										<div className='text-xs text-muted-foreground'>{item.profiles?.email}</div>
-										{item.orgs && <div className='text-xs text-muted-foreground mt-1'>{item.orgs.name}</div>}
-									</TableCell>
-								)}
+								<TableCell className={`align-top ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+									<div className='font-medium text-xs md:text-sm truncate'>
+										{item.profiles?.full_name || 'Anonymous'}
+									</div>
+									<div className='text-[10px] md:text-xs text-muted-foreground truncate'>{item.profiles?.email}</div>
+									{item.orgs && (
+										<div className='text-[10px] md:text-xs text-muted-foreground mt-1 truncate'>{item.orgs.name}</div>
+									)}
+								</TableCell>
 								<TableCell
-									className={`align-top text-right text-muted-foreground text-sm ${index % 2 === 1 ? 'bg-muted/40' : ''}`}
+									className={`align-top text-right text-muted-foreground text-xs md:text-sm ${index % 2 === 1 ? 'bg-muted/40' : ''}`}
 								>
 									{new Date(item.created_at).toLocaleDateString(undefined, {
-										year: 'numeric',
-										month: 'short',
+										year: '2-digit',
+										month: 'numeric',
 										day: 'numeric'
 									})}
 								</TableCell>
