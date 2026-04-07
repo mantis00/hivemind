@@ -2,7 +2,6 @@
 
 import { CalendarIcon, X } from 'lucide-react'
 import { useState } from 'react'
-import type { DateRange } from 'react-day-picker'
 
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
