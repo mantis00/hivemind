@@ -1,7 +1,7 @@
 'use client'
 
 import type { ColumnDef } from '@tanstack/react-table'
-import { ArrowUpDown, CalendarCheck2 } from 'lucide-react'
+import { ArrowUpDown, CalendarCheck2, CheckSquare, Square } from 'lucide-react'
 import { UUID } from 'crypto'
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -25,7 +25,12 @@ export function getColumns(
 	enclosures?: Enclosure[],
 	orgSpecies?: OrgSpecies[],
 	onViewEnclosure?: (enclosureId: UUID) => void,
-	extraColumnIds: string[] = []
+	extraColumnIds: string[] = [],
+	selectMode = false,
+	selectedIds: Set<string> = new Set(),
+	onToggleSelect?: (taskId: string, task: { template_id: string | null; enclosure_id: string }) => void,
+	lockedKey: string | null = null,
+	getTaskLockKey?: (task: { template_id: string | null; enclosure_id: string }) => string
 ): ColumnDef<Task>[] {
 	const memberMap = new Map(members.map((m) => [m.id as string, m]))
 	const enclosureMap = new Map((enclosures ?? []).map((e) => [e.id as string, e]))
@@ -33,12 +38,44 @@ export function getColumns(
 
 	const all: ColumnDef<Task>[] = [
 		{
+			id: 'select',
+			header: () => null,
+			cell: ({ row }) => {
+				const task = row.original
+				const isSelected = selectedIds.has(task.id as string)
+				const isCompleted = task.status === 'completed'
+				const isDisabled =
+					isCompleted ||
+					(lockedKey !== null &&
+						getTaskLockKey &&
+						getTaskLockKey(task as { template_id: string | null; enclosure_id: string }) !== lockedKey)
+				return (
+					<button
+						type='button'
+						className={`flex items-center justify-center h-4 w-4 ${isDisabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+						onClick={(e) => {
+							e.stopPropagation()
+							if (!isDisabled)
+								onToggleSelect?.(task.id as string, task as { template_id: string | null; enclosure_id: string })
+						}}
+						disabled={!!isDisabled}
+					>
+						{isSelected ? (
+							<CheckSquare className='h-4 w-4 text-primary' />
+						) : (
+							<Square className='h-4 w-4 text-muted-foreground' />
+						)}
+					</button>
+				)
+			}
+		},
+		{
 			id: 'enclosure_name',
 			header: () => <span className='font-bold whitespace-nowrap'>Enclosure</span>,
 			cell: ({ row }) => {
 				const enc = enclosureMap.get(row.original.enclosure_id as string)
 				if (!enc) return <span className='text-xs text-muted-foreground'>—</span>
-				if (onViewEnclosure) {
+				if (onViewEnclosure && !selectMode) {
 					return (
 						<TooltipProvider>
 							<Tooltip>
@@ -182,8 +219,10 @@ export function getColumns(
 							assignedMemberName={name}
 							members={members}
 							readOnly={task.status === 'completed'}
-							disabled={isEnclosureInactive}
-							disabledReason='Tasks in inactive enclosures cannot be reassigned.'
+							disabled={isEnclosureInactive || selectMode}
+							disabledReason={
+								selectMode ? 'Exit selection mode to reassign.' : 'Tasks in inactive enclosures cannot be reassigned.'
+							}
 						/>
 					</div>
 				)
@@ -232,16 +271,20 @@ export function getColumns(
 		}
 	]
 
-	const getColById = (id: string) => all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id)
+	const selectCol = all.find((col) => col.id === 'select')!
+	const getColById = (id: string) =>
+		all.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id && col.id !== 'select')
+
+	const prependSelect = (cols: ColumnDef<Task>[]) => (selectMode ? [selectCol, ...cols] : cols)
 
 	if (columnIds) {
 		const allIds = [...columnIds, ...extraColumnIds.filter((id) => !columnIds.includes(id))]
-		return allIds.map(getColById).filter(Boolean) as ColumnDef<Task>[]
+		return prependSelect(allIds.map(getColById).filter(Boolean) as ColumnDef<Task>[])
 	}
 
 	const enclosureOnlyIds = new Set(['enclosure_name', 'species'])
 	const defaultCols = all.filter(
-		(col) => !enclosureOnlyIds.has(col.id ?? (col as { accessorKey?: string }).accessorKey ?? '')
+		(col) => col.id !== 'select' && !enclosureOnlyIds.has(col.id ?? (col as { accessorKey?: string }).accessorKey ?? '')
 	)
 
 	const baseOrder = isMobile
@@ -249,7 +292,9 @@ export function getColumns(
 		: ['name', 'description', 'due_date', 'priority', 'status', 'assigned_to']
 
 	const allOrder = [...baseOrder, ...extraColumnIds.filter((id) => !baseOrder.includes(id))]
-	return allOrder
-		.map((id) => defaultCols.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id))
-		.filter(Boolean) as ColumnDef<Task>[]
+	return prependSelect(
+		allOrder
+			.map((id) => defaultCols.find((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) === id))
+			.filter(Boolean) as ColumnDef<Task>[]
+	)
 }
