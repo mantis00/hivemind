@@ -81,7 +81,6 @@ export function FeedbackAdminTable() {
 	}, [allFeedback, activeSearch, sortKey, sortUp])
 
 	const isSorted = sortKey !== ''
-	const searchCount = activeSearch ? displayedFeedback.length : 0
 
 	const handleSortChange = (value: string) => {
 		if (value === 'reset') {
