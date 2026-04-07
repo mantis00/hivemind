@@ -42,7 +42,6 @@ export function FeedbackAdminTable() {
 	const [activeSearch, setActiveSearch] = useState('')
 	const [sortKey, setSortKey] = useState<string>('created_at')
 	const [sortUp, setSortUp] = useState(false)
-	const isMobile = useIsMobile()
 
 	const displayedFeedback = useMemo(() => {
 		let list = allFeedback ?? []
