@@ -47,6 +47,7 @@ export type Invite = {
 	invite_id: UUID
 	org_id: UUID
 	inviter_id: string
+	invitee_id: string
 	invitee_email: string
 	access_lvl: number
 	status: 'pending' | 'accepted' | 'rejected' | 'cancelled'
@@ -440,23 +441,23 @@ export function useMemberProfiles(userIds: string[]) {
 	})
 }
 
-export function usePendingInvites(userEmail: string) {
+export function usePendingInvites(userId: string) {
 	return useQuery({
-		queryKey: ['invites'],
+		queryKey: ['invites', 'pending', userId],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('invites')
 				.select('*, orgs(name, org_id)') // supabase pre configured to join orgs table by org_id
-				.eq('invitee_email', userEmail)
+				.eq('invitee_id', userId)
 				.eq('status', 'pending')
 				.gt('expires_at', new Date().toISOString())
 				.order('created_at', { ascending: false })) as { data: Invite[] | null; error: PostgrestError | null }
 
 			if (error) throw error
-			return data
+			return data ?? []
 		},
-		enabled: !!userEmail
+		enabled: !!userId
 	})
 }
 
