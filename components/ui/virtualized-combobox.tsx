@@ -18,7 +18,8 @@ interface VirtualizedCommandProps {
 	height: string
 	options: VirtualizedOption[]
 	placeholder: string
-	selectedOption: string
+	selectedOption?: string
+	selectedOptions?: string[]
 	onSelectOption?: (option: string) => void
 	emptyMessage?: string
 	rowHeight?: number
@@ -30,7 +31,8 @@ export function VirtualizedCommand({
 	height,
 	options,
 	placeholder,
-	selectedOption,
+	selectedOption = '',
+	selectedOptions,
 	onSelectOption,
 	emptyMessage = 'No item found.',
 	rowHeight = FALLBACK_ROW_HEIGHT

@@ -16,6 +16,7 @@ import {
 	DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
 import { cn } from '@/lib/utils'
 import { RECORD_TYPE_OPTIONS } from './history-constants'
 
@@ -64,6 +65,21 @@ export function HistoryFilters({
 		const unique = [...new Set(data.map((row) => row.user_name).filter(Boolean))] as string[]
 		return unique.sort()
 	}, [data])
+
+	const speciesVirtualOptions = React.useMemo<VirtualizedOption[]>(
+		() => speciesOptions.map((s) => ({ value: s, label: s })),
+		[speciesOptions]
+	)
+
+	const enclosureVirtualOptions = React.useMemo<VirtualizedOption[]>(
+		() => enclosureOptions.map((e) => ({ value: e, label: e })),
+		[enclosureOptions]
+	)
+
+	const userVirtualOptions = React.useMemo<VirtualizedOption[]>(
+		() => userOptions.map((u) => ({ value: u, label: u })),
+		[userOptions]
+	)
 
 	const taskTypeOptions = React.useMemo(() => {
 		const unique = [...new Set(data.map((row) => row.template_type).filter(Boolean))] as string[]
@@ -151,70 +167,72 @@ export function HistoryFilters({
 				</DropdownMenu>
 
 				{/* Species */}
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
+				<Popover>
+					<PopoverTrigger asChild>
 						<Button variant='outline' className='gap-2'>
 							Species {filters.species.length > 0 && `(${filters.species.length})`}
 							<ChevronDown className='h-4 w-4' />
 						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align={isMobile ? 'start' : 'end'} className='max-h-[300px] overflow-y-auto'>
-						{speciesOptions.map((species) => (
-							<DropdownMenuCheckboxItem
-								key={species}
-								checked={filters.species.includes(species)}
-								onSelect={(e) => e.preventDefault()}
-								onCheckedChange={(checked) => handleMultiSelectToggle('species', species, checked)}
-							>
-								{species}
-							</DropdownMenuCheckboxItem>
-						))}
-					</DropdownMenuContent>
-				</DropdownMenu>
+					</PopoverTrigger>
+					<PopoverContent className='w-56 p-0' align={isMobile ? 'start' : 'end'}>
+						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+							<VirtualizedCommand
+								height='240px'
+								options={speciesVirtualOptions}
+								placeholder='Search species...'
+								selectedOptions={filters.species}
+								emptyMessage='No species found.'
+								onSelectOption={(value) => handleMultiSelectToggle('species', value, !filters.species.includes(value))}
+							/>
+						</div>
+					</PopoverContent>
+				</Popover>
 
 				{/* Enclosures */}
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
+				<Popover>
+					<PopoverTrigger asChild>
 						<Button variant='outline' className='gap-2'>
 							Enclosures {filters.enclosures.length > 0 && `(${filters.enclosures.length})`}
 							<ChevronDown className='h-4 w-4' />
 						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align={isMobile ? 'start' : 'end'} className='max-h-[300px] overflow-y-auto'>
-						{enclosureOptions.map((enclosure) => (
-							<DropdownMenuCheckboxItem
-								key={enclosure}
-								checked={filters.enclosures.includes(enclosure)}
-								onSelect={(e) => e.preventDefault()}
-								onCheckedChange={(checked) => handleMultiSelectToggle('enclosures', enclosure, checked)}
-							>
-								{enclosure}
-							</DropdownMenuCheckboxItem>
-						))}
-					</DropdownMenuContent>
-				</DropdownMenu>
+					</PopoverTrigger>
+					<PopoverContent className='w-56 p-0' align={isMobile ? 'start' : 'end'}>
+						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+							<VirtualizedCommand
+								height='240px'
+								options={enclosureVirtualOptions}
+								placeholder='Search enclosures...'
+								selectedOptions={filters.enclosures}
+								emptyMessage='No enclosures found.'
+								onSelectOption={(value) =>
+									handleMultiSelectToggle('enclosures', value, !filters.enclosures.includes(value))
+								}
+							/>
+						</div>
+					</PopoverContent>
+				</Popover>
 
 				{/* Users */}
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
+				<Popover>
+					<PopoverTrigger asChild>
 						<Button variant='outline' className='gap-2'>
 							Users {filters.users.length > 0 && `(${filters.users.length})`}
 							<ChevronDown className='h-4 w-4' />
 						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align={isMobile ? 'start' : 'end'} className='max-h-[300px] overflow-y-auto'>
-						{userOptions.map((user) => (
-							<DropdownMenuCheckboxItem
-								key={user}
-								checked={filters.users.includes(user)}
-								onSelect={(e) => e.preventDefault()}
-								onCheckedChange={(checked) => handleMultiSelectToggle('users', user, checked)}
-							>
-								{user}
-							</DropdownMenuCheckboxItem>
-						))}
-					</DropdownMenuContent>
-				</DropdownMenu>
+					</PopoverTrigger>
+					<PopoverContent className='w-56 p-0' align={isMobile ? 'start' : 'end'}>
+						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+							<VirtualizedCommand
+								height='240px'
+								options={userVirtualOptions}
+								placeholder='Search users...'
+								selectedOptions={filters.users}
+								emptyMessage='No users found.'
+								onSelectOption={(value) => handleMultiSelectToggle('users', value, !filters.users.includes(value))}
+							/>
+						</div>
+					</PopoverContent>
+				</Popover>
 
 				{/* Task Type */}
 				<DropdownMenu>
