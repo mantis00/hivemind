@@ -97,6 +97,20 @@ export function CreateEnclosureButton({
 	)
 
 	const selectedSpeciesId = selectedSpecies?.id
+
+	const filteredEnclosures = useMemo(() => {
+		const speciesFiltered = (orgEnclosures ?? []).filter(
+			(encl) => encl.institutional_specimen_id && (!selectedSpeciesId || encl.species_id === selectedSpeciesId)
+		)
+		if (!specimenTrackingId.trim()) return speciesFiltered
+		const val = specimenTrackingId.trim().toLowerCase()
+		return speciesFiltered
+			.map((encl) => ({ encl, score: scoreMatch(encl.institutional_specimen_id, val) }))
+			.filter(({ score }) => score >= 0)
+			.sort((a, b) => a.score - b.score)
+			.map(({ encl }) => encl)
+	}, [specimenTrackingId, orgEnclosures, selectedSpeciesId])
+
 	const sourceEnclosureOptions = useMemo(() => {
 		if (!selectedSpeciesId) return []
 		const alreadyAdded = new Set(sources.filter((s) => s.type === 'enclosure').map((s) => s.value))
@@ -324,14 +338,36 @@ export function CreateEnclosureButton({
 						</Combobox>
 					)}
 					<Label>Specimen ID (Optional)</Label>
-					<Input
-						className='h-9'
-						placeholder='Enter internal tracking ID...'
+					<Combobox
+						items={filteredEnclosures}
+						filter={() => true}
 						value={specimenTrackingId}
-						onChange={(e) => setSpecimenTrackingId(e.target.value)}
-						disabled={isPending}
-					/>
-
+						onValueChange={(value) => setSpecimenTrackingId(value ?? '')}
+					>
+						<ComboboxInput
+							className='h-9'
+							placeholder='Tracking ID...'
+							value={specimenTrackingId}
+							onChange={(event) => setSpecimenTrackingId(event.target.value)}
+							disabled={isPending || !speciesQuery}
+							showClear
+						/>
+						<ComboboxContent>
+							<ComboboxEmpty>Create new tracking id</ComboboxEmpty>
+							<ComboboxList className='max-h-42 scrollbar-no-track'>
+								<ComboboxCollection>
+									{(encl: Enclosure) => (
+										<ComboboxItem key={encl.id} value={encl.institutional_specimen_id!}>
+											<span className='flex flex-col'>
+												<span>{encl.institutional_specimen_id}</span>
+												<small className='text-muted-foreground'>{encl.name}</small>
+											</span>
+										</ComboboxItem>
+									)}
+								</ComboboxCollection>
+							</ComboboxList>
+						</ComboboxContent>
+					</Combobox>
 					<div className='flex items-center justify-between'>
 						<Label>Source</Label>
 						<div className='flex items-center rounded-md border text-xs overflow-hidden w-44'>
