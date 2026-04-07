@@ -30,10 +30,14 @@ const tableComponents: TableComponents<Feedback> = {
 	),
 	TableBody: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
 		function TableBodyWrapper(props, ref) {
-			return <TableBody ref={ref} className='[&_tr:last-child]:border-0' {...props} />
+			return <TableBody ref={ref} {...props} />
 		}
 	)
 }
+
+const HEADER_HEIGHT = 40
+const FALLBACK_ROW_HEIGHT = 56 // Adjust based on feedback items taking space
+const MAX_HEIGHT = 7 * FALLBACK_ROW_HEIGHT + HEADER_HEIGHT
 
 export function FeedbackAdminTable() {
 	const { data: allFeedback, isLoading } = useAllFeedback()
@@ -41,6 +45,7 @@ export function FeedbackAdminTable() {
 	const [activeSearch, setActiveSearch] = useState('')
 	const [sortKey, setSortKey] = useState<string>('created_at')
 	const [sortUp, setSortUp] = useState(false)
+	const [listHeight, setListHeight] = useState(FALLBACK_ROW_HEIGHT)
 
 	const displayedFeedback = useMemo(() => {
 		let list = allFeedback ?? []
@@ -92,6 +97,9 @@ export function FeedbackAdminTable() {
 	const handleToggleDirection = () => {
 		setSortUp((prev) => !prev)
 	}
+
+	const count = displayedFeedback.length
+	const containerHeight = isLoading || count === 0 ? 120 : Math.min(listHeight, MAX_HEIGHT)
 
 	return (
 		<div className='space-y-4'>
@@ -155,29 +163,35 @@ export function FeedbackAdminTable() {
 				</InputGroup>
 			</div>
 
-			<div className='rounded-md border bg-card h-[500px] flex flex-col overflow-hidden'>
+			<div className='rounded-md border bg-card flex flex-col overflow-hidden'>
 				{isLoading ? (
-					<div className='flex items-center justify-center flex-1'>
+					<div className='flex items-center justify-center h-[120px]'>
 						<LoaderCircle className='h-6 w-6 animate-spin text-muted-foreground' />
+					</div>
+				) : count === 0 ? (
+					<div className='flex items-center justify-center h-[120px] text-sm text-muted-foreground'>
+						No feedback found.
 					</div>
 				) : (
 					<TableVirtuoso
+						style={{ height: containerHeight }}
+						totalListHeightChanged={(height) => setListHeight(height)}
 						data={displayedFeedback}
 						components={tableComponents}
 						fixedHeaderContent={() => (
-							<TableRow className='bg-muted/50 hover:bg-muted/50'>
-								<TableHead className='w-[100px] pl-4 md:pl-6'>Type</TableHead>
-								<TableHead>Feedback</TableHead>
-								<TableHead className='w-[120px] md:w-[200px]'>User</TableHead>
-								<TableHead className='text-right w-[90px] md:w-[120px] pr-4 md:pr-6'>Date</TableHead>
+							<TableRow>
+								<TableHead className='w-[15%] pl-4 sm:pl-6'>Type</TableHead>
+								<TableHead className='w-[50%]'>Feedback</TableHead>
+								<TableHead className='w-[20%]'>User</TableHead>
+								<TableHead className='w-[15%] text-right pr-4 sm:pr-6'>Date</TableHead>
 							</TableRow>
 						)}
 						itemContent={(index, item) => (
 							<>
-								<TableCell className={`align-top py-4 pl-4 md:pl-6 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+								<TableCell className={`align-top py-2 w-[15%] pl-4 sm:pl-6 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
 									<Badge
 										variant={item.type === 'bug' ? 'destructive' : 'default'}
-										className='flex w-fit items-center justify-center gap-1 p-1 md:px-2'
+										className='flex w-fit items-center justify-center gap-1'
 									>
 										{item.type === 'bug' ? (
 											<Bug className='h-3 w-3 shrink-0' />
@@ -187,23 +201,41 @@ export function FeedbackAdminTable() {
 										<span className='capitalize hidden md:inline'>{item.type}</span>
 									</Badge>
 								</TableCell>
-								<TableCell className={`align-top py-4 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
-									<div className='font-medium text-sm md:text-base'>{item.title}</div>
-									<div className='text-xs md:text-sm text-muted-foreground mt-1.5 line-clamp-3 md:line-clamp-none break-words max-w-[200px] sm:max-w-[400px] md:max-w-[600px]'>
-										{item.description}
+								<TableCell className={`align-top py-2 w-[50%] max-w-0 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+									<div className='font-medium'>
+										<span className='block truncate' title={item.title}>
+											{item.title}
+										</span>
+									</div>
+									<div className='text-sm text-muted-foreground mt-1'>
+										<span className='block truncate' title={item.description}>
+											{item.description}
+										</span>
 									</div>
 								</TableCell>
-								<TableCell className={`align-top py-4 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
-									<div className='font-medium text-xs md:text-sm truncate'>
-										{item.profiles?.full_name || 'Anonymous'}
+								<TableCell className={`align-top py-2 w-[20%] max-w-0 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+									<div className='font-medium text-xs md:text-sm'>
+										<span className='block truncate' title={item.profiles?.full_name || 'Anonymous'}>
+											{item.profiles?.full_name || 'Anonymous'}
+										</span>
 									</div>
-									<div className='text-[10px] md:text-xs text-muted-foreground truncate'>{item.profiles?.email}</div>
+									<div className='text-xs text-muted-foreground'>
+										<span className='block truncate' title={item.profiles?.email}>
+											{item.profiles?.email}
+										</span>
+									</div>
 									{item.orgs && (
-										<div className='text-[10px] md:text-xs text-muted-foreground mt-1 truncate'>{item.orgs.name}</div>
+										<div className='text-xs text-muted-foreground mt-1'>
+											<span className='block truncate' title={item.orgs.name}>
+												{item.orgs.name}
+											</span>
+										</div>
 									)}
 								</TableCell>
 								<TableCell
-									className={`align-top py-4 pr-4 md:pr-6 text-right text-muted-foreground text-xs md:text-sm ${index % 2 === 1 ? 'bg-muted/40' : ''}`}
+									className={`align-top py-2 text-right text-muted-foreground text-xs md:text-sm pr-4 sm:pr-6 ${
+										index % 2 === 1 ? 'bg-muted/40' : ''
+									}`}
 								>
 									{new Date(item.created_at).toLocaleDateString(undefined, {
 										year: '2-digit',

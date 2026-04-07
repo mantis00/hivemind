@@ -323,9 +323,9 @@ export type PushSubscription = {
 }
 
 export type Feedback = {
-	feedback_id: string
+	feedback_id: UUID
 	created_at: string
-	org_id: string
+	org_id: UUID
 	user_id: string
 	type: 'bug' | 'feedback'
 	title: string
