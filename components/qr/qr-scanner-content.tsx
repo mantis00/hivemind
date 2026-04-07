@@ -218,7 +218,14 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 				})
 
 				html5QrcodeRef.current = scanner
-				const decodedText = await scanner.scanFile(file, true)
+				let decodedText: string
+				try {
+					// First pass: decode without rendering the image preview for better Safari stability.
+					decodedText = await scanner.scanFile(file, false)
+				} catch {
+					// Second pass: retry with preview rendering, which can succeed on some devices.
+					decodedText = await scanner.scanFile(file, true)
+				}
 				const accepted = handleDecodedValue(decodedText)
 
 				try {
@@ -233,7 +240,15 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 					await startHtml5Scanner()
 				}
 			} catch (error) {
-				setScanError(`Unable to scan selected photo (${getReadableError(error)}).`)
+				const fileType = (file.type ?? '').toLowerCase()
+				const likelyHeic = fileType.includes('heic') || fileType.includes('heif')
+				if (likelyHeic) {
+					setScanError(
+						'Unable to scan selected photo. iOS HEIC images can fail in-browser. Try a PNG/JPEG screenshot, or use live scan.'
+					)
+				} else {
+					setScanError(`Unable to scan selected photo (${getReadableError(error)}).`)
+				}
 				try {
 					await startHtml5Scanner()
 				} catch {
