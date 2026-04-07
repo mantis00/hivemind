@@ -19,7 +19,6 @@ interface VirtualizedCommandProps {
 	options: VirtualizedOption[]
 	placeholder: string
 	selectedOption?: string
-	selectedOptions?: string[]
 	onSelectOption?: (option: string) => void
 	emptyMessage?: string
 	rowHeight?: number
