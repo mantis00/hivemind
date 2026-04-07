@@ -63,6 +63,61 @@ function nextAnimationFrame() {
 	})
 }
 
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+	return new Promise((resolve, reject) => {
+		const objectUrl = URL.createObjectURL(file)
+		const image = new Image()
+
+		image.onload = () => {
+			URL.revokeObjectURL(objectUrl)
+			resolve(image)
+		}
+		image.onerror = () => {
+			URL.revokeObjectURL(objectUrl)
+			reject(new Error('Image could not be loaded for QR decoding.'))
+		}
+
+		image.src = objectUrl
+	})
+}
+
+function renderImageVariantAsJpeg(image: HTMLImageElement, rotationDeg: number, maxEdge: number): Promise<Blob | null> {
+	const rotation = ((rotationDeg % 360) + 360) % 360
+	const sourceWidth = image.naturalWidth || image.width
+	const sourceHeight = image.naturalHeight || image.height
+	const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight))
+	const drawWidth = Math.max(1, Math.round(sourceWidth * scale))
+	const drawHeight = Math.max(1, Math.round(sourceHeight * scale))
+
+	const isRightAngle = rotation === 90 || rotation === 270
+	const canvas = document.createElement('canvas')
+	canvas.width = isRightAngle ? drawHeight : drawWidth
+	canvas.height = isRightAngle ? drawWidth : drawHeight
+
+	const context = canvas.getContext('2d')
+	if (!context) {
+		return Promise.resolve(null)
+	}
+
+	context.translate(canvas.width / 2, canvas.height / 2)
+	context.rotate((rotation * Math.PI) / 180)
+	context.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
+
+	return new Promise((resolve) => {
+		canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.92)
+	})
+}
+
+async function buildNormalizedJpegCandidate(file: File): Promise<File> {
+	const image = await loadImageFromFile(file)
+	const blob = await renderImageVariantAsJpeg(image, 0, 1920)
+	if (!blob) {
+		throw new Error('Image normalization failed before QR decoding.')
+	}
+
+	return new File([blob], `${file.name.replace(/\.[^.]+$/, '') || 'qr-photo'}-normalized.jpg`, { type: 'image/jpeg' })
+}
+
 export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 	const router = useRouter()
 	const { data: currentUser, isLoading: isUserLoading } = useCurrentClientUser()
@@ -217,15 +272,9 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 					formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
 				})
 
+				const decodeCandidate = await buildNormalizedJpegCandidate(file)
 				html5QrcodeRef.current = scanner
-				let decodedText: string
-				try {
-					// First pass: decode without rendering the image preview for better Safari stability.
-					decodedText = await scanner.scanFile(file, false)
-				} catch {
-					// Second pass: retry with preview rendering, which can succeed on some devices.
-					decodedText = await scanner.scanFile(file, true)
-				}
+				const decodedText = await scanner.scanFile(decodeCandidate, false)
 				const accepted = handleDecodedValue(decodedText)
 
 				try {
