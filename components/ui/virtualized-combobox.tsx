@@ -31,7 +31,6 @@ export function VirtualizedCommand({
 	options,
 	placeholder,
 	selectedOption = '',
-	selectedOptions,
 	onSelectOption,
 	emptyMessage = 'No item found.',
 	rowHeight = FALLBACK_ROW_HEIGHT
