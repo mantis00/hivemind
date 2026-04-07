@@ -503,59 +503,41 @@ export function TasksDataTable({
 						toggleableColumns={toggleableColumns}
 					/>
 				}
-			/>
-
-			{isMobile ? (
-				/* Mobile: org Create Task + select controls on one row */
-				<div className='flex items-center gap-2'>
-					{isOrgMode && createTaskButton}
-					{selectMode ? (
+				selectButton={
+					selectMode ? (
 						<>
-							<Button variant='outline' size='sm' className='h-8 gap-1.5 text-xs' onClick={exitSelectMode}>
-								<X className='h-3.5 w-3.5' />
-								Cancel
+							<Button
+								variant='outline'
+								{...(isMobile ? { size: 'sm' as const, className: 'h-8 gap-1.5' } : { className: 'gap-2' })}
+								onClick={exitSelectMode}
+							>
+								{isMobile ? <X className='h-3.5 w-3.5' /> : <X className='h-4 w-4' />}
+								{isMobile ? 'Cancel' : 'Cancel Selection'}
 							</Button>
 							{selectedIds.size > 0 && (
-								<Button size='sm' className='h-8 gap-1.5 text-xs' onClick={handleBatchComplete}>
-									<CheckSquare className='h-3.5 w-3.5' />
-									Complete ({selectedIds.size})
+								<Button
+									{...(isMobile ? { size: 'sm' as const, className: 'h-8 gap-1.5' } : { className: 'gap-2' })}
+									onClick={handleBatchComplete}
+								>
+									{isMobile ? <CheckSquare className='h-3.5 w-3.5' /> : <CheckSquare className='h-4 w-4' />}
+									{isMobile ? `Complete (${selectedIds.size})` : `Batch Complete (${selectedIds.size})`}
 								</Button>
 							)}
 						</>
 					) : (
-						<Button variant='outline' size='sm' className='h-8 gap-1.5 text-xs' onClick={() => setSelectMode(true)}>
-							<ListChecks className='h-3.5 w-3.5' />
-							Select
+						<Button
+							variant='outline'
+							{...(isMobile ? { size: 'sm' as const, className: 'h-8 gap-1.5' } : { className: 'gap-2' })}
+							onClick={() => setSelectMode(true)}
+						>
+							{isMobile ? <ListChecks className='h-3.5 w-3.5' /> : <ListChecks className='h-4 w-4' />}
+							{isMobile ? 'Select' : 'Select Tasks'}
 						</Button>
-					)}
-				</div>
-			) : (
-				<>
-					{isOrgMode && createTaskButton && <div>{createTaskButton}</div>}
-					{/* Batch select controls */}
-					<div className='flex items-center gap-2'>
-						{selectMode ? (
-							<>
-								<Button variant='outline' size='sm' className='h-8 gap-1.5 text-xs' onClick={exitSelectMode}>
-									<X className='h-3.5 w-3.5' />
-									Cancel Selection
-								</Button>
-								{selectedIds.size > 0 && (
-									<Button size='sm' className='h-8 gap-1.5 text-xs' onClick={handleBatchComplete}>
-										<CheckSquare className='h-3.5 w-3.5' />
-										Batch Complete ({selectedIds.size})
-									</Button>
-								)}
-							</>
-						) : (
-							<Button variant='outline' size='sm' className='h-8 gap-1.5 text-xs' onClick={() => setSelectMode(true)}>
-								<ListChecks className='h-3.5 w-3.5' />
-								Select Tasks
-							</Button>
-						)}
-					</div>
-				</>
-			)}
+					)
+				}
+			/>
+
+			{isOrgMode && createTaskButton && <div>{createTaskButton}</div>}
 
 			{/* Table */}
 			<div

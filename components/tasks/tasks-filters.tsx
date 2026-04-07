@@ -42,6 +42,7 @@ interface TasksFiltersProps {
 	includeSpeciesSearch?: boolean
 	includeEnclosureAndAssigneeSearch?: boolean
 	columnsToggle?: ReactNode
+	selectButton?: ReactNode
 }
 
 export function TasksFilters({
@@ -51,7 +52,8 @@ export function TasksFilters({
 	onFiltersChange,
 	hasActiveFilters,
 	onReset,
-	columnsToggle
+	columnsToggle,
+	selectButton
 }: TasksFiltersProps) {
 	const isMobile = useIsMobile()
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
@@ -105,6 +107,7 @@ export function TasksFilters({
 						trigger={filterTrigger}
 					/>
 					{columnsToggle}
+					{selectButton}
 					<Button
 						variant='ghost'
 						size='sm'
@@ -247,6 +250,7 @@ export function TasksFilters({
 						</PopoverContent>
 					</Popover>
 					{columnsToggle}
+					{selectButton}
 					<Button
 						variant='ghost'
 						onClick={onReset}
