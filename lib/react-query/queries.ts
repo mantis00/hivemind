@@ -322,6 +322,18 @@ export type PushSubscription = {
 	is_active: boolean
 }
 
+export type Feedback = {
+	feedback_id: string
+	created_at: string
+	org_id: string
+	user_id: string
+	type: 'bug' | 'feedback'
+	title: string
+	description: string
+	profiles?: { first_name?: string; last_name?: string; email?: string; full_name?: string }
+	orgs?: { name?: string }
+}
+
 export function useUserOrgs(userId: string) {
 	return useQuery({
 		queryKey: ['orgs'],
@@ -1432,5 +1444,21 @@ export function usePushSubscriptionsForUser(userId: string | undefined) {
 			return data
 		},
 		enabled: !!userId
+	})
+}
+
+export function useAllFeedback() {
+	return useQuery({
+		queryKey: ['allFeedback'],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('feedback')
+				.select('*, profiles(first_name, last_name, email, full_name), orgs(name)')
+				.order('created_at', { ascending: false })) as { data: Feedback[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data || []
+		}
 	})
 }
