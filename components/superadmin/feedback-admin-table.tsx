@@ -7,7 +7,6 @@ import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/compon
 import { Badge } from '@/components/ui/badge'
 import { InputGroup, InputGroupInput, InputGroupAddon } from '@/components/ui/input-group'
 import { LoaderCircle, Search, MessageSquare, Bug, XIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react'
-import { useIsMobile } from '@/hooks/use-mobile'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 
