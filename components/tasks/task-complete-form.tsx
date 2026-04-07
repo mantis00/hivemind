@@ -157,12 +157,20 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 		if (isBatchMode) {
 			batchSubmit.mutate(
 				{ task_ids: batchTaskIds!, user_id: currentUser!.id as UUID, answers: answerPayload },
-				{ onSuccess: () => setBatchCompleted(true) }
+				{
+					onSuccess: () => {
+						window.history.replaceState(null, '', `/protected/orgs/${orgId}/enclosures/${enclosureId}`)
+						setBatchCompleted(true)
+					}
+				}
 			)
 			return
 		}
 
-		submitForm.mutate({ task_id: taskId, user_id: currentUser!.id as UUID, answers: answerPayload })
+		submitForm.mutate(
+			{ task_id: taskId, user_id: currentUser!.id as UUID, answers: answerPayload },
+			{ onSuccess: () => window.history.replaceState(null, '', `/protected/orgs/${orgId}/enclosures/${enclosureId}`) }
+		)
 	}
 
 	const handleResubmit = () => {
@@ -315,7 +323,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 				/>
 			)}
 			{/* ── Batch info card ── */}
-			{isBatchMode && (
+			{isBatchMode && !batchCompleted && (
 				<Card className='border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900'>
 					<CardContent className='py-3 px-4'>
 						<p className='text-sm text-blue-800 dark:text-blue-300'>
@@ -334,18 +342,24 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 				</Card>
 			)}
 			{/* ── Completion info card ── */}
-			{isCompleted && (
+			{(isCompleted || batchCompleted) && (
 				<Card className='border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-900'>
 					<CardContent className='py-3 px-4 flex items-center gap-3'>
 						<div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900'>
 							<CheckCircle2Icon className='h-4 w-4 text-green-600 dark:text-green-400' />
 						</div>
 						<div>
-							<p className='text-sm font-semibold text-green-800 dark:text-green-300'>Task Completed</p>
-							<p className='text-xs text-green-700/80 dark:text-green-400 mt-0.5'>
-								{task.completed_time ? new Date(task.completed_time).toLocaleString() : ''}
-								{completedByName ? ` · by ${completedByName}` : ''}
+							<p className='text-sm font-semibold text-green-800 dark:text-green-300'>
+								{batchCompleted
+									? `${batchTaskIds!.length} ${batchTaskIds!.length === 1 ? 'task' : 'tasks'} completed`
+									: 'Task Completed'}
 							</p>
+							{!batchCompleted && (
+								<p className='text-xs text-green-700/80 dark:text-green-400 mt-0.5'>
+									{task?.completed_time ? new Date(task.completed_time).toLocaleString() : ''}
+									{completedByName ? ` · by ${completedByName}` : ''}
+								</p>
+							)}
 						</div>
 					</CardContent>
 				</Card>
@@ -474,10 +488,29 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 											if (isBatchMode) {
 												batchSubmit.mutate(
 													{ task_ids: batchTaskIds!, user_id: currentUser!.id as UUID, answers: [] },
-													{ onSuccess: () => setBatchCompleted(true) }
+													{
+														onSuccess: () => {
+															window.history.replaceState(
+																null,
+																'',
+																`/protected/orgs/${orgId}/enclosures/${enclosureId}`
+															)
+															setBatchCompleted(true)
+														}
+													}
 												)
 											} else {
-												submitForm.mutate({ task_id: taskId, user_id: currentUser!.id as UUID, answers: [] })
+												submitForm.mutate(
+													{ task_id: taskId, user_id: currentUser!.id as UUID, answers: [] },
+													{
+														onSuccess: () =>
+															window.history.replaceState(
+																null,
+																'',
+																`/protected/orgs/${orgId}/enclosures/${enclosureId}`
+															)
+													}
+												)
 											}
 										}}
 									>

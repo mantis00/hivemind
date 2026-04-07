@@ -1329,7 +1329,7 @@ export function useBatchSubmitTaskForms() {
 				queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', task_id] })
 			}
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success(`${variables.task_ids.length} tasks completed!`)
+			toast.success(`${variables.task_ids.length} ${variables.task_ids.length === 1 ? 'task' : 'tasks'} completed!`)
 		}
 	})
 }
