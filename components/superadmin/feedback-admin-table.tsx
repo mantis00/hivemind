@@ -166,18 +166,18 @@ export function FeedbackAdminTable() {
 						components={tableComponents}
 						fixedHeaderContent={() => (
 							<TableRow className='bg-muted/50 hover:bg-muted/50'>
-								<TableHead className='w-[100px]'>Type</TableHead>
+								<TableHead className='w-[100px] pl-4 md:pl-6'>Type</TableHead>
 								<TableHead>Feedback</TableHead>
 								<TableHead className='w-[120px] md:w-[200px]'>User</TableHead>
-								<TableHead className='text-right w-[90px] md:w-[120px]'>Date</TableHead>
+								<TableHead className='text-right w-[90px] md:w-[120px] pr-4 md:pr-6'>Date</TableHead>
 							</TableRow>
 						)}
 						itemContent={(index, item) => (
 							<>
-								<TableCell className={`align-top ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+								<TableCell className={`align-top py-4 pl-4 md:pl-6 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
 									<Badge
 										variant={item.type === 'bug' ? 'destructive' : 'default'}
-										className='flex w-fit items-center justify-center gap-1 mt-1 p-1 md:px-2'
+										className='flex w-fit items-center justify-center gap-1 p-1 md:px-2'
 									>
 										{item.type === 'bug' ? (
 											<Bug className='h-3 w-3 shrink-0' />
@@ -187,13 +187,13 @@ export function FeedbackAdminTable() {
 										<span className='capitalize hidden md:inline'>{item.type}</span>
 									</Badge>
 								</TableCell>
-								<TableCell className={`align-top ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+								<TableCell className={`align-top py-4 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
 									<div className='font-medium text-sm md:text-base'>{item.title}</div>
-									<div className='text-xs md:text-sm text-muted-foreground mt-1 line-clamp-3 md:line-clamp-none break-words max-w-[200px] sm:max-w-[400px] md:max-w-[600px]'>
+									<div className='text-xs md:text-sm text-muted-foreground mt-1.5 line-clamp-3 md:line-clamp-none break-words max-w-[200px] sm:max-w-[400px] md:max-w-[600px]'>
 										{item.description}
 									</div>
 								</TableCell>
-								<TableCell className={`align-top ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
+								<TableCell className={`align-top py-4 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}>
 									<div className='font-medium text-xs md:text-sm truncate'>
 										{item.profiles?.full_name || 'Anonymous'}
 									</div>
@@ -203,7 +203,7 @@ export function FeedbackAdminTable() {
 									)}
 								</TableCell>
 								<TableCell
-									className={`align-top text-right text-muted-foreground text-xs md:text-sm ${index % 2 === 1 ? 'bg-muted/40' : ''}`}
+									className={`align-top py-4 pr-4 md:pr-6 text-right text-muted-foreground text-xs md:text-sm ${index % 2 === 1 ? 'bg-muted/40' : ''}`}
 								>
 									{new Date(item.created_at).toLocaleDateString(undefined, {
 										year: '2-digit',
