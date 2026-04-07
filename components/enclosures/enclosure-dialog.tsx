@@ -34,12 +34,14 @@ export function EnclosureDialog({
 	enclosure,
 	species,
 	open,
-	onOpenChange
+	onOpenChange,
+	hideViewTasks = false
 }: {
 	enclosure: Enclosure
 	species: OrgSpecies
 	open: boolean
 	onOpenChange: (open: boolean) => void
+	hideViewTasks?: boolean
 }) {
 	const [notesOpen, setNotesOpen] = useState(false)
 	const [lineageOpen, setLineageOpen] = useState(false)
@@ -94,17 +96,19 @@ export function EnclosureDialog({
 			}
 		>
 			<div className='overflow-y-auto max-h-[70vh] scrollbar-hide sm:scrollbar-auto'>
-				<Button
-					className='flex gap-2 w-full mb-2'
-					disabled={navigating}
-					onClick={() => {
-						setNavigating(true)
-						router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)
-					}}
-				>
-					{navigating ? <LoaderCircle className='h-4 w-4 animate-spin' /> : <ClipboardList className='h-4 w-4' />}
-					View Tasks
-				</Button>
+				{!hideViewTasks && (
+					<Button
+						className='flex gap-2 w-full mb-2'
+						disabled={navigating}
+						onClick={() => {
+							setNavigating(true)
+							router.push(`/protected/orgs/${orgId}/enclosures/${enclosure.id}`)
+						}}
+					>
+						{navigating ? <LoaderCircle className='h-4 w-4 animate-spin' /> : <ClipboardList className='h-4 w-4' />}
+						View Tasks
+					</Button>
+				)}
 				<Button variant='outline' className='flex gap-2 w-full mb-2' onClick={() => setLineageOpen(true)}>
 					<Network className='h-4 w-4' />
 					View Lineage
