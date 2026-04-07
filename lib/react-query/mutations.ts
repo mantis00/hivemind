@@ -1021,9 +1021,10 @@ export function useStartTask() {
 
 			if (error) throw error
 		},
-		onSuccess: () => {
+		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 		}
 	})
 }
@@ -1047,9 +1048,10 @@ export function useCompleteTask() {
 
 			if (error) throw error
 		},
-		onSuccess: () => {
+		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 		}
 	})
@@ -1275,6 +1277,59 @@ export function useResubmitTaskForm() {
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Submission updated!')
+		}
+	})
+}
+
+export function useBatchSubmitTaskForms() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			task_ids,
+			user_id,
+			answers
+		}: {
+			task_ids: UUID[]
+			user_id: UUID
+			answers: { question_id: UUID; answer: string }[]
+		}) => {
+			const supabase = createClient()
+			const completedTime = new Date().toISOString()
+
+			for (const task_id of task_ids) {
+				if (answers.length > 0) {
+					const { error: formError } = await supabase.from('task_form_data').insert(
+						answers.map((a) => ({
+							task_id,
+							question_id: a.question_id,
+							answer: a.answer
+						}))
+					)
+					if (formError) throw formError
+				}
+
+				const { error: taskError } = await supabase
+					.from('tasks')
+					.update({
+						status: 'completed',
+						completed_time: completedTime,
+						completed_by: user_id
+					})
+					.eq('id', task_id)
+
+				if (taskError) throw taskError
+			}
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			for (const task_id of variables.task_ids) {
+				queryClient.invalidateQueries({ queryKey: ['taskById', task_id] })
+				queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', task_id] })
+			}
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success(`${variables.task_ids.length} ${variables.task_ids.length === 1 ? 'task' : 'tasks'} completed!`)
 		}
 	})
 }
@@ -1686,6 +1741,9 @@ export function useToggleScheduleActive() {
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success(variables.is_active ? 'Schedule activated!' : 'Schedule paused!')
 		}
 	})
@@ -1753,6 +1811,9 @@ export function useDeleteSchedule() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Schedule deleted!')
 		}
 	})
@@ -1835,9 +1896,12 @@ export function useDeleteTask() {
 			const { error } = await supabase.from('tasks').delete().eq('id', taskId)
 			if (error) throw error
 		},
-		onSuccess: () => {
+		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById', variables.taskId] })
+			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.taskId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Task deleted!')
 		}
 	})
