@@ -24,6 +24,7 @@ export const statusConfig: Record<string, { label: string; color: string }> = {
 }
 
 export const MOBILE_COL_WIDTHS: Record<string, number> = {
+	select: 36,
 	name: 120,
 	status: 95,
 	due_date: 95,

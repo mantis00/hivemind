@@ -98,8 +98,8 @@ export function ReassignMemberButton({
 			</TooltipProvider>
 
 			<ResponsiveDialogDrawer
-				title='Reassign Schedule'
-				description='Select a member to assign this schedule to.'
+				title={taskId ? 'Reassign Task' : 'Reassign Schedule'}
+				description={taskId ? 'Select a member to assign this task to.' : 'Select a member to assign this schedule to.'}
 				trigger={null}
 				open={open}
 				onOpenChange={handleOpenChange}
