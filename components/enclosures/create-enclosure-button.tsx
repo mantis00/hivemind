@@ -39,12 +39,11 @@ export function CreateEnclosureButton({
 	const [location, setLocation] = useState('')
 	const [locationQuery, setLocationQuery] = useState('')
 	const [specimenTrackingId, setSpecimenTrackingId] = useState('')
+	const [count, setCount] = useState<number | undefined>(undefined)
 	const [sourceType, setSourceType] = useState<'institution' | 'enclosure'>('institution')
 	const [externalSource, setExternalSource] = useState('')
 	const [sourceEnclosureQuery, setSourceEnclosureQuery] = useState('')
-	const [sources, setSources] = useState<
-		{ type: 'institution' | 'enclosure'; value: string; label: string; count: string; maxCount?: number }[]
-	>([])
+	const [sources, setSources] = useState<{ type: 'institution' | 'enclosure'; value: string; label: string }[]>([])
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
 	const createLocationMutation = useCreateLocation()
@@ -138,8 +137,6 @@ export function CreateEnclosureButton({
 		const species_id = selectedSpecies
 		if (!species_id) return
 
-		if (sources.length === 0) return
-
 		let resolvedLocationId: UUID
 
 		if (createLocation) {
@@ -155,22 +152,19 @@ export function CreateEnclosureButton({
 		}
 
 		const externalSources = sources.filter((s) => s.type === 'institution').map((s) => s.value)
-		const enclosureTransfers = sources
+		const enclosureSources = sources
 			.filter((s) => s.type === 'enclosure')
-			.map((s) => ({ id: s.value as UUID, count: parseInt(s.count, 10) || 0 }))
-			.filter((t) => t.count > 0)
-
-		const totalCount = sources.reduce((sum, s) => sum + (parseInt(s.count, 10) || 0), 0)
+			.map((s) => ({ id: s.value as UUID, count: 0 }))
 
 		createEnclosureMutation.mutate(
 			{
 				orgId: orgId as UUID,
 				species_id: species_id.id as UUID,
 				location: resolvedLocationId,
-				current_count: totalCount,
+				current_count: count ?? 0,
 				institutional_external_source: externalSources.length > 0 ? externalSources.join(', ') : undefined,
 				institutional_specimen_id: specimenTrackingId.trim() || undefined,
-				source_enclosure_transfers: enclosureTransfers.length > 0 ? enclosureTransfers : undefined
+				source_enclosure_transfers: enclosureSources.length > 0 ? enclosureSources : undefined
 			},
 			{
 				onSuccess: () => {
@@ -180,6 +174,7 @@ export function CreateEnclosureButton({
 					setCreateLocation(false)
 					setLocation('')
 					setLocationQuery('')
+					setCount(undefined)
 					setSourceType('institution')
 					setExternalSource('')
 					setSourceEnclosureQuery('')
@@ -193,7 +188,7 @@ export function CreateEnclosureButton({
 	return (
 		<ResponsiveDialogDrawer
 			title='Create Enclosure'
-			description='All fields are required'
+			description='Species, location, and count are required'
 			open={open}
 			onOpenChange={(isOpen) => setOpen(isOpen)}
 			trigger={
@@ -337,6 +332,29 @@ export function CreateEnclosureButton({
 							</ComboboxContent>
 						</Combobox>
 					)}
+					<Label>Count</Label>
+					<Input
+						className='h-9'
+						placeholder='Count'
+						value={count ?? ''}
+						type='number'
+						min='0'
+						onKeyDown={(e) => {
+							if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
+						}}
+						onChange={(e) => {
+							if (e.target.value === '') {
+								setCount(undefined)
+								return
+							}
+							const num = Number(e.target.value)
+							if (num < 0) return
+							setCount(num)
+						}}
+						onFocus={(e) => e.target.select()}
+						required
+						disabled={isPending}
+					/>
 					<Label>Specimen ID (Optional)</Label>
 					<Combobox
 						items={filteredEnclosures}
@@ -478,48 +496,28 @@ export function CreateEnclosureButton({
 					)}
 
 					{sources.length > 0 && (
-						<div className='flex flex-col gap-2'>
+						<div className='flex flex-wrap gap-2'>
 							{sources.map((source, idx) => (
-								<div key={`${source.type}-${source.value}-${idx}`} className='flex items-center gap-2'>
-									<Badge
-										variant={source.type === 'institution' ? 'outline' : 'secondary'}
-										className='flex items-center gap-1 pr-1 shrink-0'
+								<Badge
+									key={`${source.type}-${source.value}-${idx}`}
+									variant={source.type === 'institution' ? 'outline' : 'secondary'}
+									className='flex items-center gap-1 pr-1'
+								>
+									<span className='text-xs'>{source.label}</span>
+									<button
+										type='button'
+										className='ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5'
+										onClick={() => setSources((prev) => prev.filter((_, i) => i !== idx))}
 									>
-										<span className='text-xs'>{source.label}</span>
-										<button
-											type='button'
-											className='ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5'
-											onClick={() => setSources((prev) => prev.filter((_, i) => i !== idx))}
-										>
-											<X className='h-3 w-3' />
-										</button>
-									</Badge>
-									<Input
-										type='number'
-										min='0'
-										{...(source.type === 'enclosure' && source.maxCount !== undefined ? { max: source.maxCount } : {})}
-										placeholder={
-											source.type === 'enclosure' && source.maxCount !== undefined ? `Max ${source.maxCount}` : 'Count'
-										}
-										value={source.count}
-										className='h-7 w-24'
-										disabled={isPending}
-										onChange={(e) => {
-											const raw = e.target.value
-											const clamped =
-												source.type === 'enclosure' && source.maxCount !== undefined
-													? String(Math.min(parseInt(raw, 10) || 0, source.maxCount))
-													: raw
-											setSources((prev) => prev.map((s, i) => (i === idx ? { ...s, count: clamped } : s)))
-										}}
-									/>
-								</div>
+										<X className='h-3 w-3' />
+									</button>
+								</Badge>
 							))}
 						</div>
 					)}
 				</div>
 				<div className='flex flex-col gap-3 justify-center'>
-					<Button type='submit' disabled={isPending || !user || !species || !location || sources.length === 0}>
+					<Button type='submit' disabled={isPending || !user || !species || !location || count === undefined}>
 						{isPending ? <LoaderCircle className='animate-spin' /> : 'Create Enclosure'}
 					</Button>
 					<Button type='button' variant='outline' size='default' disabled={isPending} onClick={() => setOpen(false)}>

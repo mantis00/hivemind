@@ -343,6 +343,9 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							const num = Number(e.target.value)
 							if (num < 0) return
 							setCount(num)
+							if (num >= (enclosure?.current_count ?? 0)) {
+								setSources((prev) => prev.filter((s) => s.type !== 'deceased'))
+							}
 						}}
 						onFocus={(e) => e.target.select()}
 						required
@@ -404,7 +407,8 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							</button>
 							<button
 								type='button'
-								className='w-full text-center px-2.5 py-1 transition-colors bg-muted hover:bg-background'
+								className='w-full text-center px-2.5 py-1 transition-colors bg-muted hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed'
+								disabled={diff >= 0}
 								onClick={() => {
 									if (!sources.some((s) => s.type === 'deceased')) {
 										setSources((prev) => [

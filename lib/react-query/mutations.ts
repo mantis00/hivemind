@@ -419,6 +419,7 @@ export function useCreateEnclosure() {
 				if (fetchError) throw fetchError
 
 				for (const transfer of source_enclosure_transfers) {
+					if (!transfer.count) continue
 					const current = currentEnclosures?.find((e) => e.id === transfer.id)
 					if (!current) continue
 					const newCount = Math.max(0, current.current_count - transfer.count)
