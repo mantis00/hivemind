@@ -112,7 +112,7 @@ export function NotificationDropdown() {
 				</PopoverContent>
 			</Popover>
 
-			<PushOptInPrompt open={showPushPrompt} onOpenChange={setShowPushPrompt} />
+			<PushOptInPrompt open={showPushPrompt} onOpenChange={setShowPushPrompt} onUserAction={() => setOpen(true)} />
 		</>
 	)
 }
