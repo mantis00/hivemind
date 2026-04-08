@@ -328,12 +328,17 @@ export type EnclosureTimelineRow = {
 	id: string
 	event_date: string
 	record_type: TimelineRecordType
+	enclosure_id: string | null
 	enclosure_name: string | null
 	species_name: string | null
 	summary: string | null
 	details: string | null
 	user_name: string | null
 	template_type: string | null
+	priority: string | null
+	time_window: string | null
+	old_count: number | null
+	new_count: number | null
 }
 
 export type TimelineFilters = {
@@ -1465,165 +1470,13 @@ export function useOrgTaskHistory(orgId: UUID | undefined) {
 		queryKey: ['orgTaskHistory', orgId],
 		queryFn: async (): Promise<EnclosureTimelineRow[]> => {
 			const supabase = createClient()
-			const PAGE_SIZE = 1000
-
-			// Fetch org species, first page of completed tasks, count history, and enclosure notes in parallel
-			const [orgSpeciesResult, firstPageResult, countHistoryResult, notesResult] = await Promise.all([
-				supabase
-					.from('org_species')
-					.select('id, custom_common_name, species(scientific_name)')
-					.eq('org_id', orgId as UUID),
-				supabase
-					.from('tasks')
-					.select(
-						'id, name, description, completed_time, completed_by, task_templates(type), enclosures!inner(id, name, org_id, species_id, is_active)'
-					)
-					.eq('enclosures.org_id', orgId as UUID)
-					.eq('enclosures.is_active', true)
-					.eq('status', 'completed')
-					.not('completed_time', 'is', null)
-					.order('completed_time', { ascending: false })
-					.range(0, PAGE_SIZE - 1),
-				supabase
-					.from('enclosure_count_history')
-					.select(
-						'id, old_count, new_count, changed_by, changed_at, enclosures!inner(id, name, org_id, species_id, is_active)'
-					)
-					.eq('enclosures.org_id', orgId as UUID)
-					.eq('enclosures.is_active', true)
-					.order('changed_at', { ascending: false }),
-				supabase
-					.from('tank_notes')
-					.select('id, note_text, user_id, created_at, enclosures!inner(id, name, org_id, species_id, is_active)')
-					.eq('enclosures.org_id', orgId as UUID)
-					.eq('enclosures.is_active', true)
-					.order('created_at', { ascending: false })
-			])
-
-			if (orgSpeciesResult.error) throw orgSpeciesResult.error
-			if (firstPageResult.error) throw firstPageResult.error
-			if (countHistoryResult.error) throw countHistoryResult.error
-			if (notesResult.error) throw notesResult.error
-
-			type TaskRow = (typeof firstPageResult.data)[number]
-			let allTasks: TaskRow[] = firstPageResult.data ?? []
-
-			// Paginate tasks if the first page was full
-			if (allTasks.length === PAGE_SIZE) {
-				let from = PAGE_SIZE
-				while (true) {
-					const { data, error } = await supabase
-						.from('tasks')
-						.select(
-							'id, name, description, completed_time, completed_by, task_templates(type), enclosures!inner(id, name, org_id, species_id, is_active)'
-						)
-						.eq('enclosures.org_id', orgId as UUID)
-						.eq('enclosures.is_active', true)
-						.eq('status', 'completed')
-						.not('completed_time', 'is', null)
-						.order('completed_time', { ascending: false })
-						.range(from, from + PAGE_SIZE - 1)
-					if (error) throw error
-					allTasks = [...allTasks, ...(data ?? [])]
-					if ((data?.length ?? 0) < PAGE_SIZE) break
-					from += PAGE_SIZE
-				}
-			}
-
-			// Build species display name map: org_species.id → name
-			const speciesMap = new Map<string, string>()
-			for (const s of orgSpeciesResult.data ?? []) {
-				const sp = s.species as { scientific_name: string } | { scientific_name: string }[] | null
-				const scientific = Array.isArray(sp) ? sp[0]?.scientific_name : sp?.scientific_name
-				speciesMap.set(String(s.id), s.custom_common_name || scientific || '')
-			}
-
-			// Collect all user IDs from tasks, count history, and notes, then fetch profiles in one query
-			const countHistory = countHistoryResult.data ?? []
-			const notes = notesResult.data ?? []
-			const taskUserIds = allTasks.map((t) => t.completed_by).filter(Boolean) as string[]
-			const countUserIds = countHistory.map((c) => c.changed_by).filter(Boolean) as string[]
-			const noteUserIds = notes.map((n) => n.user_id).filter(Boolean) as string[]
-			const allUserIds = [...new Set([...taskUserIds, ...countUserIds, ...noteUserIds])]
-
-			const profileMap = new Map<string, string>()
-			if (allUserIds.length > 0) {
-				const { data: profiles } = await supabase
-					.from('profiles')
-					.select('id, first_name, last_name')
-					.in('id', allUserIds)
-				for (const p of profiles ?? []) {
-					profileMap.set(p.id, `${p.first_name} ${p.last_name}`.trim())
-				}
-			}
-
-			type EnclosureRelation = { id: string; name: string | null; species_id: string | null } | null
-
-			const resolveEnclosure = (raw: unknown): EnclosureRelation => {
-				if (!raw) return null
-				if (Array.isArray(raw)) return (raw[0] as EnclosureRelation) ?? null
-				return raw as EnclosureRelation
-			}
-
-			// Map completed tasks to EnclosureTimelineRow
-			const taskRows: EnclosureTimelineRow[] = allTasks.map((task) => {
-				const enclosure = resolveEnclosure(task.enclosures)
-				const template = Array.isArray(task.task_templates)
-					? (task.task_templates[0] as { type: string } | undefined)
-					: (task.task_templates as { type: string } | null)
-
-				return {
-					id: `task-${task.id}`,
-					event_date: task.completed_time as string,
-					record_type: 'task' as TimelineRecordType,
-					enclosure_name: enclosure?.name ?? null,
-					species_name: enclosure?.species_id ? (speciesMap.get(String(enclosure.species_id)) ?? null) : null,
-					summary: task.name || task.description || null,
-					details: task.description ?? null,
-					user_name: task.completed_by ? (profileMap.get(String(task.completed_by)) ?? null) : null,
-					template_type: template?.type ?? null
-				}
-			})
-
-			// Map count history to EnclosureTimelineRow
-			const countRows: EnclosureTimelineRow[] = countHistory.map((entry) => {
-				const enclosure = resolveEnclosure(entry.enclosures)
-				const delta = (entry.new_count ?? 0) - (entry.old_count ?? 0)
-				const deltaStr = delta > 0 ? `+${delta}` : String(delta)
-
-				return {
-					id: `count-${entry.id}`,
-					event_date: entry.changed_at as string,
-					record_type: 'count_change' as TimelineRecordType,
-					enclosure_name: enclosure?.name ?? null,
-					species_name: enclosure?.species_id ? (speciesMap.get(String(enclosure.species_id)) ?? null) : null,
-					summary: `Population updated: ${entry.old_count} → ${entry.new_count} (${deltaStr})`,
-					details: null,
-					user_name: entry.changed_by ? (profileMap.get(String(entry.changed_by)) ?? null) : null,
-					template_type: null
-				}
-			})
-
-			// Map enclosure notes to EnclosureTimelineRow
-			const noteRows: EnclosureTimelineRow[] = notes.map((note) => {
-				const enclosure = resolveEnclosure(note.enclosures)
-				return {
-					id: `note-${note.id}`,
-					event_date: note.created_at as string,
-					record_type: 'note' as TimelineRecordType,
-					enclosure_name: enclosure?.name ?? null,
-					species_name: enclosure?.species_id ? (speciesMap.get(String(enclosure.species_id)) ?? null) : null,
-					summary: note.note_text ?? null,
-					details: null,
-					user_name: note.user_id ? (profileMap.get(String(note.user_id)) ?? null) : null,
-					template_type: null
-				}
-			})
-
-			// Merge and sort by date descending
-			return [...taskRows, ...countRows, ...noteRows].sort(
-				(a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
-			)
+			const { data, error } = await supabase
+				.from('enclosure_timeline')
+				.select('*')
+				.eq('org_id', orgId as UUID)
+				.order('event_date', { ascending: false })
+			if (error) throw error
+			return (data ?? []) as EnclosureTimelineRow[]
 		},
 		enabled: !!orgId
 	})

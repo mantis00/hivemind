@@ -47,7 +47,8 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 	const getColWidthStyle = React.useCallback(
 		(colId: string): React.CSSProperties | undefined => {
 			const w = (isMobile ? MOBILE_COL_WIDTHS : DESKTOP_COL_WIDTHS)[colId]
-			return w ? { width: w, minWidth: w, maxWidth: w } : undefined
+			if (!w) return undefined
+			return isMobile ? { width: w, minWidth: w, maxWidth: w } : { minWidth: w }
 		},
 		[isMobile]
 	)
@@ -107,7 +108,7 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 	const handleReset = () => setFilters(DEFAULT_FILTERS)
 	const handleExport = () => exportToCsv(filteredData)
 
-	const columns = React.useMemo(() => getTimelineColumns(isMobile), [isMobile])
+	const columns = React.useMemo(() => getTimelineColumns(), [])
 
 	// eslint-disable-next-line react-hooks/incompatible-library
 	const table = useReactTable({
@@ -151,7 +152,7 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 				data={data}
 			/>
 
-			<div className='rounded-lg border border-border/50 bg-card overflow-hidden'>
+			<div className='rounded-lg border border-border/50 bg-card overflow-x-auto'>
 				{isLoading ? (
 					<div className='flex flex-col items-center justify-center h-48 w-full gap-2'>
 						<LoaderCircle className='h-8 w-8 animate-spin text-muted-foreground' />
@@ -162,7 +163,12 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 					</div>
 				) : rows.length <= TARGET_VISIBLE_ROWS ? (
 					<table
-						style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}
+						style={{
+							borderCollapse: 'collapse',
+							width: isMobile ? '100%' : 'auto',
+							minWidth: '100%',
+							...(isMobile ? { tableLayout: 'fixed' } : {})
+						}}
 						className='caption-bottom text-sm w-full'
 					>
 						<thead className='[&_tr]:border-b'>
@@ -172,7 +178,7 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 										<th
 											key={header.id}
 											style={getColWidthStyle(header.id)}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground overflow-hidden`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>
@@ -191,7 +197,7 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 										<td
 											key={cell.id}
 											style={getColWidthStyle(cell.column.id)}
-											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle overflow-hidden`}
+											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle`}
 										>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
 										</td>
@@ -212,8 +218,9 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 									style={{
 										...style,
 										borderCollapse: 'collapse',
-										width: '100%',
-										tableLayout: 'fixed'
+										width: isMobile ? '100%' : 'auto',
+										minWidth: '100%',
+										...(isMobile ? { tableLayout: 'fixed' } : {})
 									}}
 									className='w-full caption-bottom text-sm'
 								/>

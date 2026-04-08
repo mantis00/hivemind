@@ -40,16 +40,23 @@ export const RECORD_TYPE_LABELS: Record<TimelineRecordType, string> = {
 export const DESKTOP_COL_WIDTHS: Record<string, string> = {
 	event_date: '115px',
 	record_type: '90px',
-	enclosure_name: '250px',
-	species_name: '200px',
+	enclosure_name: '200px',
+	species_name: '180px',
 	summary: '200px',
-	details: '210px',
+	details: '200px',
+	priority: '90px',
+	time_window: '110px',
 	user_name: '130px'
 }
 
 export const MOBILE_COL_WIDTHS: Record<string, string> = {
 	event_date: '85px',
-	record_type: '85px',
-	enclosure_name: '110px',
+	record_type: '80px',
+	enclosure_name: '130px',
+	species_name: '130px',
+	summary: '170px',
+	details: '170px',
+	priority: '80px',
+	time_window: '100px',
 	user_name: '90px'
 }

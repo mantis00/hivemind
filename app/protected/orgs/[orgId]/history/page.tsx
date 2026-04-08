@@ -5,12 +5,14 @@ export default async function HistoryPage({ params }: { params: Promise<{ orgId:
 	const { orgId } = await params
 
 	return (
-		<div className='flex flex-col gap-6 p-4 md:p-6'>
-			<div>
-				<h1 className='text-2xl font-bold'>History</h1>
-				<p className='text-muted-foreground text-sm mt-1'>History of enclosure modifications and task completions.</p>
+		<div className='space-y-4 w-full justify-center items-center'>
+			<div className='flex-col mx-auto max-w-5xl flex'>
+				<div className='pb-5'>
+					<h1 className='text-2xl font-semibold'>History</h1>
+					<p className='text-sm text-muted-foreground'>History of enclosure modifications and task completions.</p>
+				</div>
+				<HistoryTable orgId={orgId as UUID} />
 			</div>
-			<HistoryTable orgId={orgId as UUID} />
 		</div>
 	)
 }

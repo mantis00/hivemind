@@ -47,7 +47,7 @@ function TruncatedCell({
 	)
 }
 
-export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimelineRow>[] {
+export function getTimelineColumns(): ColumnDef<EnclosureTimelineRow>[] {
 	const baseColumns: ColumnDef<EnclosureTimelineRow>[] = [
 		{
 			accessorKey: 'event_date',
@@ -99,22 +99,20 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 			cell: ({ row }) => {
 				const value = row.getValue('enclosure_name') as string | null
 				if (!value) return <span className='text-sm'>—</span>
-				return <TruncatedCell text={value} className='text-sm font-medium text-primary truncate block w-full' />
+				return <TruncatedCell text={value} className='text-sm font-medium text-primary' />
 			}
 		}
 	]
 
-	if (!isMobile) {
-		baseColumns.push({
-			accessorKey: 'species_name',
-			header: 'Species',
-			cell: ({ row }) => {
-				const value = row.getValue('species_name') as string | null
-				if (!value) return <span className='text-sm'>—</span>
-				return <TruncatedCell text={value} className='text-sm truncate block w-full italic cursor-default' />
-			}
-		})
-	}
+	baseColumns.push({
+		accessorKey: 'species_name',
+		header: 'Species',
+		cell: ({ row }) => {
+			const value = row.getValue('species_name') as string | null
+			if (!value) return <span className='text-sm'>—</span>
+			return <TruncatedCell text={value} className='text-sm italic cursor-default' />
+		}
+	})
 
 	baseColumns.push({
 		accessorKey: 'summary',
@@ -129,37 +127,60 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 				const value = summary.slice(colonIdx + 2)
 				return (
 					<div className='flex flex-col'>
-						<TruncatedCell text={label} className='text-sm truncate w-full cursor-default' />
-						<TruncatedCell text={value} className='text-xs text-muted-foreground truncate w-full cursor-default' />
+						<TruncatedCell text={label} className='text-sm cursor-default' />
+						<TruncatedCell text={value} className='text-xs text-muted-foreground cursor-default' />
 					</div>
 				)
 			}
-			return <TruncatedCell text={summary} className='text-sm truncate block w-full cursor-default' />
+			return <TruncatedCell text={summary} className='text-sm cursor-default' />
 		}
 	})
 
-	if (!isMobile) {
-		baseColumns.push({
-			accessorKey: 'details',
-			header: 'Details',
-			cell: ({ row }) => {
-				const details = row.original.details
-				const type = row.original.record_type
+	baseColumns.push({
+		accessorKey: 'details',
+		header: 'Details',
+		cell: ({ row }) => {
+			const details = row.original.details
+			const type = row.original.record_type
 
-				if (!details || details === 'FLAGGED' || type !== 'task') {
-					return <span className='text-muted-foreground'>—</span>
-				}
-
-				return (
-					<TruncatedCell
-						text={details}
-						className='text-sm text-muted-foreground truncate block w-full cursor-default'
-						tooltipContent={<p className='text-sm whitespace-pre-wrap'>{details.replace(/\|/g, '\n')}</p>}
-					/>
-				)
+			if (!details || details === 'FLAGGED' || type !== 'task') {
+				return <span className='text-muted-foreground'>—</span>
 			}
-		})
-	}
+
+			return (
+				<TruncatedCell
+					text={details}
+					className='text-sm text-muted-foreground cursor-default whitespace-pre-wrap'
+					tooltipContent={<p className='text-sm whitespace-pre-wrap'>{details.replace(/\|/g, '\n')}</p>}
+				/>
+			)
+		}
+	})
+
+	baseColumns.push({
+		accessorKey: 'priority',
+		header: 'Priority',
+		cell: ({ row }) => {
+			const value = row.getValue('priority') as string | null
+			if (!value) return <span className='text-muted-foreground'>—</span>
+			const styles: Record<string, string> = {
+				high: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+				medium: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+				low: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+			}
+			return <Badge className={cn('font-medium capitalize', styles[value] ?? '')}>{value}</Badge>
+		}
+	})
+
+	baseColumns.push({
+		accessorKey: 'time_window',
+		header: 'Time Window',
+		cell: ({ row }) => {
+			const value = row.getValue('time_window') as string | null
+			if (!value) return <span className='text-muted-foreground'>—</span>
+			return <span className='text-sm'>{value}</span>
+		}
+	})
 
 	baseColumns.push({
 		accessorKey: 'user_name',
@@ -167,7 +188,7 @@ export function getTimelineColumns(isMobile: boolean): ColumnDef<EnclosureTimeli
 		cell: ({ row }) => {
 			const value = row.getValue('user_name') as string | null
 			if (!value) return <span className='text-sm'>—</span>
-			return <TruncatedCell text={value} className='text-sm truncate block w-full cursor-default' />
+			return <TruncatedCell text={value} className='text-sm cursor-default' />
 		}
 	})
 
