@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { DEFAULT_COLUMN_LABELS } from '@/context/task-config'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface ColumnsToggleProps {
 	defaultColumnIds: string[]
@@ -20,8 +21,19 @@ export function ColumnsToggle({
 	onExtraColumnsChange,
 	toggleableColumns
 }: ColumnsToggleProps) {
-	const trigger = (
-		<Button variant='outline' size='sm' className='gap-1.5 h-9'>
+	const isMobile = useIsMobile()
+	const trigger = isMobile ? (
+		<Button variant='outline' size='sm' className='h-8 gap-1.5'>
+			<Columns3 className='h-3.5 w-3.5' />
+			Columns
+			{extraColumnIds.length > 0 && (
+				<span className='ml-0.5 rounded-full bg-primary text-primary-foreground text-[10px] leading-none px-1.5 py-0.5'>
+					+{extraColumnIds.length}
+				</span>
+			)}
+		</Button>
+	) : (
+		<Button variant='outline' className='gap-2'>
 			<Columns3 className='h-4 w-4' />
 			Columns
 			{extraColumnIds.length > 0 && (

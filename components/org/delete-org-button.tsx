@@ -35,7 +35,7 @@ export function DeleteOrgButton() {
 			description='Are you sure you want to delete this organization? This action cannot be undone.'
 			trigger={
 				<Button variant='destructive'>
-					Delete Organization <TrashIcon className='w-4 h-4' />
+					<span className='hidden sm:inline'>Delete Organization</span> <TrashIcon className='w-4 h-4' />
 				</Button>
 			}
 			open={open}

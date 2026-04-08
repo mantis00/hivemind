@@ -373,27 +373,65 @@ export function useCreateEnclosure() {
 			orgId,
 			species_id,
 			location,
-			current_count
+			current_count,
+			institutional_specimen_id,
+			institutional_external_source,
+			source_enclosure_transfers
 		}: {
 			orgId: UUID
 			species_id: UUID
 			location: UUID
 			current_count: number
+			institutional_specimen_id?: string
+			institutional_external_source?: string
+			source_enclosure_transfers?: { id: UUID; count: number }[]
 		}) => {
 			const supabase = createClient()
-			// Insert the organization
-			const { error: enclosureError } = await supabase
+			const { data: enclosure, error: enclosureError } = await supabase
 				.from('enclosures')
 				.insert({
 					org_id: orgId,
 					species_id: species_id,
 					location: location,
-					current_count: current_count
+					current_count: current_count,
+					...(institutional_specimen_id ? { institutional_specimen_id } : {}),
+					...(institutional_external_source ? { institutional_external_source } : {})
 				})
 				.select()
 				.single()
 
 			if (enclosureError) throw enclosureError
+
+			if (source_enclosure_transfers && source_enclosure_transfers.length > 0) {
+				const { error: lineageError } = await supabase.from('enclosure_lineage').insert(
+					source_enclosure_transfers.map((t) => ({
+						enclosure_id: enclosure.id,
+						source_enclosure_id: t.id
+					}))
+				)
+				if (lineageError) throw lineageError
+
+				const sourceIds = source_enclosure_transfers.map((t) => t.id)
+				const { data: currentEnclosures, error: fetchError } = await supabase
+					.from('enclosures')
+					.select('id, current_count')
+					.in('id', sourceIds)
+				if (fetchError) throw fetchError
+
+				for (const transfer of source_enclosure_transfers) {
+					if (!transfer.count) continue
+					const current = currentEnclosures?.find((e) => e.id === transfer.id)
+					if (!current) continue
+					const newCount = Math.max(0, current.current_count - transfer.count)
+					const { error: updateError } = await supabase
+						.from('enclosures')
+						.update({ current_count: newCount })
+						.eq('id', transfer.id)
+					if (updateError) throw updateError
+				}
+			}
+
+			return enclosure
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
@@ -462,11 +500,13 @@ export function useCreateEnclosureNote() {
 		mutationFn: async ({
 			enclosureId,
 			userId,
-			noteText
+			noteText,
+			isFlagged
 		}: {
 			enclosureId: UUID
 			userId: string // from auth
 			noteText: string
+			isFlagged?: boolean
 		}) => {
 			const supabase = createClient()
 			if (noteText.trim() === '') {
@@ -478,7 +518,8 @@ export function useCreateEnclosureNote() {
 				.insert({
 					enclosure_id: enclosureId,
 					user_id: userId,
-					note_text: noteText.trim()
+					note_text: noteText.trim(),
+					is_flagged: isFlagged ?? false
 				})
 				.select()
 				.single()
@@ -498,30 +539,56 @@ export function useUpdateEnclosure() {
 	return useMutation({
 		mutationFn: async ({
 			enclosure_id,
-			species_id,
 			location_id,
 			count,
-			is_active
+			is_active,
+			institutional_specimen_id,
+			institutional_external_source,
+			source_enclosure_ids
 		}: {
 			orgId: UUID
 			enclosure_id: UUID
-			species_id: UUID
 			location_id: UUID
 			count: number
 			is_active: boolean
+			institutional_specimen_id?: string
+			institutional_external_source?: string
+			source_enclosure_ids?: UUID[]
 		}) => {
 			const supabase = createClient()
 
 			const { error } = await supabase
 				.from('enclosures')
-				.update({ species_id: species_id, location: location_id, current_count: count, is_active })
+				.update({
+					location: location_id,
+					current_count: count,
+					is_active,
+					institutional_specimen_id: institutional_specimen_id ?? '',
+					institutional_external_source: institutional_external_source ?? ''
+				})
 				.eq('id', enclosure_id)
 
 			if (error) throw error
+
+			const { error: deleteError } = await supabase.from('enclosure_lineage').delete().eq('enclosure_id', enclosure_id)
+			if (deleteError) throw deleteError
+
+			if (source_enclosure_ids && source_enclosure_ids.length > 0) {
+				const { error: lineageError } = await supabase.from('enclosure_lineage').insert(
+					source_enclosure_ids.map((sourceId) => ({
+						enclosure_id: enclosure_id,
+						source_enclosure_id: sourceId
+					}))
+				)
+				if (lineageError) throw lineageError
+			}
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['enclosureLineage', variables.enclosure_id] })
+			queryClient.invalidateQueries({ queryKey: ['orgEnclosureLineage', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['enclosureCountHistory', variables.enclosure_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure updated!')
 		}
@@ -1021,9 +1088,10 @@ export function useStartTask() {
 
 			if (error) throw error
 		},
-		onSuccess: () => {
+		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 		}
 	})
 }
@@ -1047,9 +1115,10 @@ export function useCompleteTask() {
 
 			if (error) throw error
 		},
-		onSuccess: () => {
+		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 		}
 	})
@@ -1275,6 +1344,59 @@ export function useResubmitTaskForm() {
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Submission updated!')
+		}
+	})
+}
+
+export function useBatchSubmitTaskForms() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			task_ids,
+			user_id,
+			answers
+		}: {
+			task_ids: UUID[]
+			user_id: UUID
+			answers: { question_id: UUID; answer: string }[]
+		}) => {
+			const supabase = createClient()
+			const completedTime = new Date().toISOString()
+
+			for (const task_id of task_ids) {
+				if (answers.length > 0) {
+					const { error: formError } = await supabase.from('task_form_data').insert(
+						answers.map((a) => ({
+							task_id,
+							question_id: a.question_id,
+							answer: a.answer
+						}))
+					)
+					if (formError) throw formError
+				}
+
+				const { error: taskError } = await supabase
+					.from('tasks')
+					.update({
+						status: 'completed',
+						completed_time: completedTime,
+						completed_by: user_id
+					})
+					.eq('id', task_id)
+
+				if (taskError) throw taskError
+			}
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			for (const task_id of variables.task_ids) {
+				queryClient.invalidateQueries({ queryKey: ['taskById', task_id] })
+				queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', task_id] })
+			}
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success(`${variables.task_ids.length} ${variables.task_ids.length === 1 ? 'task' : 'tasks'} completed!`)
 		}
 	})
 }
@@ -1686,6 +1808,9 @@ export function useToggleScheduleActive() {
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success(variables.is_active ? 'Schedule activated!' : 'Schedule paused!')
 		}
 	})
@@ -1753,6 +1878,9 @@ export function useDeleteSchedule() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Schedule deleted!')
 		}
 	})
@@ -1835,9 +1963,12 @@ export function useDeleteTask() {
 			const { error } = await supabase.from('tasks').delete().eq('id', taskId)
 			if (error) throw error
 		},
-		onSuccess: () => {
+		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById', variables.taskId] })
+			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.taskId] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Task deleted!')
 		}
 	})
@@ -1960,6 +2091,7 @@ export function useMarkEnclosuresPrinted() {
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
+			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			toast.success('Enclosures marked as printed.')
 		}
 	})

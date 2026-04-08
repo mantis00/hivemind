@@ -37,7 +37,7 @@ export function ChangeOrgNameButton() {
 			onOpenChange={handleOpenChange}
 			trigger={
 				<Button variant='outline' size='sm' className='shrink-0'>
-					Change Name <Edit className='w-4 h-4' />
+					<span className='hidden sm:inline'>Change Name</span> <Edit className='w-4 h-4' />
 				</Button>
 			}
 		>
