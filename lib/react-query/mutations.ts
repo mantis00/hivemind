@@ -2096,3 +2096,53 @@ export function useMarkEnclosuresPrinted() {
 		}
 	})
 }
+
+export function useCreateFeedback() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			type,
+			title,
+			description,
+			userId,
+			orgId
+		}: {
+			type: 'bug' | 'feedback'
+			title: string
+			description: string
+			userId: string
+			orgId: UUID
+		}) => {
+			const trimmedTitle = title.trim()
+			const trimmedDescription = description.trim()
+
+			if (!trimmedTitle || !trimmedDescription) {
+				throw new Error('Feedback title and description are required')
+			}
+
+			if (!userId || !orgId) {
+				throw new Error('Feedback requires a user and organization context')
+			}
+
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('feedback')
+				.insert({
+					org_id: orgId,
+					user_id: userId,
+					type,
+					title: trimmedTitle,
+					description: trimmedDescription
+				})
+				.select('feedback_id, created_at')
+				.single()
+
+			if (error) throw error
+			return data
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['feedback', variables.orgId] })
+		}
+	})
+}

@@ -27,7 +27,8 @@ import {
 	ClipboardList,
 	FolderHeart,
 	ArrowRightLeft,
-	Calendar
+	Calendar,
+	MessageSquare
 } from 'lucide-react'
 import {
 	DropdownMenu,
@@ -52,6 +53,7 @@ import { useOrgDetails } from '@/lib/react-query/queries'
 import { UUID } from 'crypto'
 import { useLogout } from '@/lib/react-query/auth'
 import { getOrgIdFromPathname } from '@/context/verify-org-path'
+import { FeedbackDialog } from '@/components/feedback/feedback-dialog'
 
 export function AppSidebar() {
 	const pathname = usePathname()
@@ -75,6 +77,7 @@ export function AppSidebar() {
 
 	const [orgMenuOpen, setOrgMenuOpen] = useState(true)
 	const [caretakingMenuOpen, setCaretakingMenuOpen] = useState(true)
+	const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false)
 
 	const handleOrgClick = () => {
 		if (state === 'collapsed') {
@@ -100,6 +103,7 @@ export function AppSidebar() {
 
 	return (
 		<Sidebar variant='floating' collapsible='icon'>
+			<FeedbackDialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen} />
 			<SidebarContent>
 				<SidebarGroup>
 					<SidebarMenuButton
@@ -236,6 +240,24 @@ export function AppSidebar() {
 			</SidebarContent>
 			<SidebarFooter>
 				<SidebarMenu className='gap-2'>
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							asChild
+							tooltip='Share Feedback / Report Bugs'
+							className='justify-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 bg-sidebar-accent hover:bg-sidebar-accent-hover active:bg-sidebar-accent-active text-sidebar-accent-foreground'
+						>
+							<button
+								type='button'
+								onClick={() => {
+									setFeedbackDialogOpen(true)
+									closeMobileOnNav()
+								}}
+							>
+								<MessageSquare className='size-4' />
+								<span className='group-data-[collapsible=icon]:hidden'>Share Feedback/Bugs</span>
+							</button>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							asChild
