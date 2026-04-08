@@ -20,6 +20,7 @@ import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virt
 import { cn } from '@/lib/utils'
 import { RECORD_TYPE_OPTIONS } from './history-constants'
 import { HistoryFilterButton } from './history-filter-button'
+import { GlobalSearchToggle } from '@/components/tasks/global-search-toggle'
 
 type HistoryFiltersProps = {
 	filters: TimelineFilters
@@ -28,6 +29,8 @@ type HistoryFiltersProps = {
 	onReset: () => void
 	onExport: () => void
 	data: EnclosureTimelineRow[]
+	globalSearch: boolean
+	onGlobalSearchChange: (val: boolean) => void
 }
 
 export function HistoryFilters({
@@ -36,7 +39,9 @@ export function HistoryFilters({
 	hasActiveFilters,
 	onReset,
 	onExport,
-	data
+	data,
+	globalSearch,
+	onGlobalSearchChange
 }: HistoryFiltersProps) {
 	const isMobile = useIsMobile()
 	const [searchValue, setSearchValue] = React.useState(filters.searchQuery)
@@ -138,7 +143,12 @@ export function HistoryFilters({
 					<div className='relative flex-1'>
 						<Search className='absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
 						<Input placeholder='Search...' value={searchValue} onChange={handleSearchChange} className='pl-8 h-9' />
-					</div>
+					</div>{' '}
+					<GlobalSearchToggle
+						globalSearch={globalSearch}
+						onGlobalSearchChange={onGlobalSearchChange}
+						dialogDescription='By default, only the last 14 days of history are fetched. Enabling this will load all records across all dates, which may take a moment with large datasets.'
+					/>{' '}
 					{/* Filter button */}
 					<HistoryFilterButton
 						filters={filters}
@@ -172,14 +182,21 @@ export function HistoryFilters({
 				</div>
 			) : (
 				<>
-					{/* Search */}
-					<div className='relative flex-1 min-w-40 max-w-72'>
-						<Search className='absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
-						<Input
-							placeholder='Search summary or details...'
-							value={searchValue}
-							onChange={handleSearchChange}
-							className='pl-8 w-full'
+					{/* Search + All dates toggle */}
+					<div className='flex items-center gap-2'>
+						<div className='relative flex-1 min-w-40 max-w-72'>
+							<Search className='absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+							<Input
+								placeholder='Search summary or details...'
+								value={searchValue}
+								onChange={handleSearchChange}
+								className='pl-8 w-full'
+							/>
+						</div>
+						<GlobalSearchToggle
+							globalSearch={globalSearch}
+							onGlobalSearchChange={onGlobalSearchChange}
+							dialogDescription='By default, only the last 14 days of history are fetched. Enabling this will load all records across all dates, which may take a moment with large datasets.'
 						/>
 					</div>
 

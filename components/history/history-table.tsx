@@ -1,8 +1,9 @@
 'use client'
 
-import { type TimelineFilters, useOrgTaskHistory } from '@/lib/react-query/queries'
+import { type TimelineFilters, useOrgTaskHistory, useOrgTaskHistoryInRange } from '@/lib/react-query/queries'
 import { UUID } from 'crypto'
 import * as React from 'react'
+import { format, subDays } from 'date-fns'
 import {
 	SortingState,
 	flexRender,
@@ -57,7 +58,23 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 	const TARGET_VISIBLE_ROWS = isMobile ? TARGET_VISIBLE_ROWS_MOBILE : TARGET_VISIBLE_ROWS_DESKTOP
 	const ESTIMATED_ROW_HEIGHT = isMobile ? ESTIMATED_ROW_HEIGHT_MOBILE : ESTIMATED_ROW_HEIGHT_DESKTOP
 
-	const { data = [], isLoading } = useOrgTaskHistory(orgId)
+	const [globalSearch, setGlobalSearch] = React.useState(false)
+
+	// Default window: past 14 days up to today
+	const defaultStartDate = React.useMemo(() => format(subDays(new Date(), 14), 'yyyy-MM-dd'), [])
+	const defaultEndDate = React.useMemo(() => format(new Date(), 'yyyy-MM-dd'), [])
+
+	// Ranged query (default) — disabled when globalSearch is on
+	const { data: rangeData = [], isLoading: rangeLoading } = useOrgTaskHistoryInRange(
+		!globalSearch ? orgId : undefined,
+		defaultStartDate,
+		defaultEndDate
+	)
+	// All-time query — only fires when user explicitly enables globalSearch
+	const { data: allData = [], isLoading: allLoading } = useOrgTaskHistory(globalSearch ? orgId : undefined)
+
+	const data = globalSearch ? allData : rangeData
+	const isLoading = globalSearch ? allLoading : rangeLoading
 
 	React.useEffect(() => {
 		setIsMounted(true)
@@ -150,6 +167,10 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 				onReset={handleReset}
 				onExport={handleExport}
 				data={data}
+				globalSearch={globalSearch}
+				onGlobalSearchChange={(val) => {
+					setGlobalSearch(val)
+				}}
 			/>
 
 			<div className='rounded-lg border border-border/50 bg-card overflow-x-auto'>
@@ -274,7 +295,10 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 				)}
 			</div>
 
-			<div className='text-sm text-muted-foreground'>{rows.length} history logs</div>
+			<div className='flex items-center justify-between text-sm text-muted-foreground'>
+				<span>{rows.length} history logs</span>
+				{!globalSearch && <span className='text-xs'>Showing last 14 days</span>}
+			</div>
 		</div>
 	)
 }

@@ -1470,14 +1470,55 @@ export function useOrgTaskHistory(orgId: UUID | undefined) {
 		queryKey: ['orgTaskHistory', orgId],
 		queryFn: async (): Promise<EnclosureTimelineRow[]> => {
 			const supabase = createClient()
-			const { data, error } = await supabase
-				.from('enclosure_timeline')
-				.select('*')
-				.eq('org_id', orgId as UUID)
-				.order('event_date', { ascending: false })
-			if (error) throw error
-			return (data ?? []) as EnclosureTimelineRow[]
+			const PAGE_SIZE = 1000
+			const all: EnclosureTimelineRow[] = []
+			let from = 0
+			while (true) {
+				const { data, error } = await supabase
+					.from('enclosure_timeline')
+					.select('*')
+					.eq('org_id', orgId as UUID)
+					.order('event_date', { ascending: false })
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				all.push(...((data ?? []) as EnclosureTimelineRow[]))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+			return all
 		},
 		enabled: !!orgId
+	})
+}
+
+export function useOrgTaskHistoryInRange(orgId: UUID | undefined, startDate: string, endDate: string) {
+	return useQuery({
+		queryKey: ['orgTaskHistoryInRange', orgId, startDate, endDate],
+		queryFn: async (): Promise<EnclosureTimelineRow[]> => {
+			const supabase = createClient()
+			const PAGE_SIZE = 1000
+			const all: EnclosureTimelineRow[] = []
+			let from = 0
+			// Exclusive upper bound so all timestamps on endDate are included
+			const d = new Date(endDate + 'T00:00:00Z')
+			d.setUTCDate(d.getUTCDate() + 1)
+			const endDateExclusive = d.toISOString().slice(0, 10)
+			while (true) {
+				const { data, error } = await supabase
+					.from('enclosure_timeline')
+					.select('*')
+					.eq('org_id', orgId as UUID)
+					.gte('event_date', startDate)
+					.lt('event_date', endDateExclusive)
+					.order('event_date', { ascending: false })
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				all.push(...((data ?? []) as EnclosureTimelineRow[]))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+			return all
+		},
+		enabled: !!orgId && !!startDate && !!endDate
 	})
 }
