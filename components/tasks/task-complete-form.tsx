@@ -242,11 +242,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 			<div className='space-y-1'>
 				<div className='flex items-start justify-between gap-2'>
 					<h1 className='text-2xl font-bold capitalize'>{taskName}</h1>
-					{isBatchMode ? (
-						<Badge variant='secondary' className='shrink-0 mt-1'>
-							{batchTaskIds!.length} tasks
-						</Badge>
-					) : !isCompleted ? (
+					{!isBatchMode && !isCompleted ? (
 						<DeleteTaskButton
 							taskId={taskId}
 							taskName={taskName}
@@ -369,7 +365,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 			{questions.length > 0 ? (
 				<div>
 					<Card className={cn(!isEditing && isCompleted && 'opacity-60')}>
-						<CardHeader className='pb-3'>
+						<CardHeader className='pb-2'>
 							<CardTitle className='text-base'>Data Entry Form</CardTitle>
 							<CardDescription>
 								{isCompleted && !isEditing
@@ -379,7 +375,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 						</CardHeader>
 						<Separator />
 						<CardContent
-							className={cn('pt-4 space-y-5', !isEditing && isCompleted && 'pointer-events-none select-none')}
+							className={cn('pt-3 space-y-5', !isEditing && isCompleted && 'pointer-events-none select-none')}
 						>
 							{questions.map((q) => (
 								<QuestionField
@@ -397,16 +393,16 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 					<div className='flex gap-3 mt-4'>
 						{isCompleted || batchCompleted ? (
 							isBatchMode ? (
-								<Button variant='outline' className='w-full' onClick={() => router.back()}>
+								<Button variant='outline' className='w-full h-10' onClick={() => router.back()}>
 									<ArrowLeftCircle className='h-4 w-4' />
 									Back
 								</Button>
 							) : isEditing ? (
 								<>
-									<Button variant='outline' className='flex-1' onClick={handleCancelEdit}>
+									<Button variant='outline' className='flex-1 h-10' onClick={handleCancelEdit}>
 										Cancel
 									</Button>
-									<Button className='flex-1' disabled={resubmitForm.isPending} onClick={handleResubmit}>
+									<Button className='flex-1 h-10' disabled={resubmitForm.isPending} onClick={handleResubmit}>
 										{resubmitForm.isPending ? (
 											<LoaderCircle className='h-4 w-4 animate-spin' />
 										) : (
@@ -419,11 +415,11 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 								</>
 							) : (
 								<>
-									<Button variant='outline' className='flex-1' onClick={() => router.back()}>
+									<Button variant='outline' className='flex-1 h-10' onClick={() => router.back()}>
 										<ArrowLeftCircle className='h-4 w-4' />
 										Back
 									</Button>
-									<Button variant='secondary' className='flex-1' onClick={() => setIsEditing(true)}>
+									<Button variant='secondary' className='flex-1 h-10' onClick={() => setIsEditing(true)}>
 										<Pencil className='h-4 w-4' />
 										Edit Submission
 									</Button>
@@ -431,7 +427,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 							)
 						) : (
 							<>
-								<Button variant='outline' className='flex-1' onClick={() => router.back()}>
+								<Button variant='outline' className='flex-1 h-10' onClick={() => router.back()}>
 									Cancel
 								</Button>
 								<TooltipProvider>
@@ -439,7 +435,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 										<TooltipTrigger asChild>
 											<span className='flex-1'>
 												<Button
-													className='w-full'
+													className='w-full h-10'
 													disabled={(isBatchMode ? batchSubmit.isPending : submitForm.isPending) || isEnclosureInactive}
 													onClick={handleSubmit}
 												>
@@ -474,7 +470,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 			) : (
 				// No questions, not completed — simple complete button
 				<div className='flex gap-3'>
-					<Button variant='outline' className='flex-1' onClick={() => router.back()}>
+					<Button variant='outline' className='flex-1 h-10' onClick={() => router.back()}>
 						Cancel
 					</Button>
 					<TooltipProvider>
@@ -482,7 +478,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 							<TooltipTrigger asChild>
 								<span className='flex-1'>
 									<Button
-										className='w-full'
+										className='w-full h-10'
 										disabled={(isBatchMode ? batchSubmit.isPending : submitForm.isPending) || isEnclosureInactive}
 										onClick={() => {
 											if (isBatchMode) {
