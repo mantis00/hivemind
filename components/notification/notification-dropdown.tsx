@@ -79,7 +79,7 @@ export function NotificationDropdown() {
 
 					<Separator />
 
-					<div className='flex-1 overflow-y-auto p-1'>
+					<div className='flex flex-col gap-1 flex-1 overflow-y-auto p-1'>
 						{unreadCount > 0 ? (
 							unreadNotifications.map((notification) => (
 								<NotificationRow
