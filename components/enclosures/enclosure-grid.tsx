@@ -15,7 +15,7 @@ import {
 	PlusIcon,
 	Search,
 	XIcon,
-	FileDown
+	Download
 } from 'lucide-react'
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -23,6 +23,7 @@ import Image from 'next/image'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
 import SpeciesRow from './species-row'
+import type { EnclosureExportData } from './species-row'
 import { CreateEnclosureButton } from './create-enclosure-button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Button } from '../ui/button'
@@ -42,19 +43,8 @@ import {
 } from '../ui/dropdown-menu'
 import { EditSpeciesOrgForm } from './edit-species-org'
 import { EnclosureCounts } from './enclosure-counts'
-import {
-	useBatchActivateEnclosures,
-	useBatchDeleteEnclosures,
-	useMarkEnclosuresPrinted
-} from '@/lib/react-query/mutations'
+import { useBatchActivateEnclosures, useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 import { toast } from 'sonner'
-
-type EnclosureExportData = {
-	enclosureName: string
-	commonName: string
-	scientificName: string
-	isActive: boolean
-}
 
 export default function EnclosureGrid() {
 	type EnclosureStatusFilter = 'active' | 'inactive' | 'all'
@@ -141,7 +131,6 @@ export default function EnclosureGrid() {
 	const [manageOpen, setManageOpen] = useState(false)
 	const [createOpen, setCreateOpen] = useState(false)
 	const batchDeleteMutation = useBatchDeleteEnclosures()
-	const markPrintedMutation = useMarkEnclosuresPrinted()
 	const { data: orgEnclosures } = useOrgEnclosures(orgId as UUID)
 	const batchActivateMutation = useBatchActivateEnclosures()
 	const isMobile = useIsMobile()
@@ -181,7 +170,8 @@ export default function EnclosureGrid() {
 						next.set(enc.id, {
 							enclosureName: enc.name,
 							commonName: species.custom_common_name,
-							scientificName: species.species?.scientific_name ?? '',
+							scientificName: species?.species.scientific_name ?? '',
+							populationCount: enc.current_count,
 							isActive: enc.is_active
 						})
 					} else {
@@ -194,6 +184,14 @@ export default function EnclosureGrid() {
 		[enclosureStatusFilter]
 	)
 
+	const getExportHeaders = () => {
+		return ['Enclosure Name', 'Common Name', 'Scientific Name', 'Population Count', 'URL']
+	}
+
+	const buildExportRow = (data: EnclosureExportData, url: string) => {
+		return [data.enclosureName, data.commonName, data.scientificName, String(data.populationCount ?? ''), url]
+	}
+
 	const toggleSelectMode = () => {
 		setSelectMode((prev) => !prev)
 		if (selectMode) {
@@ -202,8 +200,7 @@ export default function EnclosureGrid() {
 		}
 	}
 
-	const buildAndDownloadCsv = (rows: string[][], filename: string) => {
-		const headers = ['Enclosure Name', 'Common Name', 'Scientific Name', 'URL']
+	const buildAndDownloadCsv = (headers: string[], rows: string[][], filename: string) => {
 		const csvContent = [headers, ...rows]
 			.map((row) => row.map((cell) => `"${(cell ?? '').replace(/"/g, '""')}"`).join(','))
 			.join('\n')
@@ -232,33 +229,37 @@ export default function EnclosureGrid() {
 		}
 
 		const baseUrl = window.location.origin
+		const headers = getExportHeaders()
 		const rows = printableIds.map((id) => {
 			const d = selectedEnclosureData.get(id)
-			if (!d) return ['', '', '', '']
-			return [d.enclosureName, d.commonName, d.scientificName, `${baseUrl}/protected/orgs/${orgId}/enclosures/${id}`]
+			if (!d) return headers.map(() => '')
+			return buildExportRow(d, `${baseUrl}/protected/orgs/${orgId}/enclosures/${id}`)
 		})
-		buildAndDownloadCsv(rows, 'enclosures.csv')
-		markPrintedMutation.mutate({ enclosureIds: printableIds, orgId: orgId as UUID })
+		buildAndDownloadCsv(headers, rows, 'enclosures.csv')
 	}
 
-	const exportAllUnprinted = () => {
-		const unprinted = (orgEnclosures ?? []).filter((e) => e.is_active && !e.printed)
-		if (!unprinted.length) {
-			toast.info('All enclosures have already been printed.')
+	const exportAll = () => {
+		const active = (orgEnclosures ?? []).filter((e) => e.is_active)
+		if (!active.length) {
+			toast.info('No active enclosures to export.')
 			return
 		}
 		const baseUrl = window.location.origin
-		const rows = unprinted.map((enc) => {
+		const headers = getExportHeaders()
+		const rows = active.map((enc) => {
 			const sp = orgSpeciesById.get(enc.species_id)
-			return [
-				enc.name,
-				sp?.custom_common_name ?? '',
-				sp?.species?.scientific_name ?? '',
+			return buildExportRow(
+				{
+					enclosureName: enc.name,
+					commonName: sp?.custom_common_name ?? '',
+					scientificName: sp?.species.scientific_name ?? '',
+					populationCount: enc.current_count,
+					isActive: enc.is_active
+				},
 				`${baseUrl}/protected/orgs/${orgId}/enclosures/${enc.id}`
-			]
+			)
 		})
-		buildAndDownloadCsv(rows, 'unprinted-enclosures.csv')
-		markPrintedMutation.mutate({ enclosureIds: unprinted.map((e) => e.id), orgId: orgId as UUID })
+		buildAndDownloadCsv(headers, rows, 'enclosures.csv')
 	}
 
 	const handleFilterChange = (filter: EnclosureStatusFilter) => {
@@ -359,11 +360,11 @@ export default function EnclosureGrid() {
 									size='sm'
 									variant='outline'
 									className='gap-1.5 text-xs'
-									onClick={exportAllUnprinted}
-									disabled={markPrintedMutation.isPending || enclosureStatusFilter === 'inactive'}
+									onClick={exportAll}
+									disabled={enclosureStatusFilter === 'inactive'}
 								>
-									<FileDown className='h-3.5 w-3.5' />
-									Export All Unprinted
+									<Download className='h-3.5 w-3.5' />
+									Export All
 								</Button>
 							) : (
 								<>
@@ -373,10 +374,10 @@ export default function EnclosureGrid() {
 										variant='outline'
 										className='gap-1.5 text-xs'
 										onClick={exportToCsv}
-										disabled={markPrintedMutation.isPending || enclosureStatusFilter === 'inactive'}
+										disabled={enclosureStatusFilter === 'inactive'}
 									>
-										<FileDown className='h-3.5 w-3.5' />
-										Export Selected
+										<Download className='h-3.5 w-3.5' />
+										Export
 									</Button>
 									{enclosureStatusFilter === 'inactive' ? (
 										<Button
