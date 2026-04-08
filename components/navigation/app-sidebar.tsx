@@ -28,8 +28,7 @@ import {
 	FolderHeart,
 	ArrowRightLeft,
 	Calendar,
-	MessageSquare,
-	Send
+	MessageSquare
 } from 'lucide-react'
 import {
 	DropdownMenu,
