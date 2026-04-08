@@ -47,6 +47,42 @@ function TruncatedCell({
 	)
 }
 
+// Shows tooltip when text is clamped (multi-line truncation)
+function TruncatedMultilineCell({
+	text,
+	className,
+	tooltipContent
+}: {
+	text: string
+	className?: string
+	tooltipContent?: React.ReactNode
+}) {
+	const ref = React.useRef<HTMLParagraphElement>(null)
+	const [open, setOpen] = React.useState(false)
+
+	return (
+		<TooltipProvider>
+			<Tooltip
+				open={open}
+				onOpenChange={(isOpen) => {
+					if (!isOpen) {
+						setOpen(false)
+						return
+					}
+					if (ref.current && ref.current.scrollHeight > ref.current.clientHeight + 2) setOpen(true)
+				}}
+			>
+				<TooltipTrigger asChild>
+					<p ref={ref} className={className}>
+						{text}
+					</p>
+				</TooltipTrigger>
+				<TooltipContent className='max-w-xs'>{tooltipContent ?? <p className='text-sm'>{text}</p>}</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	)
+}
+
 export function getTimelineColumns(): ColumnDef<EnclosureTimelineRow>[] {
 	const baseColumns: ColumnDef<EnclosureTimelineRow>[] = [
 		{
@@ -143,15 +179,17 @@ export function getTimelineColumns(): ColumnDef<EnclosureTimelineRow>[] {
 			const details = row.original.details
 			const type = row.original.record_type
 
-			if (!details || details === 'FLAGGED' || type !== 'task') {
+			if (!details || details === 'FLAGGED') {
 				return <span className='text-muted-foreground'>—</span>
 			}
 
+			const tooltipText = type === 'task' ? details.replace(/\|/g, '\n') : details
+
 			return (
-				<TruncatedCell
+				<TruncatedMultilineCell
 					text={details}
-					className='text-sm text-muted-foreground cursor-default whitespace-pre-wrap'
-					tooltipContent={<p className='text-sm whitespace-pre-wrap'>{details.replace(/\|/g, '\n')}</p>}
+					className='text-sm text-muted-foreground cursor-default line-clamp-2'
+					tooltipContent={<p className='text-sm whitespace-pre-wrap'>{tooltipText}</p>}
 				/>
 			)
 		}

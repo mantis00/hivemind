@@ -1,6 +1,6 @@
 'use client'
 
-import { CalendarIcon, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
+import { CalendarIcon, CheckSquare, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
 import { UUID } from 'crypto'
 import type { DateRange } from 'react-day-picker'
 import { useState, type ReactNode } from 'react'
@@ -43,6 +43,11 @@ interface TasksFiltersProps {
 	includeEnclosureAndAssigneeSearch?: boolean
 	columnsToggle?: ReactNode
 	selectButton?: ReactNode
+	// Mobile-only select bar
+	selectMode?: boolean
+	selectedCount?: number
+	onCancelSelect?: () => void
+	onBatchComplete?: () => void
 }
 
 export function TasksFilters({
@@ -53,7 +58,11 @@ export function TasksFilters({
 	hasActiveFilters,
 	onReset,
 	columnsToggle,
-	selectButton
+	selectButton,
+	selectMode = false,
+	selectedCount = 0,
+	onCancelSelect,
+	onBatchComplete
 }: TasksFiltersProps) {
 	const isMobile = useIsMobile()
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
@@ -107,7 +116,7 @@ export function TasksFilters({
 						trigger={filterTrigger}
 					/>
 					{columnsToggle}
-					{selectButton}
+					{!selectMode && selectButton}
 					<Button
 						variant='ghost'
 						size='sm'
@@ -118,6 +127,22 @@ export function TasksFilters({
 						Reset
 					</Button>
 				</div>
+
+				{/* Row 3: Select mode actions (mobile only) */}
+				{selectMode && (
+					<div className='flex gap-2'>
+						<Button variant='outline' size='sm' className='h-8 gap-1.5 flex-1' onClick={onCancelSelect}>
+							<X className='h-3.5 w-3.5' />
+							Cancel
+						</Button>
+						{selectedCount > 0 && (
+							<Button size='sm' className='h-8 gap-1.5 flex-1' onClick={onBatchComplete}>
+								<CheckSquare className='h-3.5 w-3.5' />
+								Complete ({selectedCount})
+							</Button>
+						)}
+					</div>
+				)}
 
 				{/* Create Task for single-enclosure mode */}
 				{enclosureId && (

@@ -1,9 +1,9 @@
 import { type TimelineFilters, TimelineRecordType } from '@/lib/react-query/queries'
 
 export const MAX_TABLE_HEIGHT_DESKTOP = 680
-export const MAX_TABLE_HEIGHT_MOBILE = 560
+export const MAX_TABLE_HEIGHT_MOBILE = 640
 export const TARGET_VISIBLE_ROWS_DESKTOP = 10
-export const TARGET_VISIBLE_ROWS_MOBILE = 8
+export const TARGET_VISIBLE_ROWS_MOBILE = 9
 export const HEADER_HEIGHT = 49
 export const ESTIMATED_ROW_HEIGHT_DESKTOP = 57.8
 export const ESTIMATED_ROW_HEIGHT_MOBILE = 73

@@ -10,12 +10,6 @@ import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import {
-	DropdownMenu,
-	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
-	DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
 import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
 import { type TimelineFilters, TimelineRecordType, type EnclosureTimelineRow } from '@/lib/react-query/queries'
 import { RECORD_TYPE_OPTIONS } from './history-constants'
@@ -65,9 +59,9 @@ export function HistoryFilterButton({
 		return unique.sort().map((u) => ({ value: u, label: u }))
 	}, [data])
 
-	const taskTypeOptions = React.useMemo(() => {
+	const taskTypeOptions = React.useMemo<VirtualizedOption[]>(() => {
 		const unique = [...new Set(data.map((row) => row.template_type).filter(Boolean))] as string[]
-		return unique.sort()
+		return unique.sort().map((t) => ({ value: t, label: t }))
 	}, [data])
 
 	const handleRecordTypeToggle = (type: TimelineRecordType, checked: boolean) => {
@@ -159,7 +153,7 @@ export function HistoryFilterButton({
 						</Button>
 					</PopoverTrigger>
 					<PopoverContent className='w-64 p-0' align='start'>
-						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 							<VirtualizedCommand
 								height='240px'
 								options={speciesOptions}
@@ -188,7 +182,7 @@ export function HistoryFilterButton({
 						</Button>
 					</PopoverTrigger>
 					<PopoverContent className='w-64 p-0' align='start'>
-						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 							<VirtualizedCommand
 								height='240px'
 								options={enclosureOptions}
@@ -219,7 +213,7 @@ export function HistoryFilterButton({
 						</Button>
 					</PopoverTrigger>
 					<PopoverContent className='w-64 p-0' align='start'>
-						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 							<VirtualizedCommand
 								height='240px'
 								options={userOptions}
@@ -240,26 +234,28 @@ export function HistoryFilterButton({
 				<p className='text-sm font-medium text-muted-foreground'>
 					Task Type {filters.taskTypes.length > 0 && `(${filters.taskTypes.length})`}
 				</p>
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
+				<Popover>
+					<PopoverTrigger asChild>
 						<Button variant='outline' className='w-full gap-2 justify-between'>
 							{filters.taskTypes.length > 0 ? `${filters.taskTypes.length} selected` : 'Select task types'}
 							<ChevronDown className='h-4 w-4' />
 						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent className='w-64 max-h-[300px] overflow-y-auto'>
-						{taskTypeOptions.map((taskType) => (
-							<DropdownMenuCheckboxItem
-								key={taskType}
-								checked={filters.taskTypes.includes(taskType)}
-								onSelect={(e) => e.preventDefault()}
-								onCheckedChange={(checked) => handleMultiSelectToggle('taskTypes', taskType, checked)}
-							>
-								{taskType}
-							</DropdownMenuCheckboxItem>
-						))}
-					</DropdownMenuContent>
-				</DropdownMenu>
+					</PopoverTrigger>
+					<PopoverContent className='w-64 p-0' align='start'>
+						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+							<VirtualizedCommand
+								height='240px'
+								options={taskTypeOptions}
+								placeholder='Search task types...'
+								selectedOptions={filters.taskTypes}
+								emptyMessage='No task types found.'
+								onSelectOption={(value) =>
+									handleMultiSelectToggle('taskTypes', value, !filters.taskTypes.includes(value))
+								}
+							/>
+						</div>
+					</PopoverContent>
+				</Popover>
 			</div>
 
 			<Separator className='my-1' />

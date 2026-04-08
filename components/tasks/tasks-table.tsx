@@ -42,9 +42,9 @@ import { ColumnsToggle } from './columns-toggle'
 import { startNavProgress } from '@/components/navigation/nav-progress-bar'
 
 const MAX_TABLE_HEIGHT_DESKTOP = 680
-const MAX_TABLE_HEIGHT_MOBILE = 560
+const MAX_TABLE_HEIGHT_MOBILE = 640
 const TARGET_VISIBLE_ROWS_DESKTOP = 8
-const TARGET_VISIBLE_ROWS_MOBILE = 7
+const TARGET_VISIBLE_ROWS_MOBILE = 8
 
 export function TasksDataTable({
 	enclosureId,
@@ -495,6 +495,10 @@ export function TasksDataTable({
 				onReset={resetFilters}
 				includeSpeciesSearch={isOrgMode}
 				includeEnclosureAndAssigneeSearch={isOrgMode}
+				selectMode={selectMode}
+				selectedCount={selectedIds.size}
+				onCancelSelect={exitSelectMode}
+				onBatchComplete={handleBatchComplete}
 				columnsToggle={
 					<ColumnsToggle
 						defaultColumnIds={defaultColumnIds}
@@ -506,31 +510,25 @@ export function TasksDataTable({
 				selectButton={
 					selectMode ? (
 						<>
-							<Button
-								variant='outline'
-								{...(isMobile ? { size: 'sm' as const, className: 'h-8 gap-1.5' } : { className: 'gap-2' })}
-								onClick={exitSelectMode}
-							>
-								{isMobile ? <X className='h-3.5 w-3.5' /> : <X className='h-4 w-4' />}
-								{isMobile ? 'Cancel' : 'Cancel Selection'}
+							<Button className='gap-2' variant='outline' onClick={exitSelectMode}>
+								<X className='h-4 w-4' />
+								Cancel Selection
 							</Button>
 							{selectedIds.size > 0 && (
-								<Button
-									{...(isMobile ? { size: 'sm' as const, className: 'h-8 gap-1.5' } : { className: 'gap-2' })}
-									onClick={handleBatchComplete}
-								>
-									{isMobile ? <CheckSquare className='h-3.5 w-3.5' /> : <CheckSquare className='h-4 w-4' />}
-									{isMobile ? `Complete (${selectedIds.size})` : `Batch Complete (${selectedIds.size})`}
+								<Button className='gap-2' onClick={handleBatchComplete}>
+									<CheckSquare className='h-4 w-4' />
+									Batch Complete ({selectedIds.size})
 								</Button>
 							)}
 						</>
 					) : (
 						<Button
 							variant='outline'
-							{...(isMobile ? { size: 'sm' as const, className: 'h-8 gap-1.5' } : { className: 'gap-2' })}
+							className={isMobile ? 'h-8 gap-1.5 text-sm' : 'gap-2'}
+							size={isMobile ? 'sm' : 'default'}
 							onClick={() => setSelectMode(true)}
 						>
-							{isMobile ? <ListChecks className='h-3.5 w-3.5' /> : <ListChecks className='h-4 w-4' />}
+							<ListChecks className={isMobile ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
 							{isMobile ? 'Select' : 'Select Tasks'}
 						</Button>
 					)
