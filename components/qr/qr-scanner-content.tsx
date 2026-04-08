@@ -14,6 +14,7 @@ type ScanState = 'idle' | 'scanning' | 'detected' | 'unsupported' | 'error'
 type ScanValidationResult = { ok: true; orgId: string; href: string } | { ok: false; message: string }
 
 const HTML5_SCANNER_REGION_ID = 'qr-scanner-html5'
+const INVALID_ENCLOSURE_QR_MESSAGE = 'QR code is not a valid enclosure URL.'
 
 type QrScannerContentProps = {
 	onRequestClose?: () => void
@@ -29,12 +30,12 @@ function validateEnclosureQrValue(rawValue: string): ScanValidationResult {
 	try {
 		parsed = new URL(normalized, window.location.origin)
 	} catch {
-		return { ok: false, message: 'QR code is not a valid URL.' }
+		return { ok: false, message: INVALID_ENCLOSURE_QR_MESSAGE }
 	}
 
 	const match = parsed.pathname.match(/^\/protected\/orgs\/([^/]+)\/enclosures\/([^/]+)\/?$/)
 	if (!match) {
-		return { ok: false, message: 'QR code is not an enclosure page URL.' }
+		return { ok: false, message: INVALID_ENCLOSURE_QR_MESSAGE }
 	}
 
 	const [, scannedOrgId, enclosureId] = match
@@ -288,7 +289,7 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 				if (!accepted) {
 					await startHtml5Scanner()
 				}
-			} catch (error) {
+			} catch {
 				const fileType = (file.type ?? '').toLowerCase()
 				const likelyHeic = fileType.includes('heic') || fileType.includes('heif')
 				if (likelyHeic) {
@@ -296,7 +297,7 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 						'Unable to scan selected photo. iOS HEIC images can fail in-browser. Try a PNG/JPEG screenshot, or use live scan.'
 					)
 				} else {
-					setScanError(`Unable to scan selected photo (${getReadableError(error)}).`)
+					setScanError(INVALID_ENCLOSURE_QR_MESSAGE)
 				}
 				try {
 					await startHtml5Scanner()
