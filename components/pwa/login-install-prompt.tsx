@@ -45,15 +45,17 @@ export default function LoginInstallPrompt() {
 			open={showPrompt}
 			onOpenChange={handleDismiss}
 		>
-			<Button variant='outline' onClick={handleDismiss}>
-				Dismiss
-			</Button>
-			{!isIOS && (
-				<Button onClick={handleInstallClick}>
-					Install
-					<Download className='size-5' />
+			<div className='flex flex-col gap-2 p-1'>
+				<Button variant='outline' onClick={handleDismiss}>
+					Dismiss
 				</Button>
-			)}
+				{!isIOS && (
+					<Button onClick={handleInstallClick}>
+						Install
+						<Download className='size-5' />
+					</Button>
+				)}
+			</div>
 		</ResponsiveDialogDrawer>
 	)
 }

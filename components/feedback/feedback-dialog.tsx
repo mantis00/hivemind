@@ -144,7 +144,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
 				</div>
 			}
 		>
-			<div className='flex flex-col gap-5 py-2'>
+			<div className='flex flex-col gap-5 py-2 px-1'>
 				{/* Type Selection */}
 				<div className='flex flex-col gap-2.5'>
 					<Label className='text-sm font-medium'>Type</Label>

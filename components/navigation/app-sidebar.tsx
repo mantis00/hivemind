@@ -53,8 +53,9 @@ import { useOrgDetails } from '@/lib/react-query/queries'
 import { UUID } from 'crypto'
 import { useLogout } from '@/lib/react-query/auth'
 import { getOrgIdFromPathname } from '@/context/verify-org-path'
+import { FeedbackDialog } from '@/components/feedback/feedback-dialog'
 
-export function AppSidebar({ onFeedbackOpen }: { onFeedbackOpen?: () => void }) {
+export function AppSidebar() {
 	const pathname = usePathname()
 	const isMobile = useIsMobile()
 	const { state, toggleSidebar, setOpenMobile } = useSidebar()
@@ -76,6 +77,7 @@ export function AppSidebar({ onFeedbackOpen }: { onFeedbackOpen?: () => void }) 
 
 	const [orgMenuOpen, setOrgMenuOpen] = useState(true)
 	const [caretakingMenuOpen, setCaretakingMenuOpen] = useState(true)
+	const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false)
 
 	const handleOrgClick = () => {
 		if (state === 'collapsed') {
@@ -101,6 +103,7 @@ export function AppSidebar({ onFeedbackOpen }: { onFeedbackOpen?: () => void }) 
 
 	return (
 		<Sidebar variant='floating' collapsible='icon'>
+			<FeedbackDialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen} />
 			<SidebarContent>
 				<SidebarGroup>
 					<SidebarMenuButton
@@ -246,7 +249,7 @@ export function AppSidebar({ onFeedbackOpen }: { onFeedbackOpen?: () => void }) 
 							<button
 								type='button'
 								onClick={() => {
-									onFeedbackOpen?.()
+									setFeedbackDialogOpen(true)
 									closeMobileOnNav()
 								}}
 							>

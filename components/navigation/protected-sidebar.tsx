@@ -1,17 +1,14 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
 import { AppSidebar } from '@/components/navigation/app-sidebar'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useIsMounted } from '@/hooks/use-is-mounted'
 import { getOrgIdFromPathname } from '@/context/verify-org-path'
-import { FeedbackDialog } from '@/components/feedback/feedback-dialog'
 
 export function ProtectedSidebar() {
 	const pathname = usePathname()
 	const isMounted = useIsMounted()
-	const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false)
 
 	if (!isMounted) {
 		return null
@@ -23,8 +20,7 @@ export function ProtectedSidebar() {
 
 	return (
 		<>
-			<FeedbackDialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen} />
-			<AppSidebar onFeedbackOpen={() => setFeedbackDialogOpen(true)} />
+			<AppSidebar />
 			<div className='w-0 overflow-visible relative z-50'>
 				<SidebarTrigger className='sticky top-4 ml-1 mt-4 pointer-events-auto size-9 [&>svg]:size-5' />
 			</div>
