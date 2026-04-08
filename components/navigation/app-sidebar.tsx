@@ -250,7 +250,6 @@ export function AppSidebar() {
 								type='button'
 								onClick={() => {
 									setFeedbackDialogOpen(true)
-									closeMobileOnNav()
 								}}
 							>
 								<MessageSquare className='size-4' />
