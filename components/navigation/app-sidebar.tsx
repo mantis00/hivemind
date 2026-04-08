@@ -77,7 +77,6 @@ export function AppSidebar({ onFeedbackOpen }: { onFeedbackOpen?: () => void }) 
 
 	const [orgMenuOpen, setOrgMenuOpen] = useState(true)
 	const [caretakingMenuOpen, setCaretakingMenuOpen] = useState(true)
-	const [feedbackMenuOpen, setFeedbackMenuOpen] = useState(true)
 
 	const handleOrgClick = () => {
 		if (state === 'collapsed') {
@@ -93,14 +92,6 @@ export function AppSidebar({ onFeedbackOpen }: { onFeedbackOpen?: () => void }) 
 			return
 		}
 		setCaretakingMenuOpen((open) => !open)
-	}
-
-	const handleFeedbackClick = () => {
-		if (state === 'collapsed') {
-			toggleSidebar()
-			return
-		}
-		setFeedbackMenuOpen((open) => !open)
 	}
 
 	const logoutMutation = useLogout()
@@ -241,43 +232,30 @@ export function AppSidebar({ onFeedbackOpen }: { onFeedbackOpen?: () => void }) 
 									</SidebarMenuSub>
 								)}
 							</SidebarMenuItem>
-							<SidebarMenuItem>
-								<SidebarMenuButton
-									className='text-xl my-1 justify-between w-full'
-									tooltip='Feedback'
-									onClick={handleFeedbackClick}
-								>
-									<div className='flex items-center gap-2 text-lg font-bold'>
-										<Send className='size-4' />
-										<span>Feedback</span>
-									</div>
-									<ChevronDown className={cn('size-4 ml-2 transition-transform', feedbackMenuOpen && 'rotate-180')} />
-								</SidebarMenuButton>
-								{feedbackMenuOpen && (
-									<SidebarMenuSub>
-										<SidebarMenuSubItem>
-											<SidebarMenuSubButton asChild>
-												<button
-													type='button'
-													onClick={() => {
-														onFeedbackOpen?.()
-														closeMobileOnNav()
-													}}
-												>
-													<MessageSquare className='size-4' />
-													<span>Send Feedback</span>
-												</button>
-											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
-									</SidebarMenuSub>
-								)}
-							</SidebarMenuItem>
 						</SidebarMenu>
 					</SidebarGroupContent>
 				</SidebarGroup>
 			</SidebarContent>
 			<SidebarFooter>
 				<SidebarMenu className='gap-2'>
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							asChild
+							tooltip='Share Feedback / Report Bugs'
+							className='justify-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 bg-sidebar-accent hover:bg-sidebar-accent-hover active:bg-sidebar-accent-active text-sidebar-accent-foreground'
+						>
+							<button
+								type='button'
+								onClick={() => {
+									onFeedbackOpen?.()
+									closeMobileOnNav()
+								}}
+							>
+								<MessageSquare className='size-4' />
+								<span className='group-data-[collapsible=icon]:hidden'>Share Feedback/Bugs</span>
+							</button>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							asChild
