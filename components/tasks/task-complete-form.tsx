@@ -4,11 +4,11 @@ import * as React from 'react'
 import { useState, useEffect, useRef, startTransition } from 'react'
 import {
 	ArrowLeftCircle,
+	Box,
 	CheckCircle2Icon,
 	ChevronDown,
 	CircleUserRound,
 	LoaderCircle,
-	MapPinIcon,
 	Pencil
 } from 'lucide-react'
 import { UUID } from 'crypto'
@@ -257,23 +257,23 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 				{taskDesc && <p className='text-sm text-muted-foreground'>{taskDesc}</p>}
 
 				<div className='flex flex-wrap items-center gap-4 pt-1 text-sm text-muted-foreground'>
-					{isBatchMode ? (
-						<span className='flex items-center gap-1.5'>
-							<MapPinIcon className='h-3.5 w-3.5 shrink-0' />
-							{enclosureName}
-						</span>
-					) : (
-						<Button
-							type='button'
-							variant='ghost'
-							size='sm'
-							className='h-7 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground font-normal shrink-0 bg-muted hover:bg-muted/70'
-							onClick={() => setEnclosureDialogOpen(true)}
-						>
-							<MapPinIcon className='h-3.5 w-3.5 shrink-0' />
-							{enclosureName}
-						</Button>
-					)}
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type='button'
+									variant='ghost'
+									size='sm'
+									className='h-7 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground font-normal shrink-0 bg-muted hover:bg-muted/70'
+									onClick={() => setEnclosureDialogOpen(true)}
+								>
+									<Box className='h-3.5 w-3.5 shrink-0' />
+									{enclosureName}
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>View Enclosure</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 					{isEnclosureInactive ? (
 						<Badge variant='outline' className='font-semibold text-destructive'>
 							Inactive Enclosure
