@@ -1,6 +1,7 @@
 'use client'
 
-import { type TimelineFilters, useOrgTaskHistory, useOrgTaskHistoryInRange } from '@/lib/react-query/queries'
+import { useOrgTaskHistory, useOrgTaskHistoryInRange } from '@/lib/react-query/queries'
+import { type TimelineFilters } from '@/components/history/history-filters'
 import { UUID } from 'crypto'
 import * as React from 'react'
 import { format, subDays } from 'date-fns'
@@ -14,6 +15,7 @@ import {
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
 import { LoaderCircle } from 'lucide-react'
+import { GlobalSearchToggle } from '@/components/tasks/global-search-toggle'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { getTimelineColumns } from './history-columns'
 import { HistoryFilters } from './history-filters'
@@ -35,9 +37,27 @@ import {
 // Main Table Component
 // ============================================================================
 
-export function HistoryTable({ orgId }: { orgId: UUID }) {
+function HistoryTableInner({
+	orgId,
+	globalSearch,
+	onGlobalSearchChange,
+	initialDateFrom,
+	initialDateTo,
+	onDateRangeCommit
+}: {
+	orgId: UUID
+	globalSearch: boolean
+	onGlobalSearchChange: (val: boolean) => void
+	initialDateFrom: string | null
+	initialDateTo: string | null
+	onDateRangeCommit: (from: string | null, to: string | null) => void
+}) {
 	const isMobile = useIsMobile()
-	const [filters, setFilters] = React.useState<TimelineFilters>(DEFAULT_FILTERS)
+	const [filters, setFilters] = React.useState<TimelineFilters>({
+		...DEFAULT_FILTERS,
+		dateFrom: initialDateFrom,
+		dateTo: initialDateTo
+	})
 	const [sorting, setSorting] = React.useState<SortingState>([{ id: 'event_date', desc: true }])
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
 	const [isMounted, setIsMounted] = React.useState(false)
@@ -58,8 +78,6 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 	const TARGET_VISIBLE_ROWS = isMobile ? TARGET_VISIBLE_ROWS_MOBILE : TARGET_VISIBLE_ROWS_DESKTOP
 	const ESTIMATED_ROW_HEIGHT = isMobile ? ESTIMATED_ROW_HEIGHT_MOBILE : ESTIMATED_ROW_HEIGHT_DESKTOP
 
-	const [globalSearch, setGlobalSearch] = React.useState(false)
-
 	// Default window: past 14 days up to today
 	const defaultStartDate = React.useMemo(() => format(subDays(new Date(), 14), 'yyyy-MM-dd'), [])
 	const defaultEndDate = React.useMemo(() => format(new Date(), 'yyyy-MM-dd'), [])
@@ -67,8 +85,8 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 	// Ranged query (default) — disabled when globalSearch is on
 	const { data: rangeData = [], isLoading: rangeLoading } = useOrgTaskHistoryInRange(
 		!globalSearch ? orgId : undefined,
-		defaultStartDate,
-		defaultEndDate
+		filters.dateFrom ?? defaultStartDate,
+		filters.dateTo ?? defaultEndDate
 	)
 	// All-time query — only fires when user explicitly enables globalSearch
 	const { data: allData = [], isLoading: allLoading } = useOrgTaskHistory(globalSearch ? orgId : undefined)
@@ -79,6 +97,10 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 	React.useEffect(() => {
 		setIsMounted(true)
 	}, [])
+
+	React.useEffect(() => {
+		console.log('[useOrgTaskHistory] allData length:', allData.length, allData)
+	}, [allData])
 
 	const filteredData = React.useMemo(() => {
 		return data.filter((row) => {
@@ -122,7 +144,10 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 		)
 	}, [filters])
 
-	const handleReset = () => setFilters(DEFAULT_FILTERS)
+	const handleReset = () => {
+		setFilters(DEFAULT_FILTERS)
+		onDateRangeCommit(null, null)
+	}
 	const handleExport = () => exportToCsv(filteredData)
 
 	const columns = React.useMemo(() => getTimelineColumns(), [])
@@ -168,9 +193,8 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 				onExport={handleExport}
 				data={data}
 				globalSearch={globalSearch}
-				onGlobalSearchChange={(val) => {
-					setGlobalSearch(val)
-				}}
+				onGlobalSearchChange={onGlobalSearchChange}
+				onDateRangeCommit={onDateRangeCommit}
 			/>
 
 			<div className='rounded-lg border border-border/50 bg-card overflow-x-auto'>
@@ -180,7 +204,9 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 					</div>
 				) : rows.length === 0 ? (
 					<div className='flex items-center justify-center h-24 text-muted-foreground text-sm'>
-						{hasActiveFilters ? 'No records match your filters.' : 'No completed tasks found.'}
+						{hasActiveFilters
+							? 'No records match your filters.'
+							: 'No completed tasks or enclosure modifications found.'}
 					</div>
 				) : rows.length <= TARGET_VISIBLE_ROWS ? (
 					<table
@@ -297,8 +323,47 @@ export function HistoryTable({ orgId }: { orgId: UUID }) {
 
 			<div className='flex items-center justify-between text-sm text-muted-foreground'>
 				<span>{rows.length} history logs</span>
-				{!globalSearch && <span className='text-xs'>Showing last 14 days</span>}
+				{globalSearch ? (
+					<span className='text-xs'>Showing all time</span>
+				) : filters.dateFrom || filters.dateTo ? (
+					<span className='text-xs'>
+						{filters.dateFrom && filters.dateTo
+							? `Showing ${format(new Date(filters.dateFrom + 'T00:00:00'), 'MMM d, yyyy')} – ${format(new Date(filters.dateTo + 'T00:00:00'), 'MMM d, yyyy')}`
+							: filters.dateFrom
+								? `Showing from ${format(new Date(filters.dateFrom + 'T00:00:00'), 'MMM d, yyyy')}`
+								: `Showing until ${format(new Date(filters.dateTo! + 'T00:00:00'), 'MMM d, yyyy')}`}
+					</span>
+				) : (
+					<span className='text-xs'>Showing last 14 days</span>
+				)}
 			</div>
+		</div>
+	)
+}
+
+export function HistoryTable({ orgId }: { orgId: UUID }) {
+	const [globalSearch, setGlobalSearch] = React.useState(false)
+	const [committedDateFrom, setCommittedDateFrom] = React.useState<string | null>(null)
+	const [committedDateTo, setCommittedDateTo] = React.useState<string | null>(null)
+
+	const handleDateRangeCommit = (from: string | null, to: string | null) => {
+		setCommittedDateFrom(from)
+		setCommittedDateTo(to)
+	}
+
+	const innerKey = `${globalSearch}-${committedDateFrom ?? 'default'}-${committedDateTo ?? 'default'}`
+
+	return (
+		<div className='w-full'>
+			<HistoryTableInner
+				key={innerKey}
+				orgId={orgId}
+				globalSearch={globalSearch}
+				onGlobalSearchChange={setGlobalSearch}
+				initialDateFrom={committedDateFrom}
+				initialDateTo={committedDateTo}
+				onDateRangeCommit={handleDateRangeCommit}
+			/>
 		</div>
 	)
 }

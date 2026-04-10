@@ -14,7 +14,7 @@ import { CheckSquare, ListChecks, LoaderCircle, X } from 'lucide-react'
 import { UUID } from 'crypto'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
+import { format, subDays } from 'date-fns'
 
 import {
 	useTasksForEnclosures,
@@ -95,6 +95,14 @@ export function TasksDataTable({
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
 	const isRangeMode = !!(dateRange?.from && dateRange?.to)
 
+	// Date bounds for the default day-navigation view.
+	// dayOffset=0: look back 90 days to capture overdue tasks; other days: just that day.
+	const dayRangeStart = React.useMemo(
+		() => (dayOffset === 0 ? format(subDays(new Date(), 90), 'yyyy-MM-dd') : getDateStr(dayOffset)),
+		[dayOffset]
+	)
+	const dayRangeEnd = React.useMemo(() => getDateStr(dayOffset), [dayOffset])
+
 	const hasExtraColumns = extraColumns.length > 0
 
 	const defaultColumnIds = React.useMemo(() => {
@@ -163,7 +171,17 @@ export function TasksDataTable({
 		setExtraColumns([])
 	}
 
-	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(isRangeMode ? [] : enclosureIds)
+	// Default day view — bounded to current day (90-day lookback for today to capture overdue)
+	const { data: dayTasks, isFetching: dayFetching } = useTasksForEnclosuresInRange(
+		!globalSearch && !isRangeMode ? enclosureIds : [],
+		dayRangeStart,
+		dayRangeEnd
+	)
+	// All-dates view — only fires when globalSearch is enabled
+	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(
+		globalSearch && !isRangeMode ? enclosureIds : []
+	)
+	// Custom date range
 	const { data: rangeTasks, isFetching: rangeFetching } = useTasksForEnclosuresInRange(
 		isRangeMode ? enclosureIds : [],
 		dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
@@ -171,22 +189,23 @@ export function TasksDataTable({
 	)
 
 	const todayCounts = React.useMemo(() => {
-		if (isRangeMode) return null
-		const source = enclosureTasks ?? []
+		if (isRangeMode || globalSearch) return null
+		const source = dayTasks ?? []
 		const todayDate = getDateStr(0)
 		const dueToday = source.filter(
 			(t) => t.due_date && toLocalDate(t.due_date) === todayDate && t.status !== 'completed'
 		).length
 		const late = source.filter((t) => getEffectiveStatus(t) === 'late').length
 		return { dueToday, late }
-	}, [enclosureTasks, isRangeMode])
+	}, [dayTasks, isRangeMode, globalSearch])
 
-	const activeLoading = pendingGlobalSearch || (isRangeMode ? rangeFetching : tasksFetching)
+	const activeLoading =
+		pendingGlobalSearch || (isRangeMode ? rangeFetching : globalSearch ? tasksFetching : dayFetching)
 
 	const handleView = React.useCallback(
 		(taskId: UUID) => {
 			if (isOrgMode) {
-				const task = (enclosureTasks ?? rangeTasks ?? []).find((t) => t.id === taskId)
+				const task = (enclosureTasks ?? dayTasks ?? rangeTasks ?? []).find((t) => t.id === taskId)
 				if (!task) return
 				startNavProgress()
 				router.push(`/protected/orgs/${orgId}/enclosures/${task.enclosure_id}/${taskId}`)
@@ -195,7 +214,7 @@ export function TasksDataTable({
 				router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}/${taskId}`)
 			}
 		},
-		[router, orgId, enclosureId, isOrgMode, enclosureTasks, rangeTasks]
+		[router, orgId, enclosureId, isOrgMode, enclosureTasks, dayTasks, rangeTasks]
 	)
 
 	const handleViewEnclosure = React.useCallback(
@@ -210,12 +229,12 @@ export function TasksDataTable({
 		if (selectedIds.size === 0) return
 		// In org-mode, derive enclosureId from the first selected task
 		const firstTaskId = [...selectedIds][0]
-		const firstTask = (enclosureTasks ?? rangeTasks ?? []).find((t) => (t.id as string) === firstTaskId)
+		const firstTask = (enclosureTasks ?? dayTasks ?? rangeTasks ?? []).find((t) => (t.id as string) === firstTaskId)
 		const targetEnclosureId = isOrgMode ? (firstTask?.enclosure_id as UUID) : enclosureId
 		const taskParam = [...selectedIds].join(',')
 		startNavProgress()
 		router.push(`/protected/orgs/${orgId}/enclosures/${targetEnclosureId}/batch-complete?tasks=${taskParam}`)
-	}, [selectedIds, enclosureTasks, rangeTasks, isOrgMode, enclosureId, orgId, router])
+	}, [selectedIds, enclosureTasks, dayTasks, rangeTasks, isOrgMode, enclosureId, orgId, router])
 
 	const getTaskLockKey = React.useCallback((task: { template_id: string | null; enclosure_id: string }) => {
 		const templateId = task.template_id ?? '__adhoc__'
@@ -314,7 +333,7 @@ export function TasksDataTable({
 	const filteredData = React.useMemo(() => {
 		const targetDate = getDateStr(dayOffset)
 		const todayDate = getDateStr(0)
-		const source = isRangeMode ? (rangeTasks ?? []) : (enclosureTasks ?? [])
+		const source = isRangeMode ? (rangeTasks ?? []) : globalSearch ? (enclosureTasks ?? []) : (dayTasks ?? [])
 		const normalizedFilter = globalFilter.trim().toLowerCase()
 
 		const tasks = source.filter((task) => {
@@ -390,6 +409,7 @@ export function TasksDataTable({
 		return tasks
 	}, [
 		enclosureTasks,
+		dayTasks,
 		rangeTasks,
 		globalFilter,
 		priorityFilter,

@@ -1,4 +1,5 @@
-import { type TimelineFilters, TimelineRecordType } from '@/lib/react-query/queries'
+import { TimelineRecordType } from '@/lib/react-query/queries'
+import { type TimelineFilters } from '@/components/history/history-filters'
 
 export const MAX_TABLE_HEIGHT_DESKTOP = 680
 export const MAX_TABLE_HEIGHT_MOBILE = 640

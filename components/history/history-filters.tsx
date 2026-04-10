@@ -1,6 +1,6 @@
 'use client'
 
-import { type TimelineFilters, TimelineRecordType, type EnclosureTimelineRow } from '@/lib/react-query/queries'
+import { TimelineRecordType, type EnclosureTimelineRow } from '@/lib/react-query/queries'
 import * as React from 'react'
 import { ChevronDown, Download, Search, SlidersHorizontal, X, CalendarIcon } from 'lucide-react'
 import { format } from 'date-fns'
@@ -22,6 +22,17 @@ import { RECORD_TYPE_OPTIONS } from './history-constants'
 import { HistoryFilterButton } from './history-filter-button'
 import { GlobalSearchToggle } from '@/components/tasks/global-search-toggle'
 
+export type TimelineFilters = {
+	searchQuery: string
+	recordTypes: TimelineRecordType[]
+	species: string[]
+	enclosures: string[]
+	users: string[]
+	taskTypes: string[]
+	dateFrom: string | null
+	dateTo: string | null
+}
+
 type HistoryFiltersProps = {
 	filters: TimelineFilters
 	onFiltersChange: (filters: TimelineFilters) => void
@@ -31,6 +42,7 @@ type HistoryFiltersProps = {
 	data: EnclosureTimelineRow[]
 	globalSearch: boolean
 	onGlobalSearchChange: (val: boolean) => void
+	onDateRangeCommit: (from: string | null, to: string | null) => void
 }
 
 export function HistoryFilters({
@@ -41,14 +53,15 @@ export function HistoryFilters({
 	onExport,
 	data,
 	globalSearch,
-	onGlobalSearchChange
+	onGlobalSearchChange,
+	onDateRangeCommit
 }: HistoryFiltersProps) {
 	const isMobile = useIsMobile()
 	const [searchValue, setSearchValue] = React.useState(filters.searchQuery)
 
 	const dateRange: DateRange | undefined = React.useMemo(() => {
 		if (filters.dateFrom && filters.dateTo) {
-			return { from: new Date(filters.dateFrom), to: new Date(filters.dateTo) }
+			return { from: new Date(filters.dateFrom + 'T00:00:00'), to: new Date(filters.dateTo + 'T00:00:00') }
 		}
 		return undefined
 	}, [filters.dateFrom, filters.dateTo])
@@ -127,12 +140,19 @@ export function HistoryFilters({
 		}
 	}
 
+	const [datePickerOpen, setDatePickerOpen] = React.useState(false)
+
 	const handleDateRangeChange = (range: DateRange | undefined) => {
-		onFiltersChange({
-			...filters,
-			dateFrom: range?.from ? format(range.from, 'yyyy-MM-dd') : null,
-			dateTo: range?.to ? format(range.to, 'yyyy-MM-dd') : null
-		})
+		const from = range?.from ? format(range.from, 'yyyy-MM-dd') : null
+		const to = range?.to ? format(range.to, 'yyyy-MM-dd') : null
+		onFiltersChange({ ...filters, dateFrom: from, dateTo: to })
+		if (from && to) {
+			setDatePickerOpen(false)
+			onDateRangeCommit(from, to)
+		}
+		if (!range) {
+			onDateRangeCommit(null, null)
+		}
 	}
 
 	return (
@@ -227,13 +247,13 @@ export function HistoryFilters({
 						{/* Species */}
 						<Popover>
 							<PopoverTrigger asChild>
-								<Button variant='outline' className='gap-2'>
+								<Button variant='outline' className='gap-2' disabled={speciesVirtualOptions.length === 0}>
 									Species {filters.species.length > 0 && `(${filters.species.length})`}
 									<ChevronDown className='h-4 w-4' />
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent className='w-56 p-0' align='end'>
-								<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+								<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 									<VirtualizedCommand
 										height='240px'
 										options={speciesVirtualOptions}
@@ -251,13 +271,13 @@ export function HistoryFilters({
 						{/* Enclosures */}
 						<Popover>
 							<PopoverTrigger asChild>
-								<Button variant='outline' className='gap-2'>
+								<Button variant='outline' className='gap-2' disabled={enclosureVirtualOptions.length === 0}>
 									Enclosures {filters.enclosures.length > 0 && `(${filters.enclosures.length})`}
 									<ChevronDown className='h-4 w-4' />
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent className='w-56 p-0' align='end'>
-								<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+								<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 									<VirtualizedCommand
 										height='240px'
 										options={enclosureVirtualOptions}
@@ -275,13 +295,13 @@ export function HistoryFilters({
 						{/* Users */}
 						<Popover>
 							<PopoverTrigger asChild>
-								<Button variant='outline' className='gap-2'>
+								<Button variant='outline' className='gap-2' disabled={userVirtualOptions.length === 0}>
 									Users {filters.users.length > 0 && `(${filters.users.length})`}
 									<ChevronDown className='h-4 w-4' />
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent className='w-56 p-0' align='end'>
-								<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
+								<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 									<VirtualizedCommand
 										height='240px'
 										options={userVirtualOptions}
@@ -297,7 +317,7 @@ export function HistoryFilters({
 						{/* Task Type */}
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
-								<Button variant='outline' className='gap-2'>
+								<Button variant='outline' className='gap-2' disabled={taskTypeOptions.length === 0}>
 									Task Type {filters.taskTypes.length > 0 && `(${filters.taskTypes.length})`}
 									<ChevronDown className='h-4 w-4' />
 								</Button>
@@ -317,30 +337,34 @@ export function HistoryFilters({
 						</DropdownMenu>
 
 						{/* Date Range */}
-						<Popover>
+						<Popover
+							open={datePickerOpen}
+							onOpenChange={(open) => {
+								if (!open && dateRange?.from && !dateRange?.to) {
+									onFiltersChange({
+										...filters,
+										dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
+										dateTo: format(dateRange.from, 'yyyy-MM-dd')
+									})
+								}
+								setDatePickerOpen(open)
+							}}
+						>
 							<PopoverTrigger asChild>
-								<Button variant='outline' className='gap-2'>
+								<Button variant={dateRange?.from && dateRange?.to ? 'secondary' : 'outline'} className='gap-2'>
 									<CalendarIcon className='h-4 w-4' />
-									{dateRange?.from ? (
-										dateRange.to ? (
-											<>
-												{format(dateRange.from, 'LLL dd')} - {format(dateRange.to, 'LLL dd')}
-											</>
-										) : (
-											format(dateRange.from, 'LLL dd, y')
-										)
-									) : (
-										'Date Range'
-									)}
+									{dateRange?.from && dateRange?.to
+										? `${format(dateRange.from, 'LLL dd')} – ${format(dateRange.to, 'LLL dd')}`
+										: 'Date range'}
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent className='w-auto p-0' align='end'>
 								<Calendar
-									initialFocus
 									mode='range'
-									defaultMonth={dateRange?.from}
 									selected={dateRange}
-									onSelect={handleDateRangeChange}
+									onSelect={(range) => {
+										handleDateRangeChange(range)
+									}}
 									numberOfMonths={2}
 								/>
 							</PopoverContent>

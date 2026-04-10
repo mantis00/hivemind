@@ -11,7 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
-import { type TimelineFilters, TimelineRecordType, type EnclosureTimelineRow } from '@/lib/react-query/queries'
+import { TimelineRecordType, type EnclosureTimelineRow } from '@/lib/react-query/queries'
+import { type TimelineFilters } from '@/components/history/history-filters'
 import { RECORD_TYPE_OPTIONS } from './history-constants'
 
 interface HistoryFilterButtonProps {
@@ -35,7 +36,7 @@ export function HistoryFilterButton({
 
 	const dateRange: DateRange | undefined = React.useMemo(() => {
 		if (filters.dateFrom && filters.dateTo) {
-			return { from: new Date(filters.dateFrom), to: new Date(filters.dateTo) }
+			return { from: new Date(filters.dateFrom + 'T00:00:00'), to: new Date(filters.dateTo + 'T00:00:00') }
 		}
 		return undefined
 	}, [filters.dateFrom, filters.dateTo])
