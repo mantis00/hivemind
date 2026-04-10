@@ -15,7 +15,6 @@ import {
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
 import { LoaderCircle } from 'lucide-react'
-import { GlobalSearchToggle } from '@/components/tasks/global-search-toggle'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { getTimelineColumns } from './history-columns'
 import { HistoryFilters } from './history-filters'
