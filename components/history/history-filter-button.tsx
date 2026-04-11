@@ -15,6 +15,8 @@ import { TimelineRecordType, type EnclosureTimelineRow } from '@/lib/react-query
 import { type TimelineFilters } from '@/components/history/history-filters'
 import { RECORD_TYPE_OPTIONS } from './history-constants'
 
+type OpenFilter = 'species' | 'enclosures' | 'users' | 'taskTypes' | null
+
 interface HistoryFilterButtonProps {
 	filters: TimelineFilters
 	onFiltersChange: (filters: TimelineFilters) => void
@@ -32,7 +34,12 @@ export function HistoryFilterButton({
 	data,
 	trigger
 }: HistoryFilterButtonProps) {
+	const [openFilter, setOpenFilter] = React.useState<OpenFilter>(null)
 	const [datePickerOpen, setDatePickerOpen] = React.useState(false)
+
+	const toggleFilter = (filter: Exclude<OpenFilter, null>) => {
+		setOpenFilter((prev) => (prev === filter ? null : filter))
+	}
 
 	const dateRange: DateRange | undefined = React.useMemo(() => {
 		if (filters.dateFrom && filters.dateTo) {
@@ -146,14 +153,17 @@ export function HistoryFilterButton({
 				<p className='text-sm font-medium text-muted-foreground'>
 					Species {filters.species.length > 0 && `(${filters.species.length})`}
 				</p>
-				<Popover>
-					<PopoverTrigger asChild>
-						<Button variant='outline' className='w-full gap-2 justify-between'>
-							{filters.species.length > 0 ? `${filters.species.length} selected` : 'Select species'}
-							<ChevronDown className='h-4 w-4' />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className='w-64 p-0' align='start'>
+				<Button
+					type='button'
+					variant='outline'
+					className='w-full gap-2 justify-between'
+					onClick={() => toggleFilter('species')}
+				>
+					{filters.species.length > 0 ? `${filters.species.length} selected` : 'Select species'}
+					<ChevronDown className={`h-4 w-4 transition-transform ${openFilter === 'species' ? 'rotate-180' : ''}`} />
+				</Button>
+				{openFilter === 'species' && (
+					<div className='rounded-md border p-0 **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm'>
 						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 							<VirtualizedCommand
 								height='240px'
@@ -164,8 +174,8 @@ export function HistoryFilterButton({
 								onSelectOption={(value) => handleMultiSelectToggle('species', value, !filters.species.includes(value))}
 							/>
 						</div>
-					</PopoverContent>
-				</Popover>
+					</div>
+				)}
 			</div>
 
 			<Separator className='my-1' />
@@ -175,14 +185,17 @@ export function HistoryFilterButton({
 				<p className='text-sm font-medium text-muted-foreground'>
 					Enclosures {filters.enclosures.length > 0 && `(${filters.enclosures.length})`}
 				</p>
-				<Popover>
-					<PopoverTrigger asChild>
-						<Button variant='outline' className='w-full gap-2 justify-between'>
-							{filters.enclosures.length > 0 ? `${filters.enclosures.length} selected` : 'Select enclosures'}
-							<ChevronDown className='h-4 w-4' />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className='w-64 p-0' align='start'>
+				<Button
+					type='button'
+					variant='outline'
+					className='w-full gap-2 justify-between'
+					onClick={() => toggleFilter('enclosures')}
+				>
+					{filters.enclosures.length > 0 ? `${filters.enclosures.length} selected` : 'Select enclosures'}
+					<ChevronDown className={`h-4 w-4 transition-transform ${openFilter === 'enclosures' ? 'rotate-180' : ''}`} />
+				</Button>
+				{openFilter === 'enclosures' && (
+					<div className='rounded-md border p-0 **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm'>
 						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 							<VirtualizedCommand
 								height='240px'
@@ -195,8 +208,8 @@ export function HistoryFilterButton({
 								}
 							/>
 						</div>
-					</PopoverContent>
-				</Popover>
+					</div>
+				)}
 			</div>
 
 			<Separator className='my-1' />
@@ -206,14 +219,17 @@ export function HistoryFilterButton({
 				<p className='text-sm font-medium text-muted-foreground'>
 					Users {filters.users.length > 0 && `(${filters.users.length})`}
 				</p>
-				<Popover>
-					<PopoverTrigger asChild>
-						<Button variant='outline' className='w-full gap-2 justify-between'>
-							{filters.users.length > 0 ? `${filters.users.length} selected` : 'Select users'}
-							<ChevronDown className='h-4 w-4' />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className='w-64 p-0' align='start'>
+				<Button
+					type='button'
+					variant='outline'
+					className='w-full gap-2 justify-between'
+					onClick={() => toggleFilter('users')}
+				>
+					{filters.users.length > 0 ? `${filters.users.length} selected` : 'Select users'}
+					<ChevronDown className={`h-4 w-4 transition-transform ${openFilter === 'users' ? 'rotate-180' : ''}`} />
+				</Button>
+				{openFilter === 'users' && (
+					<div className='rounded-md border p-0 **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm'>
 						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 							<VirtualizedCommand
 								height='240px'
@@ -224,8 +240,8 @@ export function HistoryFilterButton({
 								onSelectOption={(value) => handleMultiSelectToggle('users', value, !filters.users.includes(value))}
 							/>
 						</div>
-					</PopoverContent>
-				</Popover>
+					</div>
+				)}
 			</div>
 
 			<Separator className='my-1' />
@@ -235,14 +251,17 @@ export function HistoryFilterButton({
 				<p className='text-sm font-medium text-muted-foreground'>
 					Task Type {filters.taskTypes.length > 0 && `(${filters.taskTypes.length})`}
 				</p>
-				<Popover>
-					<PopoverTrigger asChild>
-						<Button variant='outline' className='w-full gap-2 justify-between'>
-							{filters.taskTypes.length > 0 ? `${filters.taskTypes.length} selected` : 'Select task types'}
-							<ChevronDown className='h-4 w-4' />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className='w-64 p-0' align='start'>
+				<Button
+					type='button'
+					variant='outline'
+					className='w-full gap-2 justify-between'
+					onClick={() => toggleFilter('taskTypes')}
+				>
+					{filters.taskTypes.length > 0 ? `${filters.taskTypes.length} selected` : 'Select task types'}
+					<ChevronDown className={`h-4 w-4 transition-transform ${openFilter === 'taskTypes' ? 'rotate-180' : ''}`} />
+				</Button>
+				{openFilter === 'taskTypes' && (
+					<div className='rounded-md border p-0 **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm'>
 						<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
 							<VirtualizedCommand
 								height='240px'
@@ -255,8 +274,8 @@ export function HistoryFilterButton({
 								}
 							/>
 						</div>
-					</PopoverContent>
-				</Popover>
+					</div>
+				)}
 			</div>
 
 			<Separator className='my-1' />
