@@ -34,7 +34,6 @@ import {
 	ORG_OPTIONAL_COLUMNS,
 	DEFAULT_COLUMN_LABELS
 } from '@/context/task-config'
-import { Button } from '@/components/ui/button'
 import { getColumns } from './tasks-columns'
 import { DayNavigator } from './day-navigator'
 import { TasksFilters, type TaskFilters } from './tasks-filters'
