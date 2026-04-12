@@ -5,7 +5,6 @@ import type { Enclosure } from '@/lib/react-query/queries'
 import {
 	ArrowDownIcon,
 	ArrowUpIcon,
-	Download,
 	Edit,
 	ListChecks,
 	LoaderCircle,
@@ -15,7 +14,8 @@ import {
 	PowerOff,
 	PlusIcon,
 	Search,
-	XIcon
+	XIcon,
+	Download
 } from 'lucide-react'
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'

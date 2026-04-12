@@ -10,9 +10,15 @@ import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 interface GlobalSearchToggleProps {
 	globalSearch: boolean
 	onGlobalSearchChange: (value: boolean) => void
+	dialogDescription?: string
+	warningText?: string
 }
 
-export function GlobalSearchToggle({ globalSearch, onGlobalSearchChange }: GlobalSearchToggleProps) {
+export function GlobalSearchToggle({
+	globalSearch,
+	onGlobalSearchChange,
+	dialogDescription = 'This will fetch every task across all dates, which may take a moment with large datasets. Consider using the date range filter for faster results.'
+}: GlobalSearchToggleProps) {
 	const [confirmOpen, setConfirmOpen] = useState(false)
 
 	const handleToggle = (checked: boolean) => {
@@ -34,7 +40,7 @@ export function GlobalSearchToggle({ globalSearch, onGlobalSearchChange }: Globa
 
 			<ResponsiveDialogDrawer
 				title='Search all dates?'
-				description='This will fetch every task across all dates, which may take a moment with large datasets. Consider using the date range filter for faster results.'
+				description={dialogDescription}
 				trigger={null}
 				open={confirmOpen}
 				onOpenChange={(open) => {

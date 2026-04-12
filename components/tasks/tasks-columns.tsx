@@ -41,6 +41,7 @@ export function getColumns(
 			id: 'select',
 			header: () => null,
 			cell: ({ row }) => {
+				if (isMobile) return null
 				const task = row.original
 				const isSelected = selectedIds.has(task.id as string)
 				const isCompleted = task.status === 'completed'

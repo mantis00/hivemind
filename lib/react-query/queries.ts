@@ -353,6 +353,25 @@ export type Feedback = {
 	orgs?: { name?: string }
 }
 
+export type TimelineRecordType = 'task' | 'note' | 'count_change'
+
+export type EnclosureTimelineRow = {
+	id: string
+	event_date: string
+	record_type: TimelineRecordType
+	enclosure_id: string | null
+	enclosure_name: string | null
+	species_name: string | null
+	summary: string | null
+	details: string | null
+	user_name: string | null
+	template_type: string | null
+	priority: string | null
+	time_window: string | null
+	old_count: number | null
+	new_count: number | null
+}
+
 export function useEnclosureLineage(enclosureId: UUID) {
 	return useQuery({
 		queryKey: ['enclosureLineage', enclosureId],
@@ -941,20 +960,19 @@ export function useTasksForEnclosuresInRange(enclosureIds: UUID[], startDate: st
 				chunks.map(async (chunk) => {
 					const tasks: Task[] = []
 					let from = 0
+					// Convert local YYYY-MM-DD strings to UTC ISO bounds so the query
+					// respects the client's timezone. new Date(y, m-1, d) uses local midnight.
+					const [sy, sm, sd] = startDate.split('-').map(Number)
+					const startISO = new Date(sy, sm - 1, sd, 0, 0, 0, 0).toISOString()
+					const [ey, em, ed] = endDate.split('-').map(Number)
+					const endISO = new Date(ey, em - 1, ed, 23, 59, 59, 999).toISOString()
 					while (true) {
-						// Compute the exclusive upper bound (day after endDate) so that all
-						// timestamps on the end date are included regardless of time component.
-						const endDateExclusive = (() => {
-							const d = new Date(endDate + 'T00:00:00Z')
-							d.setUTCDate(d.getUTCDate() + 1)
-							return d.toISOString().slice(0, 10)
-						})()
 						const { data, error } = (await supabase
 							.from('tasks')
 							.select('*, task_templates(type, description)')
 							.in('enclosure_id', chunk)
-							.gte('due_date', startDate)
-							.lt('due_date', endDateExclusive)
+							.gte('due_date', startISO)
+							.lte('due_date', endISO)
 							.order('due_date', { ascending: true })
 							.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
 
@@ -1557,5 +1575,67 @@ export function useAllFeedback() {
 			if (error) throw error
 			return data || []
 		}
+	})
+}
+
+export function useOrgTaskHistory(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['orgTaskHistory', orgId],
+		queryFn: async (): Promise<EnclosureTimelineRow[]> => {
+			const supabase = createClient()
+			const PAGE_SIZE = 1000
+			const all: EnclosureTimelineRow[] = []
+			let from = 0
+			while (true) {
+				const { data, error } = await supabase
+					.from('enclosure_timeline')
+					.select('*')
+					.eq('org_id', orgId as UUID)
+					.order('event_date', { ascending: false })
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				all.push(...((data ?? []) as EnclosureTimelineRow[]))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+			return all
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useOrgTaskHistoryInRange(orgId: UUID | undefined, startDate: string, endDate: string) {
+	return useQuery({
+		queryKey: ['orgTaskHistoryInRange', orgId, startDate, endDate],
+		queryFn: async (): Promise<EnclosureTimelineRow[]> => {
+			const supabase = createClient()
+			const PAGE_SIZE = 1000
+
+			// Convert local YYYY-MM-DD strings to UTC ISO bounds so the query
+			// respects the client's timezone. new Date(y, m-1, d) uses local midnight.
+			const [sy, sm, sd] = startDate.split('-').map(Number)
+			const startISO = new Date(sy, sm - 1, sd, 0, 0, 0, 0).toISOString()
+			const [ey, em, ed] = endDate.split('-').map(Number)
+			const endISO = new Date(ey, em - 1, ed, 23, 59, 59, 999).toISOString()
+
+			const all: EnclosureTimelineRow[] = []
+			let from = 0
+			while (true) {
+				const { data, error } = await supabase
+					.from('enclosure_timeline')
+					.select('*')
+					.eq('org_id', orgId as UUID)
+					.gte('event_date', startISO)
+					.lte('event_date', endISO)
+					.order('event_date', { ascending: false })
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				all.push(...((data ?? []) as EnclosureTimelineRow[]))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+			return all
+		},
+		enabled: !!orgId && !!startDate && !!endDate
 	})
 }
