@@ -16,10 +16,11 @@ import { EnclosureDialog } from './enclosure-dialog'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import { UUID } from 'crypto'
 
-type EnclosureExportData = {
+export type EnclosureExportData = {
 	enclosureName: string
 	commonName: string
 	scientificName: string
+	populationCount: number
 	isActive: boolean
 }
 
@@ -159,6 +160,7 @@ export default function SpeciesRow({
 															enclosureName: enclosure.name,
 															commonName: species.custom_common_name,
 															scientificName: species.species?.scientific_name ?? '',
+															populationCount: enclosure.current_count,
 															isActive: enclosure.is_active
 														})
 													}

@@ -10,11 +10,11 @@ import {
 	useReactTable
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
-import { LoaderCircle } from 'lucide-react'
+import { CheckSquare, ListChecks, LoaderCircle, X } from 'lucide-react'
 import { UUID } from 'crypto'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
+import { format, subDays } from 'date-fns'
 
 import {
 	useTasksForEnclosures,
@@ -34,6 +34,7 @@ import {
 	ORG_OPTIONAL_COLUMNS,
 	DEFAULT_COLUMN_LABELS
 } from '@/context/task-config'
+import { Button } from '@/components/ui/button'
 import { getColumns } from './tasks-columns'
 import { DayNavigator } from './day-navigator'
 import { TasksFilters, type TaskFilters } from './tasks-filters'
@@ -41,9 +42,9 @@ import { ColumnsToggle } from './columns-toggle'
 import { startNavProgress } from '@/components/navigation/nav-progress-bar'
 
 const MAX_TABLE_HEIGHT_DESKTOP = 680
-const MAX_TABLE_HEIGHT_MOBILE = 560
+const MAX_TABLE_HEIGHT_MOBILE = 640
 const TARGET_VISIBLE_ROWS_DESKTOP = 8
-const TARGET_VISIBLE_ROWS_MOBILE = 7
+const TARGET_VISIBLE_ROWS_MOBILE = 8
 
 export function TasksDataTable({
 	enclosureId,
@@ -86,9 +87,21 @@ export function TasksDataTable({
 	const [measuredRowHeight, setMeasuredRowHeight] = React.useState<number | null>(null)
 	const [isMounted, setIsMounted] = React.useState(false)
 	const [extraColumns, setExtraColumns] = React.useState<string[]>([])
+	const [selectMode, setSelectMode] = React.useState(false)
+	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
+	// lockedKey = "templateId::speciesId" of the first selected task; null when nothing selected
+	const [lockedKey, setLockedKey] = React.useState<string | null>(null)
 
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
 	const isRangeMode = !!(dateRange?.from && dateRange?.to)
+
+	// Date bounds for the default day-navigation view.
+	// dayOffset=0: look back 90 days to capture overdue tasks; other days: just that day.
+	const dayRangeStart = React.useMemo(
+		() => (dayOffset === 0 ? format(subDays(new Date(), 90), 'yyyy-MM-dd') : getDateStr(dayOffset)),
+		[dayOffset]
+	)
+	const dayRangeEnd = React.useMemo(() => getDateStr(dayOffset), [dayOffset])
 
 	const hasExtraColumns = extraColumns.length > 0
 
@@ -158,7 +171,17 @@ export function TasksDataTable({
 		setExtraColumns([])
 	}
 
-	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(isRangeMode ? [] : enclosureIds)
+	// Default day view — bounded to current day (90-day lookback for today to capture overdue)
+	const { data: dayTasks, isFetching: dayFetching } = useTasksForEnclosuresInRange(
+		!globalSearch && !isRangeMode ? enclosureIds : [],
+		dayRangeStart,
+		dayRangeEnd
+	)
+	// All-dates view — only fires when globalSearch is enabled
+	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(
+		globalSearch && !isRangeMode ? enclosureIds : []
+	)
+	// Custom date range
 	const { data: rangeTasks, isFetching: rangeFetching } = useTasksForEnclosuresInRange(
 		isRangeMode ? enclosureIds : [],
 		dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
@@ -166,22 +189,23 @@ export function TasksDataTable({
 	)
 
 	const todayCounts = React.useMemo(() => {
-		if (isRangeMode) return null
-		const source = enclosureTasks ?? []
+		if (isRangeMode || globalSearch) return null
+		const source = dayTasks ?? []
 		const todayDate = getDateStr(0)
 		const dueToday = source.filter(
 			(t) => t.due_date && toLocalDate(t.due_date) === todayDate && t.status !== 'completed'
 		).length
 		const late = source.filter((t) => getEffectiveStatus(t) === 'late').length
 		return { dueToday, late }
-	}, [enclosureTasks, isRangeMode])
+	}, [dayTasks, isRangeMode, globalSearch])
 
-	const activeLoading = pendingGlobalSearch || (isRangeMode ? rangeFetching : tasksFetching)
+	const activeLoading =
+		pendingGlobalSearch || (isRangeMode ? rangeFetching : globalSearch ? tasksFetching : dayFetching)
 
 	const handleView = React.useCallback(
 		(taskId: UUID) => {
 			if (isOrgMode) {
-				const task = (enclosureTasks ?? rangeTasks ?? []).find((t) => t.id === taskId)
+				const task = (enclosureTasks ?? dayTasks ?? rangeTasks ?? []).find((t) => t.id === taskId)
 				if (!task) return
 				startNavProgress()
 				router.push(`/protected/orgs/${orgId}/enclosures/${task.enclosure_id}/${taskId}`)
@@ -190,7 +214,7 @@ export function TasksDataTable({
 				router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}/${taskId}`)
 			}
 		},
-		[router, orgId, enclosureId, isOrgMode, enclosureTasks, rangeTasks]
+		[router, orgId, enclosureId, isOrgMode, enclosureTasks, dayTasks, rangeTasks]
 	)
 
 	const handleViewEnclosure = React.useCallback(
@@ -199,6 +223,39 @@ export function TasksDataTable({
 			router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}`)
 		},
 		[router, orgId]
+	)
+
+	const handleBatchComplete = React.useCallback(() => {
+		if (selectedIds.size === 0) return
+		// In org-mode, derive enclosureId from the first selected task
+		const firstTaskId = [...selectedIds][0]
+		const firstTask = (enclosureTasks ?? dayTasks ?? rangeTasks ?? []).find((t) => (t.id as string) === firstTaskId)
+		const targetEnclosureId = isOrgMode ? (firstTask?.enclosure_id as UUID) : enclosureId
+		const taskParam = [...selectedIds].join(',')
+		startNavProgress()
+		router.push(`/protected/orgs/${orgId}/enclosures/${targetEnclosureId}/batch-complete?tasks=${taskParam}`)
+	}, [selectedIds, enclosureTasks, dayTasks, rangeTasks, isOrgMode, enclosureId, orgId, router])
+
+	const getTaskLockKey = React.useCallback((task: { template_id: string | null; enclosure_id: string }) => {
+		const templateId = task.template_id ?? '__adhoc__'
+		return `${templateId}::${task.enclosure_id}`
+	}, [])
+
+	const handleToggleSelect = React.useCallback(
+		(taskId: string, task: { template_id: string | null; enclosure_id: string }) => {
+			setSelectedIds((prev) => {
+				const next = new Set(prev)
+				if (next.has(taskId)) {
+					next.delete(taskId)
+					if (next.size === 0) setLockedKey(null)
+				} else {
+					next.add(taskId)
+					if (prev.size === 0) setLockedKey(getTaskLockKey(task))
+				}
+				return next
+			})
+		},
+		[getTaskLockKey]
 	)
 
 	const columns = React.useMemo(
@@ -215,10 +272,35 @@ export function TasksDataTable({
 				allOrgEnclosures,
 				isOrgMode ? (fetchedOrgSpecies ?? undefined) : undefined,
 				isOrgMode ? handleViewEnclosure : undefined,
-				extraColumns
+				extraColumns,
+				selectMode,
+				selectedIds,
+				handleToggleSelect,
+				lockedKey,
+				getTaskLockKey
 			),
-		[isMobile, handleView, members, isOrgMode, allOrgEnclosures, fetchedOrgSpecies, handleViewEnclosure, extraColumns]
+		[
+			isMobile,
+			handleView,
+			members,
+			isOrgMode,
+			allOrgEnclosures,
+			fetchedOrgSpecies,
+			handleViewEnclosure,
+			extraColumns,
+			selectMode,
+			selectedIds,
+			handleToggleSelect,
+			lockedKey,
+			getTaskLockKey
+		]
 	)
+
+	const exitSelectMode = React.useCallback(() => {
+		setSelectMode(false)
+		setSelectedIds(new Set())
+		setLockedKey(null)
+	}, [])
 
 	const enclosureNameById = React.useMemo(
 		() => new Map(allOrgEnclosures.map((enclosure) => [enclosure.id as string, enclosure.name ?? ''])),
@@ -251,7 +333,7 @@ export function TasksDataTable({
 	const filteredData = React.useMemo(() => {
 		const targetDate = getDateStr(dayOffset)
 		const todayDate = getDateStr(0)
-		const source = isRangeMode ? (rangeTasks ?? []) : (enclosureTasks ?? [])
+		const source = isRangeMode ? (rangeTasks ?? []) : globalSearch ? (enclosureTasks ?? []) : (dayTasks ?? [])
 		const normalizedFilter = globalFilter.trim().toLowerCase()
 
 		const tasks = source.filter((task) => {
@@ -266,8 +348,9 @@ export function TasksDataTable({
 					? (speciesNameByEnclosureId.get(task.enclosure_id as string)?.toLowerCase() ?? '')
 					: ''
 				const enclosureName = isOrgMode ? (enclosureNameById.get(task.enclosure_id as string)?.toLowerCase() ?? '') : ''
-				const assigneeName =
-					isOrgMode && task.assigned_to ? (memberNameById.get(task.assigned_to as string)?.toLowerCase() ?? '') : ''
+				const assigneeName = task.assigned_to
+					? (memberNameById.get(task.assigned_to as string)?.toLowerCase() ?? '')
+					: ''
 				if (
 					!taskName.includes(normalizedFilter) &&
 					!speciesName.includes(normalizedFilter) &&
@@ -326,6 +409,7 @@ export function TasksDataTable({
 		return tasks
 	}, [
 		enclosureTasks,
+		dayTasks,
 		rangeTasks,
 		globalFilter,
 		priorityFilter,
@@ -353,9 +437,7 @@ export function TasksDataTable({
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
-		globalFilterFn: 'includesString',
-		state: { sorting: validSorting, globalFilter },
-		onGlobalFilterChange: (value) => setFilters((prev) => ({ ...prev, globalFilter: value as string }))
+		state: { sorting: validSorting }
 	})
 
 	const { rows } = table.getRowModel()
@@ -433,6 +515,10 @@ export function TasksDataTable({
 				onReset={resetFilters}
 				includeSpeciesSearch={isOrgMode}
 				includeEnclosureAndAssigneeSearch={isOrgMode}
+				selectMode={selectMode}
+				selectedCount={selectedIds.size}
+				onCancelSelect={exitSelectMode}
+				onBatchComplete={handleBatchComplete}
 				columnsToggle={
 					<ColumnsToggle
 						defaultColumnIds={defaultColumnIds}
@@ -440,6 +526,32 @@ export function TasksDataTable({
 						onExtraColumnsChange={setExtraColumns}
 						toggleableColumns={toggleableColumns}
 					/>
+				}
+				selectButton={
+					selectMode ? (
+						<>
+							<Button className='gap-2' variant='outline' onClick={exitSelectMode}>
+								<X className='h-4 w-4' />
+								Cancel Selection
+							</Button>
+							{selectedIds.size > 0 && (
+								<Button className='gap-2' onClick={handleBatchComplete}>
+									<CheckSquare className='h-4 w-4' />
+									Batch Complete ({selectedIds.size})
+								</Button>
+							)}
+						</>
+					) : (
+						<Button
+							variant='outline'
+							className={isMobile ? 'h-8 gap-1.5 text-sm' : 'gap-2'}
+							size={isMobile ? 'sm' : 'default'}
+							onClick={() => setSelectMode(true)}
+						>
+							<ListChecks className={isMobile ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+							{isMobile ? 'Select' : 'Select Tasks'}
+						</Button>
+					)
 				}
 			/>
 
@@ -478,7 +590,7 @@ export function TasksDataTable({
 										<th
 											key={header.id}
 											style={getColWidthStyle(header.id)}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>
@@ -487,24 +599,50 @@ export function TasksDataTable({
 							))}
 						</thead>
 						<tbody className='[&_tr:last-child]:border-0'>
-							{rows.map((row, index) => (
-								<tr
-									key={row.id}
-									ref={index === 0 ? rowRef : undefined}
-									className={`group border-b transition-colors hover:bg-orange-300/20 dark:hover:bg-orange-400/30 cursor-pointer active:bg-orange-100 dark:active:bg-orange-950/30 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/70'}`}
-									onClick={() => handleView(row.original.id as UUID)}
-								>
-									{row.getVisibleCells().map((cell) => (
-										<td
-											key={cell.id}
-											style={getColWidthStyle(cell.column.id)}
-											className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
-										>
-											{flexRender(cell.column.columnDef.cell, cell.getContext())}
-										</td>
-									))}
-								</tr>
-							))}
+							{rows.map((row, index) => {
+								const task = row.original
+								const isGrayed =
+									selectMode &&
+									lockedKey !== null &&
+									getTaskLockKey(task as { template_id: string | null; enclosure_id: string }) !== lockedKey
+								const isSelected = selectMode && selectedIds.has(task.id as string)
+								const isCompleted = task.status === 'completed'
+								const isDisabled = isGrayed || (selectMode && isCompleted)
+								return (
+									<tr
+										key={row.id}
+										ref={index === 0 ? rowRef : undefined}
+										className={`group border-b transition-colors ${
+											isDisabled
+												? 'opacity-40 pointer-events-none'
+												: isSelected
+													? 'bg-orange-200/60 dark:bg-orange-500/20 cursor-pointer'
+													: 'hover:bg-orange-300/20 dark:hover:bg-orange-400/30 cursor-pointer active:bg-orange-100 dark:active:bg-orange-950/30'
+										} ${!isSelected && !isDisabled ? (index % 2 === 0 ? 'bg-background' : 'bg-muted/70') : ''}`}
+										onClick={() => {
+											if (selectMode) {
+												if (!isGrayed && !isCompleted)
+													handleToggleSelect(
+														task.id as string,
+														task as { template_id: string | null; enclosure_id: string }
+													)
+												return
+											}
+											handleView(task.id as UUID)
+										}}
+									>
+										{row.getVisibleCells().map((cell) => (
+											<td
+												key={cell.id}
+												style={getColWidthStyle(cell.column.id)}
+												className={`${isMobile ? 'py-6 px-2' : 'py-3 px-4'} align-middle [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
+											>
+												{flexRender(cell.column.columnDef.cell, cell.getContext())}
+											</td>
+										))}
+									</tr>
+								)
+							})}
 						</tbody>
 					</table>
 				) : (
@@ -532,14 +670,38 @@ export function TasksDataTable({
 							TableRow: ({ style, ...props }) => {
 								const index = props['data-index'] as number
 								const row = rows[index]
+								const task = row.original
 								const isEven = index % 2 === 0
+								const isGrayed =
+									selectMode &&
+									lockedKey !== null &&
+									getTaskLockKey(task as { template_id: string | null; enclosure_id: string }) !== lockedKey
+								const isSelected = selectMode && selectedIds.has(task.id as string)
+								const isCompleted = task.status === 'completed'
+								const isDisabled = isGrayed || (selectMode && isCompleted)
 								return (
 									<tr
 										{...props}
 										ref={index === 0 ? rowRef : undefined}
 										style={style}
-										className={`group border-b transition-colors hover:bg-orange-300/20 dark:hover:bg-orange-400/30 cursor-pointer active:bg-orange-100 dark:active:bg-orange-950/30 ${isEven ? 'bg-background' : 'bg-muted/70'}`}
-										onClick={() => handleView(row.original.id as UUID)}
+										className={`group border-b transition-colors ${
+											isDisabled
+												? 'opacity-40 pointer-events-none'
+												: isSelected
+													? 'bg-orange-200/60 dark:bg-orange-500/20 cursor-pointer'
+													: 'hover:bg-orange-300/20 dark:hover:bg-orange-400/30 cursor-pointer active:bg-orange-100 dark:active:bg-orange-950/30'
+										} ${!isSelected && !isDisabled ? (isEven ? 'bg-background' : 'bg-muted/70') : ''}`}
+										onClick={() => {
+											if (selectMode) {
+												if (!isDisabled)
+													handleToggleSelect(
+														task.id as string,
+														task as { template_id: string | null; enclosure_id: string }
+													)
+												return
+											}
+											handleView(task.id as UUID)
+										}}
 									>
 										{row.getVisibleCells().map((cell) => (
 											<td
@@ -564,7 +726,7 @@ export function TasksDataTable({
 										<th
 											key={header.id}
 											style={getColWidthStyle(header.id)}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>

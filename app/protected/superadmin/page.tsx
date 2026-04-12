@@ -2,6 +2,7 @@ import { AllMembersTable } from '@/components/superadmin/all-members-table'
 import { ViewPendingRequests } from '@/components/superadmin/view-pending-org-requests'
 import { SpeciesAdminTable } from '@/components/superadmin/species-admin-table'
 import { ViewPendingSpeciesRequests } from '@/components/superadmin/view-pending-species-requests'
+import { FeedbackAdminTable } from '@/components/superadmin/feedback-admin-table'
 import { BackToOrgs } from '@/components/navigation/back-to-orgs'
 
 export default async function Page() {
@@ -28,6 +29,10 @@ export default async function Page() {
 					<section className='space-y-3'>
 						<h2 className='text-lg font-semibold'>Species Management</h2>
 						<SpeciesAdminTable />
+					</section>
+					<section className='space-y-3'>
+						<h2 className='text-lg font-semibold'>User Feedback</h2>
+						<FeedbackAdminTable />
 					</section>
 				</div>
 			</div>

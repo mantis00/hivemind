@@ -4,11 +4,11 @@ import * as React from 'react'
 import { useState, useEffect, useRef, startTransition } from 'react'
 import {
 	ArrowLeftCircle,
+	Box,
 	CheckCircle2Icon,
 	ChevronDown,
 	CircleUserRound,
 	LoaderCircle,
-	MapPinIcon,
 	Pencil
 } from 'lucide-react'
 import { UUID } from 'crypto'
@@ -36,13 +36,15 @@ import {
 	useEnclosureById,
 	useOrgMemberProfiles,
 	useTaskFormAnswers,
+	useOrgSpecies,
 	type QuestionTemplate
 } from '@/lib/react-query/queries'
 import { decodeChoices } from '@/components/superadmin/template-fields'
-import { useSubmitTaskForm, useResubmitTaskForm } from '@/lib/react-query/mutations'
+import { useSubmitTaskForm, useResubmitTaskForm, useBatchSubmitTaskForms } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { ReassignMemberButton } from '@/components/tasks/reassign-member-button'
 import { DeleteTaskButton } from '@/components/tasks/delete-task-button'
+import { EnclosureDialog } from '@/components/enclosures/enclosure-dialog'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -52,25 +54,32 @@ interface TaskCompleteFormProps {
 	taskId: UUID
 	orgId: UUID
 	enclosureId: UUID
+	batchTaskIds?: UUID[]
 }
 
-export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFormProps) {
+export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: TaskCompleteFormProps) {
+	const isBatchMode = !!batchTaskIds && batchTaskIds.length > 0
 	const { data: task, isLoading: taskLoading } = useTaskById(taskId)
 	const { data: enclosure } = useEnclosureById(enclosureId, orgId)
 	const { data: members = [] } = useOrgMemberProfiles(orgId)
+	const { data: orgSpecies = [] } = useOrgSpecies(orgId)
+	const enclosureSpecies = (orgSpecies ?? []).find((s) => (s.id as string) === (enclosure?.species_id as string))
 	const templateId = task?.template_id as UUID | undefined
 	const { data: template, isLoading: templateLoading } = useTaskTemplateById(templateId as UUID)
 
 	const submitForm = useSubmitTaskForm()
 	const resubmitForm = useResubmitTaskForm()
+	const batchSubmit = useBatchSubmitTaskForms()
 	const { data: currentUser } = useCurrentClientUser()
 	const router = useRouter()
 
-	const { data: existingAnswers } = useTaskFormAnswers(taskId)
+	const { data: existingAnswers } = useTaskFormAnswers(isBatchMode ? undefined! : taskId)
 
 	// answers keyed by question_id
 	const [answers, setAnswers] = useState<Record<string, string>>({})
 	const [isEditing, setIsEditing] = useState(false)
+	const [enclosureDialogOpen, setEnclosureDialogOpen] = useState(false)
+	const [batchCompleted, setBatchCompleted] = useState(false)
 	const prevExistingAnswersRef = useRef<typeof existingAnswers>(undefined)
 
 	// Sync answers from DB when loaded/refetched (skip while actively editing)
@@ -145,14 +154,22 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 			answer: answers[q.id] ?? ''
 		}))
 
+		if (isBatchMode) {
+			batchSubmit.mutate(
+				{ task_ids: batchTaskIds!, user_id: currentUser!.id as UUID, answers: answerPayload },
+				{
+					onSuccess: () => {
+						window.history.replaceState(null, '', `/protected/orgs/${orgId}/enclosures/${enclosureId}`)
+						setBatchCompleted(true)
+					}
+				}
+			)
+			return
+		}
+
 		submitForm.mutate(
 			{ task_id: taskId, user_id: currentUser!.id as UUID, answers: answerPayload },
-			{
-				onSuccess: () => {
-					if (visibleQMeta.length === 0) router.back()
-					// With questions, form stays and grays out once isCompleted becomes true
-				}
-			}
+			{ onSuccess: () => window.history.replaceState(null, '', `/protected/orgs/${orgId}/enclosures/${enclosureId}`) }
 		)
 	}
 
@@ -197,12 +214,12 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 		)
 	}
 
-	if (!task) {
+	if (!isBatchMode && !task) {
 		return <p className='text-sm text-muted-foreground'>Task not found.</p>
 	}
 
-	const taskName = (task.template_id ? template?.type : null) ?? task.name ?? 'Task'
-	const taskDesc = (task.template_id ? template?.description : null) ?? task.description
+	const taskName = (task?.template_id ? template?.type : null) ?? task?.name ?? template?.type ?? 'Task'
+	const taskDesc = (task?.template_id ? template?.description : null) ?? task?.description ?? template?.description
 	const enclosureName = enclosure?.name ?? enclosureId
 	const assignedMember = task?.assigned_to
 		? members.find((m) => (m.id as string) === (task.assigned_to as string))
@@ -211,8 +228,8 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 		? assignedMember.full_name || `${assignedMember.first_name} ${assignedMember.last_name}`.trim()
 		: null
 	const questions = visibleQMeta
-	const isCompleted = task.status === 'completed'
-	const completedByMember = task.completed_by
+	const isCompleted = !isBatchMode && task?.status === 'completed'
+	const completedByMember = task?.completed_by
 		? members.find((m) => (m.id as string) === (task.completed_by as string))
 		: null
 	const completedByName = completedByMember
@@ -225,42 +242,56 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 			<div className='space-y-1'>
 				<div className='flex items-start justify-between gap-2'>
 					<h1 className='text-2xl font-bold capitalize'>{taskName}</h1>
-					{!isCompleted && (
+					{!isBatchMode && !isCompleted ? (
 						<DeleteTaskButton
 							taskId={taskId}
 							taskName={taskName}
 							redirectTo={`/protected/orgs/${orgId}/enclosures/${enclosureId}`}
 						/>
-					)}
+					) : null}
 				</div>
 				{taskDesc && <p className='text-sm text-muted-foreground'>{taskDesc}</p>}
 
 				<div className='flex flex-wrap items-center gap-4 pt-1 text-sm text-muted-foreground'>
-					<span className='flex items-center gap-1.5'>
-						<MapPinIcon className='h-3.5 w-3.5' />
-						{enclosureName}
-					</span>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type='button'
+									variant='ghost'
+									size='sm'
+									className='h-7 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground font-normal shrink-0 bg-muted hover:bg-muted/70'
+									onClick={() => setEnclosureDialogOpen(true)}
+								>
+									<Box className='h-3.5 w-3.5 shrink-0' />
+									{enclosureName}
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>View Enclosure</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 					{isEnclosureInactive ? (
 						<Badge variant='outline' className='font-semibold text-destructive'>
 							Inactive Enclosure
 						</Badge>
 					) : null}
-					{isCompleted ? (
-						<span className='flex items-center gap-1.5'>
-							<CircleUserRound className='h-3.5 w-3.5' />
-							{assignedMemberName ?? 'Unassigned'}
-						</span>
-					) : (
-						<ReassignMemberButton
-							taskId={taskId}
-							assignedTo={task.assigned_to}
-							assignedMemberName={assignedMemberName}
-							members={members}
-							disabled={isEnclosureInactive}
-							disabledReason='Tasks in inactive enclosures cannot be reassigned.'
-						/>
-					)}
-					{task.priority && (
+					{!isBatchMode &&
+						(isCompleted ? (
+							<span className='flex items-center gap-1.5'>
+								<CircleUserRound className='h-3.5 w-3.5' />
+								{assignedMemberName ?? 'Unassigned'}
+							</span>
+						) : (
+							<ReassignMemberButton
+								taskId={taskId}
+								assignedTo={task!.assigned_to}
+								assignedMemberName={assignedMemberName}
+								members={members}
+								disabled={isEnclosureInactive}
+								disabledReason='Tasks in inactive enclosures cannot be reassigned.'
+							/>
+						))}
+					{task?.priority && (
 						<Badge
 							variant='secondary'
 							className={
@@ -277,19 +308,54 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 				</div>
 			</div>
 
+			{/* ── Enclosure dialog ── */}
+			{enclosure && enclosureSpecies && (
+				<EnclosureDialog
+					enclosure={enclosure}
+					species={enclosureSpecies}
+					open={enclosureDialogOpen}
+					onOpenChange={setEnclosureDialogOpen}
+					hideViewTasks
+				/>
+			)}
+			{/* ── Batch info card ── */}
+			{isBatchMode && !batchCompleted && (
+				<Card className='border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900'>
+					<CardContent className='py-3 px-4'>
+						<p className='text-sm text-blue-800 dark:text-blue-300'>
+							{batchTaskIds!.length === 1 ? (
+								<>
+									<strong>1 task</strong> selected. Any answers entered here will be recorded for it.
+								</>
+							) : (
+								<>
+									You are completing <strong>{batchTaskIds!.length} tasks</strong> at once. Any answers entered here
+									will be recorded for all of them — tasks without a form will still be marked complete.
+								</>
+							)}
+						</p>
+					</CardContent>
+				</Card>
+			)}
 			{/* ── Completion info card ── */}
-			{isCompleted && (
+			{(isCompleted || batchCompleted) && (
 				<Card className='border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-900'>
 					<CardContent className='py-3 px-4 flex items-center gap-3'>
 						<div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900'>
 							<CheckCircle2Icon className='h-4 w-4 text-green-600 dark:text-green-400' />
 						</div>
 						<div>
-							<p className='text-sm font-semibold text-green-800 dark:text-green-300'>Task Completed</p>
-							<p className='text-xs text-green-700/80 dark:text-green-400 mt-0.5'>
-								{task.completed_time ? new Date(task.completed_time).toLocaleString() : ''}
-								{completedByName ? ` · by ${completedByName}` : ''}
+							<p className='text-sm font-semibold text-green-800 dark:text-green-300'>
+								{batchCompleted
+									? `${batchTaskIds!.length} ${batchTaskIds!.length === 1 ? 'task' : 'tasks'} completed`
+									: 'Task Completed'}
 							</p>
+							{!batchCompleted && (
+								<p className='text-xs text-green-700/80 dark:text-green-400 mt-0.5'>
+									{task?.completed_time ? new Date(task.completed_time).toLocaleString() : ''}
+									{completedByName ? ` · by ${completedByName}` : ''}
+								</p>
+							)}
 						</div>
 					</CardContent>
 				</Card>
@@ -299,7 +365,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 			{questions.length > 0 ? (
 				<div>
 					<Card className={cn(!isEditing && isCompleted && 'opacity-60')}>
-						<CardHeader className='pb-3'>
+						<CardHeader className='pb-2'>
 							<CardTitle className='text-base'>Data Entry Form</CardTitle>
 							<CardDescription>
 								{isCompleted && !isEditing
@@ -309,7 +375,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 						</CardHeader>
 						<Separator />
 						<CardContent
-							className={cn('pt-4 space-y-5', !isEditing && isCompleted && 'pointer-events-none select-none')}
+							className={cn('pt-3 space-y-5', !isEditing && isCompleted && 'pointer-events-none select-none')}
 						>
 							{questions.map((q) => (
 								<QuestionField
@@ -325,13 +391,18 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 					</Card>
 
 					<div className='flex gap-3 mt-4'>
-						{isCompleted ? (
-							isEditing ? (
+						{isCompleted || batchCompleted ? (
+							isBatchMode ? (
+								<Button variant='outline' className='w-full h-10' onClick={() => router.back()}>
+									<ArrowLeftCircle className='h-4 w-4' />
+									Back
+								</Button>
+							) : isEditing ? (
 								<>
-									<Button variant='outline' className='flex-1' onClick={handleCancelEdit}>
+									<Button variant='outline' className='flex-1 h-10' onClick={handleCancelEdit}>
 										Cancel
 									</Button>
-									<Button className='flex-1' disabled={resubmitForm.isPending} onClick={handleResubmit}>
+									<Button className='flex-1 h-10' disabled={resubmitForm.isPending} onClick={handleResubmit}>
 										{resubmitForm.isPending ? (
 											<LoaderCircle className='h-4 w-4 animate-spin' />
 										) : (
@@ -344,11 +415,11 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 								</>
 							) : (
 								<>
-									<Button variant='outline' className='flex-1' onClick={() => router.back()}>
+									<Button variant='outline' className='flex-1 h-10' onClick={() => router.back()}>
 										<ArrowLeftCircle className='h-4 w-4' />
 										Back
 									</Button>
-									<Button variant='secondary' className='flex-1' onClick={() => setIsEditing(true)}>
+									<Button variant='secondary' className='flex-1 h-10' onClick={() => setIsEditing(true)}>
 										<Pencil className='h-4 w-4' />
 										Edit Submission
 									</Button>
@@ -356,7 +427,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 							)
 						) : (
 							<>
-								<Button variant='outline' className='flex-1' onClick={() => router.back()}>
+								<Button variant='outline' className='flex-1 h-10' onClick={() => router.back()}>
 									Cancel
 								</Button>
 								<TooltipProvider>
@@ -364,16 +435,16 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 										<TooltipTrigger asChild>
 											<span className='flex-1'>
 												<Button
-													className='w-full'
-													disabled={submitForm.isPending || isEnclosureInactive}
+													className='w-full h-10'
+													disabled={(isBatchMode ? batchSubmit.isPending : submitForm.isPending) || isEnclosureInactive}
 													onClick={handleSubmit}
 												>
-													{submitForm.isPending ? (
+													{(isBatchMode ? batchSubmit.isPending : submitForm.isPending) ? (
 														<LoaderCircle className='h-4 w-4 animate-spin' />
 													) : (
 														<>
 															<CheckCircle2Icon className='h-4 w-4' />
-															Complete Task
+															{isBatchMode ? `Complete ${batchTaskIds!.length} Tasks` : 'Complete Task'}
 														</>
 													)}
 												</Button>
@@ -390,8 +461,8 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 						)}
 					</div>
 				</div>
-			) : isCompleted ? (
-				// No questions, already completed — completion info shown above
+			) : isCompleted || batchCompleted ? (
+				// No questions, completed — back button only
 				<Button variant='outline' className='w-full' onClick={() => router.back()}>
 					<ArrowLeftCircle className='h-4 w-4' />
 					Return to Tasks
@@ -399,7 +470,7 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 			) : (
 				// No questions, not completed — simple complete button
 				<div className='flex gap-3'>
-					<Button variant='outline' className='flex-1' onClick={() => router.back()}>
+					<Button variant='outline' className='flex-1 h-10' onClick={() => router.back()}>
 						Cancel
 					</Button>
 					<TooltipProvider>
@@ -407,21 +478,44 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId }: TaskCompleteFor
 							<TooltipTrigger asChild>
 								<span className='flex-1'>
 									<Button
-										className='w-full'
-										disabled={submitForm.isPending || isEnclosureInactive}
-										onClick={() =>
-											submitForm.mutate(
-												{ task_id: taskId, user_id: currentUser!.id as UUID, answers: [] },
-												{ onSuccess: () => router.back() }
-											)
-										}
+										className='w-full h-10'
+										disabled={(isBatchMode ? batchSubmit.isPending : submitForm.isPending) || isEnclosureInactive}
+										onClick={() => {
+											if (isBatchMode) {
+												batchSubmit.mutate(
+													{ task_ids: batchTaskIds!, user_id: currentUser!.id as UUID, answers: [] },
+													{
+														onSuccess: () => {
+															window.history.replaceState(
+																null,
+																'',
+																`/protected/orgs/${orgId}/enclosures/${enclosureId}`
+															)
+															setBatchCompleted(true)
+														}
+													}
+												)
+											} else {
+												submitForm.mutate(
+													{ task_id: taskId, user_id: currentUser!.id as UUID, answers: [] },
+													{
+														onSuccess: () =>
+															window.history.replaceState(
+																null,
+																'',
+																`/protected/orgs/${orgId}/enclosures/${enclosureId}`
+															)
+													}
+												)
+											}
+										}}
 									>
-										{submitForm.isPending ? (
+										{(isBatchMode ? batchSubmit.isPending : submitForm.isPending) ? (
 											<LoaderCircle className='h-4 w-4 animate-spin' />
 										) : (
 											<>
 												<CheckCircle2Icon className='h-4 w-4' />
-												Complete Task
+												{isBatchMode ? `Complete ${batchTaskIds!.length} Tasks` : 'Complete Task'}
 											</>
 										)}
 									</Button>

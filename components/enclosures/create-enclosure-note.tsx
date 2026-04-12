@@ -6,9 +6,12 @@ import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { LoaderCircle } from 'lucide-react'
 import { UUID } from 'crypto'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
+import { Checkbox } from '../ui/checkbox'
+import { Label } from '../ui/label'
 
 export default function CreateEnclosureNote({ enclosureId, is_active }: { enclosureId: UUID; is_active: boolean }) {
 	const [noteText, setNoteText] = useState('')
+	const [isFlagged, setIsFlagged] = useState(false)
 	const createEnclosureNoteMutation = useCreateEnclosureNote()
 	const { data: user } = useCurrentClientUser()
 	const [loading, setLoading] = useState(false)
@@ -20,10 +23,11 @@ export default function CreateEnclosureNote({ enclosureId, is_active }: { enclos
 		setLoading(true)
 
 		createEnclosureNoteMutation.mutate(
-			{ enclosureId, userId: user?.id as string, noteText },
+			{ enclosureId, userId: user?.id as string, noteText, isFlagged },
 			{
 				onSuccess: () => {
 					setNoteText('')
+					setIsFlagged(false)
 					setLoading(false)
 				}
 			}
@@ -65,6 +69,18 @@ export default function CreateEnclosureNote({ enclosureId, is_active }: { enclos
 						</Tooltip>
 					</TooltipProvider>
 					<InputGroupAddon align='block-end'>
+						{' '}
+						<div className='flex items-center gap-2'>
+							<Checkbox
+								id='flag-note'
+								checked={isFlagged}
+								onCheckedChange={(checked) => setIsFlagged(checked === true)}
+								disabled={!is_active}
+							/>
+							<Label htmlFor='flag-note' className='text-xs text-muted-foreground cursor-pointer'>
+								Flag
+							</Label>
+						</div>{' '}
 						<InputGroupButton
 							className='ml-auto'
 							size='sm'

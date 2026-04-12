@@ -47,6 +47,7 @@ export type Invite = {
 	invite_id: UUID
 	org_id: UUID
 	inviter_id: string
+	invitee_id: string
 	invitee_email: string
 	access_lvl: number
 	status: 'pending' | 'accepted' | 'rejected' | 'cancelled'
@@ -66,13 +67,15 @@ export type Enclosure = {
 	is_active: boolean
 	name: string
 	created_at: string
-	location: string
+	location: UUID
 	current_count: number
 	printed?: boolean
 	locations?: {
 		name: string
 	}
 	Species: Species
+	institutional_specimen_id: string
+	institutional_external_source: string
 }
 
 export type Species = {
@@ -115,6 +118,7 @@ export type EnclosureNote = {
 		first_name: string
 		last_name: string
 	}
+	is_flagged: boolean
 }
 
 export type AllProfile = {
@@ -321,6 +325,89 @@ export type PushSubscription = {
 	is_active: boolean
 }
 
+export type EnclosureLineage = {
+	id: UUID
+	enclosure_id: UUID
+	source_enclosure_id: UUID
+	created_at: string
+}
+
+export type EnclosureCouuntHistory = {
+	id: UUID
+	enclosure_id: UUID
+	old_count: number
+	new_count: number
+	changed_by: UUID
+	changed_at: string
+}
+
+export type Feedback = {
+	feedback_id: UUID
+	created_at: string
+	org_id: UUID
+	user_id: string
+	type: 'bug' | 'feedback'
+	title: string
+	description: string
+	profiles?: { first_name?: string; last_name?: string; email?: string; full_name?: string }
+	orgs?: { name?: string }
+}
+
+export type TimelineRecordType = 'task' | 'note' | 'count_change'
+
+export type EnclosureTimelineRow = {
+	id: string
+	event_date: string
+	record_type: TimelineRecordType
+	enclosure_id: string | null
+	enclosure_name: string | null
+	species_name: string | null
+	summary: string | null
+	details: string | null
+	user_name: string | null
+	template_type: string | null
+	priority: string | null
+	time_window: string | null
+	old_count: number | null
+	new_count: number | null
+}
+
+export function useEnclosureLineage(enclosureId: UUID) {
+	return useQuery({
+		queryKey: ['enclosureLineage', enclosureId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('enclosure_lineage')
+				.select('id, enclosure_id, source_enclosure_id, created_at')
+				.eq('enclosure_id', enclosureId)
+			if (error) throw error
+			return data as EnclosureLineage[]
+		},
+		enabled: !!enclosureId
+	})
+}
+
+export function useOrgEnclosureLineage(orgId: UUID) {
+	return useQuery({
+		queryKey: ['orgEnclosureLineage', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data: orgEncs, error: encError } = await supabase.from('enclosures').select('id').eq('org_id', orgId)
+			if (encError) throw encError
+			const ids = (orgEncs ?? []).map((e) => e.id)
+			if (ids.length === 0) return []
+			const { data, error } = await supabase
+				.from('enclosure_lineage')
+				.select('id, enclosure_id, source_enclosure_id, created_at')
+				.in('enclosure_id', ids)
+			if (error) throw error
+			return data as EnclosureLineage[]
+		},
+		enabled: !!orgId
+	})
+}
+
 export function useUserOrgs(userId: string) {
 	return useQuery({
 		queryKey: ['orgs'],
@@ -385,23 +472,23 @@ export function useMemberProfiles(userIds: string[]) {
 	})
 }
 
-export function usePendingInvites(userEmail: string) {
+export function usePendingInvites(userId: string) {
 	return useQuery({
-		queryKey: ['invites'],
+		queryKey: ['invites', 'pending', userId],
 		queryFn: async () => {
 			const supabase = createClient()
 			const { data, error } = (await supabase
 				.from('invites')
 				.select('*, orgs(name, org_id)') // supabase pre configured to join orgs table by org_id
-				.eq('invitee_email', userEmail)
+				.eq('invitee_id', userId)
 				.eq('status', 'pending')
 				.gt('expires_at', new Date().toISOString())
 				.order('created_at', { ascending: false })) as { data: Invite[] | null; error: PostgrestError | null }
 
 			if (error) throw error
-			return data
+			return data ?? []
 		},
-		enabled: !!userEmail
+		enabled: !!userId
 	})
 }
 
@@ -622,7 +709,7 @@ export function useEnclosureNotes(enclosureId: UUID) {
 			const supabase = createClient()
 			const { data: notes, error } = (await supabase
 				.from('tank_notes')
-				.select('id, user_id, note_text, created_at, enclosure_id')
+				.select('id, user_id, note_text, created_at, enclosure_id, is_flagged')
 				.eq('enclosure_id', enclosureId)
 				.order('created_at', { ascending: false })) as { data: EnclosureNote[] | null; error: PostgrestError | null }
 			if (error) throw error
@@ -732,7 +819,7 @@ export function useOrgEnclosuresForSpecies(
 			let enclosureQuery = supabase
 				.from('enclosures')
 				.select(
-					'id, org_id, species_id, is_active, name, location, current_count, locations(name, description), created_at'
+					'id, org_id, species_id, is_active, name, location, current_count, printed, locations(name, description), created_at, institutional_specimen_id, institutional_external_source'
 				)
 				.eq('species_id', speciesId)
 				.eq('org_id', orgId)
@@ -873,20 +960,19 @@ export function useTasksForEnclosuresInRange(enclosureIds: UUID[], startDate: st
 				chunks.map(async (chunk) => {
 					const tasks: Task[] = []
 					let from = 0
+					// Convert local YYYY-MM-DD strings to UTC ISO bounds so the query
+					// respects the client's timezone. new Date(y, m-1, d) uses local midnight.
+					const [sy, sm, sd] = startDate.split('-').map(Number)
+					const startISO = new Date(sy, sm - 1, sd, 0, 0, 0, 0).toISOString()
+					const [ey, em, ed] = endDate.split('-').map(Number)
+					const endISO = new Date(ey, em - 1, ed, 23, 59, 59, 999).toISOString()
 					while (true) {
-						// Compute the exclusive upper bound (day after endDate) so that all
-						// timestamps on the end date are included regardless of time component.
-						const endDateExclusive = (() => {
-							const d = new Date(endDate + 'T00:00:00Z')
-							d.setUTCDate(d.getUTCDate() + 1)
-							return d.toISOString().slice(0, 10)
-						})()
 						const { data, error } = (await supabase
 							.from('tasks')
 							.select('*, task_templates(type, description)')
 							.in('enclosure_id', chunk)
-							.gte('due_date', startDate)
-							.lt('due_date', endDateExclusive)
+							.gte('due_date', startISO)
+							.lte('due_date', endISO)
 							.order('due_date', { ascending: true })
 							.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
 
@@ -1417,6 +1503,48 @@ export function useIsSpeciesInUse(speciesId: UUID | undefined) {
 	})
 }
 
+export type EnclosureCountHistory = {
+	id: string
+	enclosure_id: string
+	old_count: number
+	new_count: number
+	changed_by: string | null
+	changed_at: string
+	profiles: Pick<MemberProfile, 'full_name' | 'first_name' | 'last_name'> | null
+}
+
+export function useEnclosureCountHistory(enclosureId: UUID) {
+	return useQuery({
+		queryKey: ['enclosureCountHistory', enclosureId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data: history, error } = await supabase
+				.from('enclosure_count_history')
+				.select('id, enclosure_id, old_count, new_count, changed_by, changed_at')
+				.eq('enclosure_id', enclosureId)
+				.order('changed_at', { ascending: false })
+				.limit(50)
+			if (error) throw error
+
+			const changerIds = [...new Set((history ?? []).map((h) => h.changed_by).filter(Boolean))] as string[]
+			let profileMap = new Map<string, Pick<MemberProfile, 'full_name' | 'first_name' | 'last_name'>>()
+			if (changerIds.length > 0) {
+				const { data: profiles } = await supabase
+					.from('profiles')
+					.select('id, full_name, first_name, last_name')
+					.in('id', changerIds)
+				profileMap = new Map((profiles ?? []).map((p) => [p.id, p]))
+			}
+
+			return (history ?? []).map((h) => ({
+				...h,
+				profiles: h.changed_by ? (profileMap.get(h.changed_by) ?? null) : null
+			})) as EnclosureCountHistory[]
+		},
+		enabled: !!enclosureId
+	})
+}
+
 export function usePushSubscriptionsForUser(userId: string | undefined) {
 	return useQuery({
 		queryKey: ['pushSubscriptions', userId],
@@ -1431,5 +1559,83 @@ export function usePushSubscriptionsForUser(userId: string | undefined) {
 			return data
 		},
 		enabled: !!userId
+	})
+}
+
+export function useAllFeedback() {
+	return useQuery({
+		queryKey: ['allFeedback'],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = (await supabase
+				.from('feedback')
+				.select('*, profiles(first_name, last_name, email, full_name), orgs(name)')
+				.order('created_at', { ascending: false })) as { data: Feedback[] | null; error: PostgrestError | null }
+
+			if (error) throw error
+			return data || []
+		}
+	})
+}
+
+export function useOrgTaskHistory(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['orgTaskHistory', orgId],
+		queryFn: async (): Promise<EnclosureTimelineRow[]> => {
+			const supabase = createClient()
+			const PAGE_SIZE = 1000
+			const all: EnclosureTimelineRow[] = []
+			let from = 0
+			while (true) {
+				const { data, error } = await supabase
+					.from('enclosure_timeline')
+					.select('*')
+					.eq('org_id', orgId as UUID)
+					.order('event_date', { ascending: false })
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				all.push(...((data ?? []) as EnclosureTimelineRow[]))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+			return all
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useOrgTaskHistoryInRange(orgId: UUID | undefined, startDate: string, endDate: string) {
+	return useQuery({
+		queryKey: ['orgTaskHistoryInRange', orgId, startDate, endDate],
+		queryFn: async (): Promise<EnclosureTimelineRow[]> => {
+			const supabase = createClient()
+			const PAGE_SIZE = 1000
+
+			// Convert local YYYY-MM-DD strings to UTC ISO bounds so the query
+			// respects the client's timezone. new Date(y, m-1, d) uses local midnight.
+			const [sy, sm, sd] = startDate.split('-').map(Number)
+			const startISO = new Date(sy, sm - 1, sd, 0, 0, 0, 0).toISOString()
+			const [ey, em, ed] = endDate.split('-').map(Number)
+			const endISO = new Date(ey, em - 1, ed, 23, 59, 59, 999).toISOString()
+
+			const all: EnclosureTimelineRow[] = []
+			let from = 0
+			while (true) {
+				const { data, error } = await supabase
+					.from('enclosure_timeline')
+					.select('*')
+					.eq('org_id', orgId as UUID)
+					.gte('event_date', startISO)
+					.lte('event_date', endISO)
+					.order('event_date', { ascending: false })
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				all.push(...((data ?? []) as EnclosureTimelineRow[]))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+			return all
+		},
+		enabled: !!orgId && !!startDate && !!endDate
 	})
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { CalendarIcon, ChevronDown, Search, X } from 'lucide-react'
+import { CalendarIcon, CheckSquare, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
 import { UUID } from 'crypto'
 import type { DateRange } from 'react-day-picker'
 import { useState, type ReactNode } from 'react'
@@ -16,6 +16,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { GlobalSearchToggle } from './global-search-toggle'
 import { CreateTaskButton } from './create-task-button'
+import { TasksFilterButton } from './tasks-filter-button'
 import capitalizeFirstLetter from '@/context/captalize-first-letter'
 import { statusConfig } from '@/context/task-config'
 import { formatDate } from '@/context/format-date'
@@ -41,6 +42,12 @@ interface TasksFiltersProps {
 	includeSpeciesSearch?: boolean
 	includeEnclosureAndAssigneeSearch?: boolean
 	columnsToggle?: ReactNode
+	selectButton?: ReactNode
+	// Mobile-only select bar
+	selectMode?: boolean
+	selectedCount?: number
+	onCancelSelect?: () => void
+	onBatchComplete?: () => void
 }
 
 export function TasksFilters({
@@ -50,7 +57,12 @@ export function TasksFilters({
 	onFiltersChange,
 	hasActiveFilters,
 	onReset,
-	columnsToggle
+	columnsToggle,
+	selectButton,
+	selectMode = false,
+	selectedCount = 0,
+	onCancelSelect,
+	onBatchComplete
 }: TasksFiltersProps) {
 	const isMobile = useIsMobile()
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
@@ -58,6 +70,102 @@ export function TasksFilters({
 	const [datePickerOpen, setDatePickerOpen] = useState(false)
 	const { data: enclosure } = useEnclosureById(enclosureId as UUID, orgId)
 	const isEnclosureInactive = enclosure?.is_active === false
+	const activeFilterCount = priorityFilter.length + statusFilter.length + (isRangeMode ? 1 : 0)
+
+	if (isMobile) {
+		const filterTrigger = (
+			<Button variant='outline' size='sm' className='h-8 gap-1.5'>
+				<SlidersHorizontal className='h-3.5 w-3.5' />
+				Filters
+				{activeFilterCount > 0 && (
+					<span className='flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] leading-none text-primary-foreground'>
+						{activeFilterCount}
+					</span>
+				)}
+			</Button>
+		)
+
+		return (
+			<>
+				{/* Row 1: Search + All dates toggle */}
+				<div className='flex items-center gap-2'>
+					<div className='relative flex-1'>
+						<Search className='absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground' />
+						<Input
+							placeholder='Search...'
+							value={globalFilter}
+							onChange={(e) => onFiltersChange({ ...filters, globalFilter: e.target.value })}
+							className='pl-8'
+						/>
+					</div>
+					<GlobalSearchToggle
+						globalSearch={globalSearch}
+						onGlobalSearchChange={(val) =>
+							onFiltersChange({ ...filters, globalSearch: val, ...(val ? { dateRange: undefined } : {}) })
+						}
+					/>
+				</div>
+
+				{/* Row 2: Filters modal + Columns + Reset */}
+				<div className='flex items-center gap-2'>
+					<TasksFilterButton
+						filters={filters}
+						onFiltersChange={onFiltersChange}
+						hasActiveFilters={hasActiveFilters}
+						onReset={onReset}
+						trigger={filterTrigger}
+					/>
+					{columnsToggle}
+					{!selectMode && selectButton}
+					<Button
+						variant='ghost'
+						size='sm'
+						onClick={onReset}
+						className={`h-8 gap-1 text-muted-foreground hover:text-foreground ${hasActiveFilters ? '' : 'invisible pointer-events-none'}`}
+					>
+						<X className='h-3.5 w-3.5' />
+						Reset
+					</Button>
+				</div>
+
+				{/* Row 3: Select mode actions (mobile only) */}
+				{selectMode && (
+					<div className='flex gap-2'>
+						<Button variant='outline' size='sm' className='h-8 gap-1.5 flex-1' onClick={onCancelSelect}>
+							<X className='h-3.5 w-3.5' />
+							Cancel
+						</Button>
+						{selectedCount > 0 && (
+							<Button size='sm' className='h-8 gap-1.5 flex-1' onClick={onBatchComplete}>
+								<CheckSquare className='h-3.5 w-3.5' />
+								Complete ({selectedCount})
+							</Button>
+						)}
+					</div>
+				)}
+
+				{/* Create Task for single-enclosure mode */}
+				{enclosureId && (
+					<div className='w-full [&_button]:w-full'>
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<span className='block w-full'>
+										<CreateTaskButton enclosureId={enclosureId} orgId={orgId} disabled={isEnclosureInactive} />
+									</span>
+								</TooltipTrigger>
+								{isEnclosureInactive ? (
+									<TooltipContent>
+										<p>Cannot create tasks for inactive enclosures.</p>
+									</TooltipContent>
+								) : null}
+							</Tooltip>
+						</TooltipProvider>
+					</div>
+				)}
+			</>
+		)
+	}
 
 	return (
 		<>
@@ -137,7 +245,6 @@ export function TasksFilters({
 						open={datePickerOpen}
 						onOpenChange={(open) => {
 							if (!open && dateRange?.from && !dateRange?.to) {
-								// Closed with only a start date — treat as a same-day range
 								onFiltersChange({
 									...filters,
 									dateRange: { from: dateRange.from, to: dateRange.from },
@@ -160,26 +267,21 @@ export function TasksFilters({
 								mode='range'
 								selected={dateRange}
 								onSelect={(range) => {
-									onFiltersChange({
-										...filters,
-										dateRange: range,
-										globalSearch: false // Selecting a range turns off "All dates"
-									})
-									if (range?.from && range?.to) {
-										setDatePickerOpen(false)
-									}
+									onFiltersChange({ ...filters, dateRange: range, globalSearch: false })
+									if (range?.from && range?.to) setDatePickerOpen(false)
 								}}
-								numberOfMonths={isMobile ? 1 : 2}
+								numberOfMonths={2}
 							/>
 						</PopoverContent>
 					</Popover>
 					{columnsToggle}
+					{selectButton}
 					<Button
 						variant='ghost'
 						onClick={onReset}
 						className={`gap-1.5 text-muted-foreground hover:text-foreground ${hasActiveFilters ? '' : 'invisible pointer-events-none'}`}
 					>
-						{isMobile ? '' : 'Reset'}
+						Reset
 						<X className='h-4 w-4' />
 					</Button>
 				</div>
