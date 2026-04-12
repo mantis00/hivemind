@@ -64,6 +64,12 @@ function nextAnimationFrame() {
 	})
 }
 
+function delay(ms: number) {
+	return new Promise<void>((resolve) => {
+		window.setTimeout(resolve, ms)
+	})
+}
+
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
 	return new Promise((resolve, reject) => {
 		const objectUrl = URL.createObjectURL(file)
@@ -287,6 +293,7 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 
 				// If the photo was not a valid/authorized enclosure QR, resume live scanning.
 				if (!accepted) {
+					await delay(1800)
 					await startHtml5Scanner()
 				}
 			} catch {
@@ -300,6 +307,7 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 					setScanError(INVALID_ENCLOSURE_QR_MESSAGE)
 				}
 				try {
+					await delay(1800)
 					await startHtml5Scanner()
 				} catch {
 					// Keep the error visible if restarting the live scanner also fails.
