@@ -1096,34 +1096,6 @@ export function useStartTask() {
 	})
 }
 
-export function useCompleteTask() {
-	const queryClient = useQueryClient()
-
-	return useMutation({
-		mutationFn: async ({ task_id, enclosure_id, user_id }: { task_id: UUID; enclosure_id: UUID; user_id: UUID }) => {
-			const supabase = createClient()
-
-			if (!task_id) {
-				throw new Error('Task ID missing!')
-			}
-
-			const { error } = await supabase
-				.from('tasks')
-				.update({ status: 'completed', completed_time: new Date().toISOString(), completed_by: user_id })
-				.eq('id', task_id)
-				.eq('enclosure_id', enclosure_id)
-
-			if (error) throw error
-		},
-		onSuccess: (_, variables) => {
-			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
-			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
-			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
-			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-		}
-	})
-}
-
 export function useCreateTask() {
 	const queryClient = useQueryClient()
 
@@ -1291,7 +1263,7 @@ export function useSubmitTaskForm() {
 			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Task completed!')
+			// toast.success('Task completed!') removing this, we already show a completion indicator where this is used.
 		}
 	})
 }
