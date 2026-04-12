@@ -29,6 +29,7 @@ import { toLocalDate } from '@/context/to-local-date'
 import { formatDate } from '@/context/format-date'
 import {
 	getEffectiveStatus,
+	getTimeWindowOrder,
 	MOBILE_COL_WIDTHS,
 	OPTIONAL_COLUMNS,
 	ORG_OPTIONAL_COLUMNS,
@@ -72,10 +73,7 @@ export function TasksDataTable({
 	)
 
 	const [dayOffset, setDayOffset] = React.useState(0)
-	const [sorting, setSorting] = React.useState<SortingState>([
-		{ id: 'status', desc: false },
-		{ id: 'due_date', desc: false }
-	])
+	const [sorting, setSorting] = React.useState<SortingState>([])
 	const [filters, setFilters] = React.useState<TaskFilters>({
 		globalFilter: '',
 		globalSearch: false,
@@ -393,23 +391,29 @@ export function TasksDataTable({
 			}
 		})
 
-		if (!isRangeMode && dayOffset === 0) {
-			const statusOrder: Record<string, number> = { late: 0, pending: 1, completed: 2 }
-			return [...tasks].sort((a, b) => {
-				const aOrder = statusOrder[getEffectiveStatus(a)] ?? 1
-				const bOrder = statusOrder[getEffectiveStatus(b)] ?? 1
-				if (aOrder !== bOrder) return aOrder - bOrder
-				// Stable secondary: due_date ascending, then insertion order
-				const aDate = a.due_date ?? ''
-				const bDate = b.due_date ?? ''
-				if (aDate !== bDate) return aDate < bDate ? -1 : 1
-				const aPos = stableOrderRef.current.get(a.id as string) ?? 999
-				const bPos = stableOrderRef.current.get(b.id as string) ?? 999
-				return aPos - bPos
-			})
-		}
-
-		return tasks
+		const statusOrder: Record<string, number> = { late: 0, pending: 1, completed: 2 }
+		return [...tasks].sort((a, b) => {
+			const aStatus = getEffectiveStatus(a)
+			const bStatus = getEffectiveStatus(b)
+			const aOrder = statusOrder[aStatus] ?? 1
+			const bOrder = statusOrder[bStatus] ?? 1
+			if (aOrder !== bOrder) return aOrder - bOrder
+			// Due date ascending (primary within status group) — normalize via toLocalDate
+			// so timestamps on the same calendar day are treated as equal
+			const aDate = a.due_date ? toLocalDate(a.due_date) : ''
+			const bDate = b.due_date ? toLocalDate(b.due_date) : ''
+			if (aDate !== bDate) return aDate < bDate ? -1 : 1
+			// Time window: Morning → Any → Afternoon (tiebreaker for non-completed)
+			if (aStatus !== 'completed' && bStatus !== 'completed') {
+				const aTW = getTimeWindowOrder(a.time_window)
+				const bTW = getTimeWindowOrder(b.time_window)
+				if (aTW !== bTW) return aTW - bTW
+			}
+			// Stable final tiebreak
+			const aPos = stableOrderRef.current.get(a.id as string) ?? 999
+			const bPos = stableOrderRef.current.get(b.id as string) ?? 999
+			return aPos - bPos
+		})
 	}, [
 		enclosureTasks,
 		dayTasks,
