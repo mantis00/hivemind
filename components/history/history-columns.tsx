@@ -211,16 +211,6 @@ export function getTimelineColumns(): ColumnDef<EnclosureTimelineRow>[] {
 	})
 
 	baseColumns.push({
-		accessorKey: 'time_window',
-		header: 'Time Window',
-		cell: ({ row }) => {
-			const value = row.getValue('time_window') as string | null
-			if (!value) return <span className='text-muted-foreground'>—</span>
-			return <span className='text-sm'>{value}</span>
-		}
-	})
-
-	baseColumns.push({
 		accessorKey: 'user_name',
 		header: 'User',
 		cell: ({ row }) => {

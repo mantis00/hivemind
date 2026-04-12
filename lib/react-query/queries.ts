@@ -368,8 +368,6 @@ export type EnclosureTimelineRow = {
 	template_type: string | null
 	priority: string | null
 	time_window: string | null
-	old_count: number | null
-	new_count: number | null
 }
 
 export function useEnclosureLineage(enclosureId: UUID) {
