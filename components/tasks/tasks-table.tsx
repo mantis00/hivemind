@@ -516,6 +516,7 @@ export function TasksDataTable({
 				}}
 				hasActiveFilters={hasActiveFilters}
 				onReset={resetFilters}
+				selectMode={selectMode}
 				includeSpeciesSearch={isOrgMode}
 				includeEnclosureAndAssigneeSearch={isOrgMode}
 				columnsToggle={

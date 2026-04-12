@@ -1137,7 +1137,7 @@ export function useTaskById(taskId: UUID) {
 		queryKey: ['taskById', taskId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase.from('tasks').select('*').eq('id', taskId).single()) as {
+			const { data, error } = (await supabase.from('tasks').select('*').eq('id', taskId).maybeSingle()) as {
 				data: Task | null
 				error: PostgrestError | null
 			}
