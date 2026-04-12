@@ -10,7 +10,7 @@ import {
 	useReactTable
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
-import { CheckSquare, ListChecks, LoaderCircle, X } from 'lucide-react'
+import { LoaderCircle } from 'lucide-react'
 import { UUID } from 'crypto'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -39,6 +39,7 @@ import { getColumns } from './tasks-columns'
 import { DayNavigator } from './day-navigator'
 import { TasksFilters, type TaskFilters } from './tasks-filters'
 import { ColumnsToggle } from './columns-toggle'
+import { TasksSelectButton, type SelectModeType } from './tasks-select-button'
 import { startNavProgress } from '@/components/navigation/nav-progress-bar'
 
 const MAX_TABLE_HEIGHT_DESKTOP = 680
@@ -88,8 +89,9 @@ export function TasksDataTable({
 	const [isMounted, setIsMounted] = React.useState(false)
 	const [extraColumns, setExtraColumns] = React.useState<string[]>([])
 	const [selectMode, setSelectMode] = React.useState(false)
+	const [selectModeType, setSelectModeType] = React.useState<SelectModeType | null>(null)
 	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
-	// lockedKey = "templateId::speciesId" of the first selected task; null when nothing selected
+	// lockedKey = "templateId::speciesId" of the first selected task; null when nothing selected (complete mode only)
 	const [lockedKey, setLockedKey] = React.useState<string | null>(null)
 
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
@@ -250,12 +252,13 @@ export function TasksDataTable({
 					if (next.size === 0) setLockedKey(null)
 				} else {
 					next.add(taskId)
-					if (prev.size === 0) setLockedKey(getTaskLockKey(task))
+					// Only lock to template+enclosure in complete mode
+					if (prev.size === 0 && selectModeType === 'complete') setLockedKey(getTaskLockKey(task))
 				}
 				return next
 			})
 		},
-		[getTaskLockKey]
+		[getTaskLockKey, selectModeType]
 	)
 
 	const columns = React.useMemo(
@@ -298,6 +301,7 @@ export function TasksDataTable({
 
 	const exitSelectMode = React.useCallback(() => {
 		setSelectMode(false)
+		setSelectModeType(null)
 		setSelectedIds(new Set())
 		setLockedKey(null)
 	}, [])
@@ -515,10 +519,6 @@ export function TasksDataTable({
 				onReset={resetFilters}
 				includeSpeciesSearch={isOrgMode}
 				includeEnclosureAndAssigneeSearch={isOrgMode}
-				selectMode={selectMode}
-				selectedCount={selectedIds.size}
-				onCancelSelect={exitSelectMode}
-				onBatchComplete={handleBatchComplete}
 				columnsToggle={
 					<ColumnsToggle
 						defaultColumnIds={defaultColumnIds}
@@ -528,30 +528,17 @@ export function TasksDataTable({
 					/>
 				}
 				selectButton={
-					selectMode ? (
-						<>
-							<Button className='gap-2' variant='outline' onClick={exitSelectMode}>
-								<X className='h-4 w-4' />
-								Cancel Selection
-							</Button>
-							{selectedIds.size > 0 && (
-								<Button className='gap-2' onClick={handleBatchComplete}>
-									<CheckSquare className='h-4 w-4' />
-									Batch Complete ({selectedIds.size})
-								</Button>
-							)}
-						</>
-					) : (
-						<Button
-							variant='outline'
-							className={isMobile ? 'h-8 gap-1.5 text-sm' : 'gap-2'}
-							size={isMobile ? 'sm' : 'default'}
-							onClick={() => setSelectMode(true)}
-						>
-							<ListChecks className={isMobile ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
-							{isMobile ? 'Select' : 'Select Tasks'}
-						</Button>
-					)
+					<TasksSelectButton
+						selectMode={selectMode}
+						selectModeType={selectModeType}
+						selectedIds={[...selectedIds]}
+						onStartSelectMode={(mode) => {
+							setSelectModeType(mode)
+							setSelectMode(true)
+						}}
+						onCancelSelect={exitSelectMode}
+						onBatchComplete={handleBatchComplete}
+					/>
 				}
 			/>
 

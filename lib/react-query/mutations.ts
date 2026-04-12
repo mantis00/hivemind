@@ -1974,6 +1974,26 @@ export function useDeleteTask() {
 	})
 }
 
+export function useDeleteTasks() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ taskIds }: { taskIds: UUID[] }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('tasks').delete().in('id', taskIds)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById'] })
+			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success('Tasks deleted!')
+		}
+	})
+}
+
 export function useSubscribeToPush() {
 	const queryClient = useQueryClient()
 
