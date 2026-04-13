@@ -14,7 +14,7 @@ import {
 	getTaskTitle,
 	isHighPriority,
 	isValidDate
-} from '@/components/features/dashboard/dashboard-helpers'
+} from '@/components/dashboard/dashboard-helpers'
 
 export type Org = {
 	org_id: UUID
