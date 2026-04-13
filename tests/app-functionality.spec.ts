@@ -15,20 +15,20 @@ async function signIn(page: Page) {
 
 async function enterTestOrg(page: Page) {
 	await expect(page.getByRole('heading', { name: 'Your organizations' })).toBeVisible()
-	
+
 	// Wait for cards to be present in the DOM
 	await page.locator('div[data-slot="card"]').first().waitFor({ state: 'visible', timeout: 30000 })
-	
+
 	// Find the card containing "test" org name and click its Enter button
 	const cards = page.locator('div[data-slot="card"]')
 	const cardCount = await cards.count()
-	
+
 	// Check each card's org name
 	for (let i = 0; i < cardCount; i++) {
 		const card = cards.nth(i)
 		const orgName = card.locator('p.font-semibold').first()
 		const name = await orgName.textContent()
-		
+
 		if (name?.trim() === 'test') {
 			await expect(card).toBeVisible()
 			const enterButton = card.getByRole('button', { name: 'Enter' })
@@ -43,7 +43,7 @@ async function goToEnclosures(page: Page) {
 	// Click the sidebar "Enclosures" link (first match)
 	const enclosureLinks = page.getByRole('link', { name: /enclosures/i })
 	await enclosureLinks.first().click()
-	await expect(page).toHaveURL(/enclosures/, {timeout: 10000})
+	await expect(page).toHaveURL(/enclosures/, { timeout: 10000 })
 	await page.waitForLoadState('networkidle')
 }
 
@@ -81,7 +81,7 @@ test.describe('Enclosures and Species', () => {
 		// Click Add Enclosure button
 		await page.getByRole('button', { name: /add enclosure/i }).click()
 		console.log('Clicked Add Enclosure button')
-		
+
 		// Wait for the dialog species input to be visible
 		const speciesInput = page.getByPlaceholder('Search species...')
 		await expect(speciesInput).toBeVisible({ timeout: 30000 })
@@ -90,14 +90,14 @@ test.describe('Enclosures and Species', () => {
 		// Select African Mantis species from dropdown
 		await speciesInput.fill('African Mantis')
 		await page.waitForTimeout(1000)
-		
+
 		const speciesDropdown = page.locator('[data-slot="combobox-content"]').first()
 		await expect(speciesDropdown).toBeVisible({ timeout: 5000 })
 		const africaMantisOption = speciesDropdown.getByText('African Mantis').first()
 		await expect(africaMantisOption).toBeVisible({ timeout: 5000 })
 		await africaMantisOption.click()
 		console.log('✓ Selected African Mantis from dialog dropdown')
-		
+
 		// Wait for the location input to appear
 		await page.waitForTimeout(1000)
 
@@ -106,13 +106,18 @@ test.describe('Enclosures and Species', () => {
 		await expect(locationInput).toHaveCount(1, { timeout: 5000 })
 		await expect(locationInput.first()).toBeVisible({ timeout: 5000 })
 		console.log('✓ Location search input visible')
-		
+
 		await locationInput.fill('inside')
 		await page.waitForTimeout(400)
 
-		const visibleLocationDropdown = page.locator('[data-slot="combobox-content"]').filter({ hasText: /^inside$/ }).first()
-		if (await visibleLocationDropdown.count() === 0) {
-			console.log('Visible location dropdown not found by exact option text, falling back to any visible combobox content')
+		const visibleLocationDropdown = page
+			.locator('[data-slot="combobox-content"]')
+			.filter({ hasText: /^inside$/ })
+			.first()
+		if ((await visibleLocationDropdown.count()) === 0) {
+			console.log(
+				'Visible location dropdown not found by exact option text, falling back to any visible combobox content'
+			)
 			const fallback = page.locator('[data-slot="combobox-content"]:visible').first()
 			await expect(fallback).toBeVisible({ timeout: 5000 })
 			const insideOption = fallback.getByText('inside').first()
@@ -164,10 +169,16 @@ test.describe('Enclosures and Species', () => {
 		await checkboxes.last().check()
 
 		// Click "Set Inactive"
-		await page.getByRole('button', { name: /^set inactive$/i }).first().click()
+		await page
+			.getByRole('button', { name: /^set inactive$/i })
+			.first()
+			.click()
 
 		// Confirm dialog
-		await page.getByRole('button', { name: /^set inactive$/i }).last().click()
+		await page
+			.getByRole('button', { name: /^set inactive$/i })
+			.last()
+			.click()
 
 		// Verify dialog closed
 		await expect(page.getByRole('button', { name: /^set inactive$/i })).toHaveCount(1)
@@ -181,8 +192,8 @@ test.describe('Enclosures and Species', () => {
 		await page.getByRole('button', { name: 'Select' }).click()
 
 		const setInactiveBtn = page.getByRole('button', { name: /set inactive/i })
-		
-		await expect(setInactiveBtn).toBeHidden({timeout: 5000})
+
+		await expect(setInactiveBtn).toBeHidden({ timeout: 5000 })
 	})
 
 	test('select all enclosures in a species', async ({ page }) => {
@@ -199,7 +210,7 @@ test.describe('Enclosures and Species', () => {
 		await selectAll.click()
 
 		const checkboxes = page.getByRole('checkbox')
-		for (let i = 0; i < await checkboxes.count(); i++) {
+		for (let i = 0; i < (await checkboxes.count()); i++) {
 			await expect(checkboxes.nth(i)).toBeChecked()
 		}
 	})
@@ -223,7 +234,7 @@ test.describe('Enclosures and Species', () => {
 
 		await page.waitForTimeout(3000)
 
-		await expect(page.getByText('Inactive', { exact: true }).first()).toBeVisible();
+		await expect(page.getByText('Inactive', { exact: true }).first()).toBeVisible()
 	})
 
 	test('cancel set inactive does not change data', async ({ page }) => {
@@ -239,11 +250,14 @@ test.describe('Enclosures and Species', () => {
 		const checkbox = page.getByRole('checkbox').first()
 		await checkbox.check()
 
-		await page.getByRole('button', { name: /set inactive/i }).first().click()
+		await page
+			.getByRole('button', { name: /set inactive/i })
+			.first()
+			.click()
 
 		// Cancel instead
 		await page.getByRole('button', { name: /cancel/i }).click()
-	
+
 		// Ensure still selected (not cleared)
 		await page.waitForTimeout(3000)
 		await expect(checkbox).toBeChecked()
@@ -295,8 +309,6 @@ test.describe('Enclosures and Species', () => {
 
 		await page.getByPlaceholder('Search...').fill('mantis')
 
-		await expect(
-			page.getByRole('button', { name: /mantis/i }).first()
-		).toBeVisible()
+		await expect(page.getByRole('button', { name: /mantis/i }).first()).toBeVisible()
 	})
 })
