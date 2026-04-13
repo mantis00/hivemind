@@ -1177,10 +1177,10 @@ export function useCreateSchedule() {
 			assigned_to: UUID | null
 			priority: string
 			time_window: string
-			start_date?: string
+			start_date: string
 			end_date: string | null
 			max_occurrences: number | null
-			advance_task_count?: number
+			advance_task_count: number
 		}) => {
 			const supabase = createClient()
 
@@ -1208,12 +1208,13 @@ export function useCreateSchedule() {
 			if (error) throw error
 			return data
 		},
-		onSuccess: () => {
+		onSuccess: async () => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success('Recurring schedule created!')
+			await new Promise((resolve) => setTimeout(resolve, 100)) // the function that creates schedules needs a moment to run before we invalidate, otherwise we fail to invalidate properly and the new tasks don't show up until a manual refresh
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Recurring schedule created!')
 		}
 	})
 }
@@ -1292,10 +1293,10 @@ export function useBatchCreateSchedules() {
 			assigned_to: UUID | null
 			priority: string
 			time_window: string
-			start_date?: string
+			start_date: string
 			end_date: string | null
 			max_occurrences: number | null
-			advance_task_count?: number
+			advance_task_count: number
 		}) => {
 			const supabase = createClient()
 			const rows = enclosure_ids.map((enclosure_id) => ({
@@ -1318,12 +1319,13 @@ export function useBatchCreateSchedules() {
 			if (error) throw error
 			return data
 		},
-		onSuccess: (data) => {
+		onSuccess: async (data) => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success(`${data?.length ?? ''} recurring schedule${data?.length === 1 ? '' : 's'} created!`)
+			await new Promise((resolve) => setTimeout(resolve, 1000))
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success(`${data?.length ?? ''} recurring schedule${data?.length === 1 ? '' : 's'} created!`)
 		}
 	})
 }

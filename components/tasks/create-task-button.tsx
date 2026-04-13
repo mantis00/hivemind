@@ -290,6 +290,7 @@ export function CreateTaskButton({
 				assigned_to: assignedToVal,
 				priority,
 				time_window: timeWindow,
+				start_date: new Date().toISOString(),
 				end_date: fixedEnds === 'on-date' && fixedEndDate ? fixedEndDate.toISOString() : null,
 				max_occurrences: fixedEnds === 'after-x' ? parseInt(fixedEndCount, 10) || null : null,
 				advance_task_count: parsedAdvanceCount
