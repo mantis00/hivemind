@@ -15,7 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { ViewScheduleTemplateButton } from '@/components/tasks/view-schedule-template-button'
 
-import { useCreateTask, useCreateSchedule } from '@/lib/react-query/mutations'
+import {
+	useCreateTask,
+	useCreateSchedule,
+	useBatchCreateTasks,
+	useBatchCreateSchedules
+} from '@/lib/react-query/mutations'
 import {
 	useTaskTemplatesForOrgSpecies,
 	useEnclosureById,
@@ -36,16 +41,26 @@ import {
 type TaskType = 'template' | 'custom'
 
 interface CreateTaskButtonProps {
-	enclosureId: UUID
+	enclosureId?: UUID
 	orgId: UUID
 	disabled?: boolean
 	onTaskCreated?: () => void
+	batchEnclosureIds?: UUID[]
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CreateTaskButton({ enclosureId, orgId, disabled, onTaskCreated }: CreateTaskButtonProps) {
+export function CreateTaskButton({
+	enclosureId,
+	orgId,
+	disabled,
+	onTaskCreated,
+	batchEnclosureIds
+}: CreateTaskButtonProps) {
 	const [open, setOpen] = useState(false)
+
+	const isBatch = (batchEnclosureIds?.length ?? 0) > 0
+	const effectiveEnclosureId = batchEnclosureIds?.[0] ?? enclosureId
 
 	// Task type
 	const [taskType, setTaskType] = useState<TaskType>('template')
@@ -80,7 +95,7 @@ export function CreateTaskButton({ enclosureId, orgId, disabled, onTaskCreated }
 	const [fixedEndCount, setFixedEndCount] = useState('')
 
 	// Data
-	const { data: enclosure } = useEnclosureById(enclosureId, orgId)
+	const { data: enclosure } = useEnclosureById(effectiveEnclosureId as UUID, orgId)
 	const orgSpeciesId = enclosure?.species_id as UUID | undefined
 	const { data: templates } = useTaskTemplatesForOrgSpecies(orgSpeciesId as UUID)
 	const { data: orgMembers } = useOrgMembers(orgId)
@@ -89,9 +104,12 @@ export function CreateTaskButton({ enclosureId, orgId, disabled, onTaskCreated }
 
 	const createTask = useCreateTask()
 	const createSchedule = useCreateSchedule()
+	const batchCreateTask = useBatchCreateTasks()
+	const batchCreateSchedule = useBatchCreateSchedules()
 
-	const isPending = createTask.isPending || createSchedule.isPending
-	const isEnclosureInactive = enclosure?.is_active === false
+	const isPending =
+		createTask.isPending || createSchedule.isPending || batchCreateTask.isPending || batchCreateSchedule.isPending
+	const isEnclosureInactive = !isBatch && enclosure?.is_active === false
 	const isCreateDisabled = disabled || isEnclosureInactive
 
 	// ── Helpers ──────────────────────────────────────────────────────────────
@@ -183,19 +201,20 @@ export function CreateTaskButton({ enclosureId, orgId, disabled, onTaskCreated }
 				toast.error('Please pick a due date.')
 				return
 			}
-			createTask.mutate(
-				{
-					enclosure_id: enclosureId,
-					template_id: templateId,
-					name,
-					description,
-					assigned_to: assignedToVal,
-					priority,
-					due_date: dueDate.toISOString(),
-					time_window: timeWindow
-				},
-				{ onSuccess }
-			)
+			const oneTimePayload = {
+				template_id: templateId,
+				name,
+				description,
+				assigned_to: assignedToVal,
+				priority,
+				due_date: dueDate.toISOString(),
+				time_window: timeWindow
+			}
+			if (isBatch) {
+				batchCreateTask.mutate({ enclosure_ids: batchEnclosureIds!, ...oneTimePayload }, { onSuccess })
+			} else {
+				createTask.mutate({ enclosure_id: enclosureId!, ...oneTimePayload }, { onSuccess })
+			}
 		} else if (scheduleType === 'flexible') {
 			if (!flexStartDate) {
 				toast.error('Please pick a start date.')
@@ -217,23 +236,30 @@ export function CreateTaskButton({ enclosureId, orgId, disabled, onTaskCreated }
 					return
 				}
 			}
-			createSchedule.mutate(
-				{
-					enclosure_id: enclosureId,
-					template_id: templateId,
-					schedule_type: 'relative_interval',
-					schedule_rule: buildFlexScheduleRule(),
-					task_name: name,
-					task_description: description,
-					assigned_to: assignedToVal,
-					priority,
-					time_window: timeWindow,
-					start_date: flexStartDate.toISOString(),
-					end_date: flexEnds === 'on-date' && flexEndDate ? flexEndDate.toISOString() : null,
-					max_occurrences: flexEnds === 'after-x' ? parseInt(flexEndCount, 10) || null : null
-				},
-				{ onSuccess }
-			)
+			const parsedAdvanceCount = parseInt(advanceTaskCount, 10)
+			if (!parsedAdvanceCount || parsedAdvanceCount < 1) {
+				toast.error('Advance task count must be at least 1.')
+				return
+			}
+			const flexSchedulePayload = {
+				template_id: templateId,
+				schedule_type: 'relative_interval' as const,
+				schedule_rule: buildFlexScheduleRule(),
+				task_name: name,
+				task_description: description,
+				assigned_to: assignedToVal,
+				priority,
+				time_window: timeWindow,
+				start_date: flexStartDate.toISOString(),
+				end_date: flexEnds === 'on-date' && flexEndDate ? flexEndDate.toISOString() : null,
+				max_occurrences: flexEnds === 'after-x' ? parseInt(flexEndCount, 10) || null : null,
+				advance_task_count: parsedAdvanceCount
+			}
+			if (isBatch) {
+				batchCreateSchedule.mutate({ enclosure_ids: batchEnclosureIds!, ...flexSchedulePayload }, { onSuccess })
+			} else {
+				createSchedule.mutate({ enclosure_id: enclosureId!, ...flexSchedulePayload }, { onSuccess })
+			}
 		} else if (scheduleType === 'fixed') {
 			if (fixedSelectedDays.length === 0) {
 				toast.error('Please select at least one weekday.')
@@ -255,23 +281,24 @@ export function CreateTaskButton({ enclosureId, orgId, disabled, onTaskCreated }
 					return
 				}
 			}
-			createSchedule.mutate(
-				{
-					enclosure_id: enclosureId,
-					template_id: templateId,
-					schedule_type: 'fixed_calendar',
-					schedule_rule: buildRruleString(),
-					task_name: name,
-					task_description: description,
-					assigned_to: assignedToVal,
-					priority,
-					time_window: timeWindow,
-					end_date: fixedEnds === 'on-date' && fixedEndDate ? fixedEndDate.toISOString() : null,
-					max_occurrences: fixedEnds === 'after-x' ? parseInt(fixedEndCount, 10) || null : null,
-					advance_task_count: parsedAdvanceCount
-				},
-				{ onSuccess }
-			)
+			const fixedSchedulePayload = {
+				template_id: templateId,
+				schedule_type: 'fixed_calendar' as const,
+				schedule_rule: buildRruleString(),
+				task_name: name,
+				task_description: description,
+				assigned_to: assignedToVal,
+				priority,
+				time_window: timeWindow,
+				end_date: fixedEnds === 'on-date' && fixedEndDate ? fixedEndDate.toISOString() : null,
+				max_occurrences: fixedEnds === 'after-x' ? parseInt(fixedEndCount, 10) || null : null,
+				advance_task_count: parsedAdvanceCount
+			}
+			if (isBatch) {
+				batchCreateSchedule.mutate({ enclosure_ids: batchEnclosureIds!, ...fixedSchedulePayload }, { onSuccess })
+			} else {
+				createSchedule.mutate({ enclosure_id: enclosureId!, ...fixedSchedulePayload }, { onSuccess })
+			}
 		}
 	}
 
@@ -293,7 +320,13 @@ export function CreateTaskButton({ enclosureId, orgId, disabled, onTaskCreated }
 			footer={
 				<div className='flex gap-2 w-full'>
 					<Button type='button' className='flex-1' disabled={isPending || isEnclosureInactive} onClick={handleSubmit}>
-						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Create Task'}
+						{isPending ? (
+							<LoaderCircle className='h-4 w-4 animate-spin' />
+						) : isBatch ? (
+							`Create Tasks for ${batchEnclosureIds!.length} Enclosure${batchEnclosureIds!.length === 1 ? '' : 's'}`
+						) : (
+							'Create Task'
+						)}
 					</Button>
 				</div>
 			}

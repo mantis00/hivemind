@@ -122,8 +122,7 @@ export function TasksFilters({
 				</div>
 
 				{/* Row 3: Select action bar (Cancel + Complete/Delete) */}
-				{selectMode && <div className='flex items-center gap-2 w-full'>{selectButton}</div>}
-
+				{selectMode && <div className='flex items-center gap-2 w-full [&>button]:flex-1'>{selectButton}</div>}
 				{/* Create Task for single-enclosure mode */}
 				{enclosureId && (
 					<div className='w-full [&_button]:w-full'>

@@ -1218,6 +1218,116 @@ export function useCreateSchedule() {
 	})
 }
 
+export function useBatchCreateTasks() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: async ({
+			enclosure_ids,
+			template_id,
+			name,
+			description,
+			assigned_to,
+			priority,
+			due_date,
+			time_window
+		}: {
+			enclosure_ids: UUID[]
+			template_id: UUID | null
+			name: string | null
+			description: string | null
+			assigned_to: UUID | null
+			priority: string
+			due_date: string
+			time_window: string
+		}) => {
+			const supabase = createClient()
+			const rows = enclosure_ids.map((enclosure_id) => ({
+				enclosure_id,
+				template_id,
+				name,
+				description,
+				assigned_to,
+				priority,
+				status: 'pending',
+				due_date,
+				time_window
+			}))
+			const { data, error } = await supabase.from('tasks').insert(rows).select()
+			if (error) throw error
+			return data
+		},
+		onSuccess: (data) => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success(`${data?.length ?? 'Tasks'} task${data?.length === 1 ? '' : 's'} created!`)
+		}
+	})
+}
+
+export function useBatchCreateSchedules() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: async ({
+			enclosure_ids,
+			template_id,
+			schedule_type,
+			schedule_rule,
+			task_name,
+			task_description,
+			assigned_to,
+			priority,
+			time_window,
+			start_date,
+			end_date,
+			max_occurrences,
+			advance_task_count
+		}: {
+			enclosure_ids: UUID[]
+			template_id: UUID | null
+			schedule_type: 'fixed_calendar' | 'relative_interval'
+			schedule_rule: string
+			task_name: string | null
+			task_description: string | null
+			assigned_to: UUID | null
+			priority: string
+			time_window: string
+			start_date?: string
+			end_date: string | null
+			max_occurrences: number | null
+			advance_task_count?: number
+		}) => {
+			const supabase = createClient()
+			const rows = enclosure_ids.map((enclosure_id) => ({
+				enclosure_id,
+				template_id,
+				schedule_type,
+				schedule_rule,
+				task_name,
+				task_description,
+				assigned_to,
+				priority,
+				time_window,
+				start_date,
+				end_date,
+				max_occurrences,
+				advance_task_count,
+				is_active: true
+			}))
+			const { data, error } = await supabase.from('enclosure_schedules').insert(rows).select()
+			if (error) throw error
+			return data
+		},
+		onSuccess: (data) => {
+			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success(`${data?.length ?? ''} recurring schedule${data?.length === 1 ? '' : 's'} created!`)
+		}
+	})
+}
+
 export function useSubmitTaskForm() {
 	const queryClient = useQueryClient()
 
