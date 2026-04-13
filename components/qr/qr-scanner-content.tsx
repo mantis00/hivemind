@@ -49,7 +49,9 @@ function validateEnclosureQrValue(rawValue: string): ScanValidationResult {
 
 function getReadableError(error: unknown) {
 	if (error instanceof DOMException) {
-		if (error.name === 'NotAllowedError') return 'Camera access was denied. Allow camera permissions to scan QR codes.'
+		if (error.name === 'NotAllowedError') {
+			return 'Camera access was denied. Allow camera permission for this site in your browser privacy settings, then retry.'
+		}
 		if (error.name === 'NotFoundError') return 'No camera was found on this device.'
 		if (error.name === 'NotReadableError') return 'Camera is already in use by another app.'
 		return error.message || 'Unable to access camera.'
@@ -269,12 +271,37 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 			setIsPhotoScanning(true)
 			setCameraError(null)
 			setScanError(null)
+			let scanner: Html5Qrcode | null = null
+
+			const disposePhotoScanner = async () => {
+				if (!scanner) {
+					return
+				}
+
+				try {
+					await scanner.stop()
+				} catch {
+					// stop() can throw when scanner is not actively running
+				}
+
+				try {
+					scanner.clear()
+				} catch {
+					// clear() can throw when DOM was re-rendered while scanning
+				}
+
+				if (html5QrcodeRef.current === scanner) {
+					html5QrcodeRef.current = null
+				}
+
+				scanner = null
+			}
 
 			try {
 				await stopHtml5Scanner()
 
 				const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode')
-				const scanner = new Html5Qrcode(HTML5_SCANNER_REGION_ID, {
+				scanner = new Html5Qrcode(HTML5_SCANNER_REGION_ID, {
 					verbose: false,
 					formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
 				})
@@ -284,12 +311,7 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 				const decodedText = await scanner.scanFile(decodeCandidate, false)
 				const accepted = handleDecodedValue(decodedText)
 
-				try {
-					scanner.clear()
-				} catch {
-					// clear() can throw when DOM was re-rendered while scanning
-				}
-				html5QrcodeRef.current = null
+				await disposePhotoScanner()
 
 				// If the photo was not a valid/authorized enclosure QR, resume live scanning.
 				if (!accepted) {
@@ -307,12 +329,16 @@ export function QrScannerContent({ onRequestClose }: QrScannerContentProps) {
 					setScanError(INVALID_ENCLOSURE_QR_MESSAGE)
 				}
 				try {
+					await disposePhotoScanner()
 					await delay(1800)
 					await startHtml5Scanner()
 				} catch {
-					// Keep the error visible if restarting the live scanner also fails.
+					setCameraError('Unable to restart camera. Tap Retry camera.')
+					setScanState('error')
+					setCameraState('error')
 				}
 			} finally {
+				await disposePhotoScanner()
 				setIsPhotoScanning(false)
 				if (photoInputRef.current) {
 					photoInputRef.current.value = ''
