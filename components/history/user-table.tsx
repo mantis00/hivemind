@@ -24,9 +24,7 @@ import {
 	TARGET_VISIBLE_ROWS_MOBILE,
 	HEADER_HEIGHT,
 	ESTIMATED_ROW_HEIGHT_DESKTOP,
-	ESTIMATED_ROW_HEIGHT_MOBILE,
-	DESKTOP_COL_WIDTHS,
-	MOBILE_COL_WIDTHS
+	ESTIMATED_ROW_HEIGHT_MOBILE
 } from './history-constants'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
