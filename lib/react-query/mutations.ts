@@ -1098,129 +1098,6 @@ export function useStartTask() {
 
 export function useCreateTask() {
 	const queryClient = useQueryClient()
-
-	return useMutation({
-		mutationFn: async ({
-			enclosure_id,
-			template_id,
-			name,
-			description,
-			assigned_to,
-			priority,
-			due_date,
-			time_window
-		}: {
-			enclosure_id: UUID
-			template_id: UUID | null
-			name: string | null
-			description: string | null
-			assigned_to: UUID | null
-			priority: string
-			due_date: string
-			time_window: string
-		}) => {
-			const supabase = createClient()
-
-			const { data, error } = await supabase
-				.from('tasks')
-				.insert({
-					enclosure_id,
-					template_id,
-					name,
-					description,
-					assigned_to,
-					priority,
-					status: 'pending',
-					due_date,
-					time_window
-				})
-				.select()
-				.single()
-
-			if (error) throw error
-			return data
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
-			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
-			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Task created!')
-		}
-	})
-}
-
-export function useCreateSchedule() {
-	const queryClient = useQueryClient()
-
-	return useMutation({
-		mutationFn: async ({
-			enclosure_id,
-			template_id,
-			schedule_type,
-			schedule_rule,
-			task_name,
-			task_description,
-			assigned_to,
-			priority,
-			time_window,
-			start_date,
-			end_date,
-			max_occurrences,
-			advance_task_count
-		}: {
-			enclosure_id: UUID
-			template_id: UUID | null
-			schedule_type: 'fixed_calendar' | 'relative_interval'
-			schedule_rule: string
-			task_name: string | null
-			task_description: string | null
-			assigned_to: UUID | null
-			priority: string
-			time_window: string
-			start_date: string
-			end_date: string | null
-			max_occurrences: number | null
-			advance_task_count: number
-		}) => {
-			const supabase = createClient()
-
-			const { data, error } = await supabase
-				.from('enclosure_schedules')
-				.insert({
-					enclosure_id,
-					template_id,
-					schedule_type,
-					schedule_rule,
-					task_name,
-					task_description,
-					assigned_to,
-					priority,
-					time_window,
-					start_date,
-					end_date,
-					max_occurrences,
-					advance_task_count,
-					is_active: true
-				})
-				.select()
-				.single()
-
-			if (error) throw error
-			return data
-		},
-		onSuccess: async () => {
-			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
-			toast.success('Recurring schedule created!')
-			await new Promise((resolve) => setTimeout(resolve, 100)) // the function that creates schedules needs a moment to run before we invalidate, otherwise we fail to invalidate properly and the new tasks don't show up until a manual refresh
-			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
-			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
-			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-		}
-	})
-}
-
-export function useBatchCreateTasks() {
-	const queryClient = useQueryClient()
 	return useMutation({
 		mutationFn: async ({
 			enclosure_ids,
@@ -1266,7 +1143,7 @@ export function useBatchCreateTasks() {
 	})
 }
 
-export function useBatchCreateSchedules() {
+export function useCreateSchedule() {
 	const queryClient = useQueryClient()
 	return useMutation({
 		mutationFn: async ({

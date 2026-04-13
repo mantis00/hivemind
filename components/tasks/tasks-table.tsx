@@ -235,10 +235,15 @@ export function TasksDataTable({
 		router.push(`/protected/orgs/${orgId}/enclosures/${targetEnclosureId}/batch-complete?tasks=${taskParam}`)
 	}, [selectedIds, enclosureTasks, dayTasks, rangeTasks, isOrgMode, enclosureId, orgId, router])
 
-	const getTaskLockKey = React.useCallback((task: { template_id: string | null; enclosure_id: string }) => {
-		const templateId = task.template_id ?? '__adhoc__'
-		return `${templateId}::${task.enclosure_id}`
-	}, [])
+	const getTaskLockKey = React.useCallback(
+		(task: { template_id: string | null; enclosure_id: string }) => {
+			const templateId = task.template_id ?? '__adhoc__'
+			const enc = allOrgEnclosures.find((e) => (e.id as string) === task.enclosure_id)
+			const speciesId = enc?.species_id ?? '__unknown__'
+			return `${templateId}::${speciesId}`
+		},
+		[allOrgEnclosures]
+	)
 
 	const handleToggleSelect = React.useCallback(
 		(taskId: string, task: { template_id: string | null; enclosure_id: string }) => {
@@ -533,6 +538,7 @@ export function TasksDataTable({
 				}
 				selectButton={
 					<TasksSelectButton
+						isOrgMode={isOrgMode}
 						selectMode={selectMode}
 						selectModeType={selectModeType}
 						selectedIds={[...selectedIds]}

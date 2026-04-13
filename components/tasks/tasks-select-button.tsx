@@ -13,6 +13,7 @@ import { useDeleteTasks } from '@/lib/react-query/mutations'
 export type SelectModeType = 'complete' | 'delete'
 
 interface TasksSelectButtonProps {
+	isOrgMode: boolean
 	selectMode: boolean
 	selectModeType: SelectModeType | null
 	selectedIds: string[]
@@ -22,6 +23,7 @@ interface TasksSelectButtonProps {
 }
 
 export function TasksSelectButton({
+	isOrgMode,
 	selectMode,
 	selectModeType,
 	selectedIds,
@@ -132,6 +134,21 @@ export function TasksSelectButton({
 	}
 
 	// ── Not in select mode: show trigger button → choose-mode dialog ──────────
+	// In enclosure mode, only batch delete is available — skip the choose dialog
+	if (!isOrgMode) {
+		return (
+			<Button
+				variant='outline'
+				className={isMobile ? 'h-8 gap-1.5 text-sm' : 'gap-2'}
+				size={isMobile ? 'sm' : 'default'}
+				onClick={() => onStartSelectMode('delete')}
+			>
+				<ListChecks className={isMobile ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+				{isMobile ? 'Select' : 'Select Tasks'}
+			</Button>
+		)
+	}
+
 	return (
 		<ResponsiveDialogDrawer
 			title='Select Tasks'
@@ -162,7 +179,7 @@ export function TasksSelectButton({
 					<div>
 						<p className='text-sm font-medium'>Batch Complete</p>
 						<p className='text-xs text-muted-foreground'>
-							Select tasks of the same type to mark them as completed together.
+							Select tasks of the same type and species to mark them as completed together.
 						</p>
 					</div>
 				</button>

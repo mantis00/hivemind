@@ -15,12 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { ViewScheduleTemplateButton } from '@/components/tasks/view-schedule-template-button'
 
-import {
-	useCreateTask,
-	useCreateSchedule,
-	useBatchCreateTasks,
-	useBatchCreateSchedules
-} from '@/lib/react-query/mutations'
+import { useCreateTask, useCreateSchedule } from '@/lib/react-query/mutations'
 import {
 	useTaskTemplatesForOrgSpecies,
 	useEnclosureById,
@@ -104,11 +99,8 @@ export function CreateTaskButton({
 
 	const createTask = useCreateTask()
 	const createSchedule = useCreateSchedule()
-	const batchCreateTask = useBatchCreateTasks()
-	const batchCreateSchedule = useBatchCreateSchedules()
 
-	const isPending =
-		createTask.isPending || createSchedule.isPending || batchCreateTask.isPending || batchCreateSchedule.isPending
+	const isPending = createTask.isPending || createSchedule.isPending
 	const isEnclosureInactive = !isBatch && enclosure?.is_active === false
 	const isCreateDisabled = disabled || isEnclosureInactive
 
@@ -210,11 +202,8 @@ export function CreateTaskButton({
 				due_date: dueDate.toISOString(),
 				time_window: timeWindow
 			}
-			if (isBatch) {
-				batchCreateTask.mutate({ enclosure_ids: batchEnclosureIds!, ...oneTimePayload }, { onSuccess })
-			} else {
-				createTask.mutate({ enclosure_id: enclosureId!, ...oneTimePayload }, { onSuccess })
-			}
+			const enclosureIds = isBatch ? batchEnclosureIds! : [enclosureId!]
+			createTask.mutate({ enclosure_ids: enclosureIds, ...oneTimePayload }, { onSuccess })
 		} else if (scheduleType === 'flexible') {
 			if (!flexStartDate) {
 				toast.error('Please pick a start date.')
@@ -255,11 +244,8 @@ export function CreateTaskButton({
 				max_occurrences: flexEnds === 'after-x' ? parseInt(flexEndCount, 10) || null : null,
 				advance_task_count: parsedAdvanceCount
 			}
-			if (isBatch) {
-				batchCreateSchedule.mutate({ enclosure_ids: batchEnclosureIds!, ...flexSchedulePayload }, { onSuccess })
-			} else {
-				createSchedule.mutate({ enclosure_id: enclosureId!, ...flexSchedulePayload }, { onSuccess })
-			}
+			const enclosureIds = isBatch ? batchEnclosureIds! : [enclosureId!]
+			createSchedule.mutate({ enclosure_ids: enclosureIds, ...flexSchedulePayload }, { onSuccess })
 		} else if (scheduleType === 'fixed') {
 			if (fixedSelectedDays.length === 0) {
 				toast.error('Please select at least one weekday.')
@@ -295,11 +281,8 @@ export function CreateTaskButton({
 				max_occurrences: fixedEnds === 'after-x' ? parseInt(fixedEndCount, 10) || null : null,
 				advance_task_count: parsedAdvanceCount
 			}
-			if (isBatch) {
-				batchCreateSchedule.mutate({ enclosure_ids: batchEnclosureIds!, ...fixedSchedulePayload }, { onSuccess })
-			} else {
-				createSchedule.mutate({ enclosure_id: enclosureId!, ...fixedSchedulePayload }, { onSuccess })
-			}
+			const enclosureIds = isBatch ? batchEnclosureIds! : [enclosureId!]
+			createSchedule.mutate({ enclosure_ids: enclosureIds, ...fixedSchedulePayload }, { onSuccess })
 		}
 	}
 
