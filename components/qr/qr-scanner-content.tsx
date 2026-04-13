@@ -48,25 +48,22 @@ function validateEnclosureQrValue(rawValue: string): ScanValidationResult {
 }
 
 function getReadableError(error: unknown) {
-	const permissionGuidance =
-		'Camera access was denied. Allow camera permission for this site in your browser privacy settings, then retry.'
+	const cameraAccessGuidance =
+		'Unable to access camera. Try checking camera/privacy settings for this site, then retry.'
 
 	if (error instanceof DOMException) {
-		if (error.name === 'NotAllowedError') {
-			return permissionGuidance
-		}
 		if (error.name === 'NotFoundError') return 'No camera was found on this device.'
-		if (error.name === 'NotReadableError') return 'Camera is already in use by another app.'
-		return error.message || 'Unable to access camera.'
+		if (error.name === 'NotAllowedError' || error.name === 'NotReadableError') return cameraAccessGuidance
+		return cameraAccessGuidance
 	}
 	if (error instanceof Error) {
 		const lowered = error.message.toLowerCase()
 		if (lowered.includes('unable to access camera') || lowered.includes('permission')) {
-			return permissionGuidance
+			return cameraAccessGuidance
 		}
-		return error.message
+		return cameraAccessGuidance
 	}
-	return 'Unable to access camera.'
+	return cameraAccessGuidance
 }
 
 function nextAnimationFrame() {
