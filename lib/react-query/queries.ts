@@ -353,7 +353,19 @@ export type Feedback = {
 	orgs?: { name?: string }
 }
 
-export type TimelineRecordType = 'task' | 'note' | 'count_change'
+export type TimelineRecordType = 'task' | 'note' | 'count_change' | 'flagged'
+
+export type ActivityLogEntry = {
+	id: string
+	created_at: string
+	actor_name: string | null
+	action: string
+	entity_type: string
+	entity_id: string | null
+	entity_name: string | null
+	summary: string | null
+	changed_fields: Record<string, unknown> | null
+}
 
 export type EnclosureTimelineRow = {
 	id: string
@@ -1596,7 +1608,11 @@ export function useOrgTaskHistory(orgId: UUID | undefined) {
 				if ((data?.length ?? 0) < PAGE_SIZE) break
 				from += PAGE_SIZE
 			}
-			return all
+			return all.map((row) =>
+				(row.record_type as string) === 'flagged_note' || (row.record_type === 'note' && row.details === 'FLAGGED')
+					? { ...row, record_type: 'flagged' as TimelineRecordType }
+					: row
+			)
 		},
 		enabled: !!orgId
 	})
@@ -1632,7 +1648,103 @@ export function useOrgTaskHistoryInRange(orgId: UUID | undefined, startDate: str
 				if ((data?.length ?? 0) < PAGE_SIZE) break
 				from += PAGE_SIZE
 			}
-			return all
+			return all.map((row) =>
+				(row.record_type as string) === 'flagged_note' || (row.record_type === 'note' && row.details === 'FLAGGED')
+					? { ...row, record_type: 'flagged' as TimelineRecordType }
+					: row
+			)
+		},
+		enabled: !!orgId && !!startDate && !!endDate
+	})
+}
+
+// ============================================================================
+// Org User Actions via activity_log
+// ============================================================================
+
+type ActivityLogRaw = {
+	id: string
+	created_at: string
+	actor_id: string
+	action: string
+	entity_type: string
+	entity_id: string | null
+	entity_name: string | null
+	summary: string | null
+	changed_fields: Record<string, unknown> | null
+}
+
+async function fetchOrgActivityLogRows(
+	supabase: ReturnType<typeof import('@/lib/supabase/client').createClient>,
+	orgId: UUID,
+	filters?: { startISO?: string; endISO?: string }
+): Promise<ActivityLogEntry[]> {
+	const PAGE_SIZE = 1000
+	const all: ActivityLogRaw[] = []
+	let from = 0
+	while (true) {
+		let q = supabase
+			.from('activity_log')
+			.select('id, created_at, actor_id, action, entity_type, entity_id, entity_name, summary, changed_fields')
+			.eq('org_id', orgId)
+			.order('created_at', { ascending: false })
+			.range(from, from + PAGE_SIZE - 1)
+		if (filters?.startISO) q = (q as typeof q).gte('created_at', filters.startISO)
+		if (filters?.endISO) q = (q as typeof q).lte('created_at', filters.endISO)
+		const { data, error } = (await q) as { data: ActivityLogRaw[] | null; error: unknown }
+		if (error) throw error
+		all.push(...(data ?? []))
+		if ((data?.length ?? 0) < PAGE_SIZE) break
+		from += PAGE_SIZE
+	}
+
+	const actorIds = [...new Set(all.map((r) => r.actor_id).filter(Boolean))]
+	let profileMap = new Map<string, string>()
+	if (actorIds.length > 0) {
+		const { data: profiles, error: profileErr } = await supabase
+			.from('profiles')
+			.select('id, full_name')
+			.in('id', actorIds)
+		if (profileErr) throw profileErr
+		profileMap = new Map((profiles ?? []).map((p) => [p.id, p.full_name]))
+	}
+
+	return all.map(
+		(row): ActivityLogEntry => ({
+			id: row.id,
+			created_at: row.created_at,
+			actor_name: row.actor_id ? (profileMap.get(row.actor_id) ?? null) : null,
+			action: row.action,
+			entity_type: row.entity_type,
+			entity_id: row.entity_id,
+			entity_name: row.entity_name,
+			summary: row.summary,
+			changed_fields: row.changed_fields
+		})
+	)
+}
+
+export function useOrgUserActions(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['orgUserActions', orgId],
+		queryFn: async (): Promise<ActivityLogEntry[]> => {
+			const supabase = createClient()
+			return fetchOrgActivityLogRows(supabase, orgId as UUID)
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useOrgUserActionsInRange(orgId: UUID | undefined, startDate: string, endDate: string) {
+	return useQuery({
+		queryKey: ['orgUserActionsInRange', orgId, startDate, endDate],
+		queryFn: async (): Promise<ActivityLogEntry[]> => {
+			const supabase = createClient()
+			const [sy, sm, sd] = startDate.split('-').map(Number)
+			const startISO = new Date(sy, sm - 1, sd, 0, 0, 0, 0).toISOString()
+			const [ey, em, ed] = endDate.split('-').map(Number)
+			const endISO = new Date(ey, em - 1, ed, 23, 59, 59, 999).toISOString()
+			return fetchOrgActivityLogRows(supabase, orgId as UUID, { startISO, endISO })
 		},
 		enabled: !!orgId && !!startDate && !!endDate
 	})

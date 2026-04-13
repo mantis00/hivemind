@@ -272,7 +272,7 @@ export function AppSidebar() {
 										<SidebarMenuSubItem>
 											<SidebarMenuSubButton asChild>
 												<Link
-													href={orgId ? `/protected/orgs/${orgId}/history` : '/protected/orgs'}
+													href={orgId ? `/protected/orgs/${orgId}/history/user-history` : '/protected/orgs'}
 													onClick={closeMobileOnNav}
 												>
 													<Users className='size-4' />

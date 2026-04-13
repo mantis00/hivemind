@@ -23,19 +23,22 @@ export const DEFAULT_FILTERS: TimelineFilters = {
 export const RECORD_TYPE_OPTIONS: { value: TimelineRecordType; label: string }[] = [
 	{ value: 'task', label: 'Task Completion' },
 	{ value: 'note', label: 'Note Creation' },
-	{ value: 'count_change', label: 'Count Change' }
+	{ value: 'count_change', label: 'Count Change' },
+	{ value: 'flagged', label: 'Flagged' }
 ]
 
 export const RECORD_TYPE_STYLES: Record<TimelineRecordType, string> = {
 	task: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
 	note: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-	count_change: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+	count_change: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+	flagged: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
 }
 
 export const RECORD_TYPE_LABELS: Record<TimelineRecordType, string> = {
 	task: 'Task',
 	note: 'Note',
-	count_change: 'Count'
+	count_change: 'Count',
+	flagged: 'Flagged'
 }
 
 export const DESKTOP_COL_WIDTHS: Record<string, string> = {

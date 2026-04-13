@@ -1,4 +1,4 @@
-import { HistoryTable } from '@/components/history/history-table'
+import { UserActionsTable } from '@/components/history/user-table'
 import { UUID } from 'crypto'
 
 export default async function HistoryPage({ params }: { params: Promise<{ orgId: string }> }) {
@@ -8,10 +8,10 @@ export default async function HistoryPage({ params }: { params: Promise<{ orgId:
 		<div className='space-y-4 w-full justify-center items-center'>
 			<div className='flex-col mx-auto max-w-5xl flex'>
 				<div className='pb-5'>
-					<h1 className='text-2xl font-semibold'>Enclosure History</h1>
-					<p className='text-sm text-muted-foreground'>History of enclosure modifications and task completions.</p>
+					<h1 className='text-2xl font-semibold'>User History</h1>
+					<p className='text-sm text-muted-foreground'>History of enclosure creations and flags.</p>
 				</div>
-				<HistoryTable orgId={orgId as UUID} />
+				<UserActionsTable orgId={orgId as UUID} />
 			</div>
 		</div>
 	)
