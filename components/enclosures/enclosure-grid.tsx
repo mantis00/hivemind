@@ -120,7 +120,7 @@ export default function EnclosureGrid() {
 	}, [filteredSpeciesSource, appliedSearch, sortKey, isSorted, sortUp])
 	const searchCount = appliedSearch ? displayedSpecies.length : 0
 	const [itemHeight, setItemHeight] = useState<number>(114)
-	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
+	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(0)
 	const [openSpeciesId, setOpenSpeciesId] = useState<UUID | null>(null)
 	const [detailsView, setDetailsView] = useState<'details' | 'edit'>('details')
 
@@ -314,7 +314,8 @@ export default function EnclosureGrid() {
 	// Handle total list height changes from Virtuoso
 	const handleTotalListHeightChanged = (height: number) => {
 		const maxHeight = 680
-		setDynamicTableHeight(Math.min(height, maxHeight))
+		const newHeight = Math.min(height, maxHeight)
+		setDynamicTableHeight(newHeight)
 	}
 
 	const handleSortChange = (sortOn: string) => {
@@ -338,11 +339,11 @@ export default function EnclosureGrid() {
 	// Calculate initial table height based on item count
 	const initialTableHeight = useMemo(() => {
 		const maxHeight = 680
-		const calculatedHeight = itemHeight * displayedSpecies.length
-		return Math.min(calculatedHeight, maxHeight)
+		const naturalHeight = itemHeight * displayedSpecies.length
+		return Math.min(naturalHeight, maxHeight)
 	}, [itemHeight, displayedSpecies.length])
 
-	const tableHeight = dynamicTableHeight || initialTableHeight
+	const tableHeight = dynamicTableHeight > 0 ? dynamicTableHeight : initialTableHeight
 
 	return (
 		<>
