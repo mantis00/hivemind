@@ -1,16 +1,16 @@
 'use client'
 
+import * as React from 'react'
+import { type ActivityLogEntry } from '@/lib/react-query/queries'
 import { type ColumnDef } from '@tanstack/react-table'
 import { ArrowUpDown } from 'lucide-react'
 import { format } from 'date-fns'
-import * as React from 'react'
-import { type ActivityLogEntry } from '@/lib/react-query/queries'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 // ============================================================================
-// Badge styles
+// Column styles
 // ============================================================================
 
 export const ACTION_STYLES: Record<string, string> = {
@@ -27,10 +27,6 @@ export const ENTITY_TYPE_STYLES: Record<string, string> = {
 	enclosure_schedule: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
 	membership: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200'
 }
-
-// ============================================================================
-// Helpers
-// ============================================================================
 
 export function toLabel(s: string) {
 	return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -72,7 +68,7 @@ export function TCell({ text, className }: { text: string; className?: string })
 // Sort button
 // ============================================================================
 
-function SortBtn({
+export function SortBtn({
 	column,
 	label
 }: {
@@ -103,7 +99,14 @@ export function getActivityLogColumns(): ColumnDef<ActivityLogEntry>[] {
 			header: ({ column }) => <SortBtn column={column} label='Date' />,
 			cell: ({ row }) => {
 				const v = row.getValue('created_at') as string
-				return <span className='text-sm whitespace-nowrap'>{format(new Date(v), 'MMM d, yyyy')}</span>
+				if (!v) return <span className='text-sm'>—</span>
+				const dateObj = new Date(v)
+				return (
+					<div className='flex flex-col'>
+						<span className='text-sm whitespace-nowrap'>{format(dateObj, 'MMM d, yyyy')}</span>
+						<span className='text-xs text-muted-foreground whitespace-nowrap'>{format(dateObj, 'h:mm a')}</span>
+					</div>
+				)
 			}
 		},
 		{
