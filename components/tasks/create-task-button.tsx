@@ -225,11 +225,6 @@ export function CreateTaskButton({
 					return
 				}
 			}
-			const parsedAdvanceCount = parseInt(advanceTaskCount, 10)
-			if (!parsedAdvanceCount || parsedAdvanceCount < 1) {
-				toast.error('Advance task count must be at least 1.')
-				return
-			}
 			const flexSchedulePayload = {
 				template_id: templateId,
 				schedule_type: 'relative_interval' as const,
@@ -241,8 +236,7 @@ export function CreateTaskButton({
 				time_window: timeWindow,
 				start_date: flexStartDate.toISOString(),
 				end_date: flexEnds === 'on-date' && flexEndDate ? flexEndDate.toISOString() : null,
-				max_occurrences: flexEnds === 'after-x' ? parseInt(flexEndCount, 10) || null : null,
-				advance_task_count: parsedAdvanceCount
+				max_occurrences: flexEnds === 'after-x' ? parseInt(flexEndCount, 10) || null : null
 			}
 			const enclosureIds = isBatch ? batchEnclosureIds! : [enclosureId!]
 			createSchedule.mutate({ enclosure_ids: enclosureIds, ...flexSchedulePayload }, { onSuccess })
