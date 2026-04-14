@@ -21,38 +21,17 @@ export function useCreateOrg() {
 
 			if (orgError) throw orgError
 
-			// Add creator as Superadmin (3)
+			// Add creator as Owner (2)
 			const { error: relationError } = await supabase.from('user_org_role').insert({
 				user_id: userId,
 				org_id: org.org_id,
-				access_lvl: 3
+				access_lvl: 2
 			})
 
 			if (relationError) {
 				// If we fail to update the user_org_role table, delete the org
 				await supabase.from('orgs').delete().eq('org_id', org.org_id)
 				throw relationError
-			}
-
-			// Add all other existing superadmins to the org
-			const { data: superadmins, error: superadminsError } = await supabase
-				.from('profiles')
-				.select('id')
-				.eq('is_superadmin', true)
-				.neq('id', userId)
-
-			if (superadminsError) throw superadminsError
-
-			if (superadmins && superadmins.length > 0) {
-				const { error: upsertError } = await supabase.from('user_org_role').upsert(
-					superadmins.map((s) => ({
-						user_id: s.id,
-						org_id: org.org_id,
-						access_lvl: 3
-					})),
-					{ onConflict: 'user_id,org_id' }
-				)
-				if (upsertError) throw upsertError
 			}
 		},
 		onSuccess: () => {
