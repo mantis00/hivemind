@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircle, AlertTriangle } from 'lucide-react'
 import { useUpdateEmail, useCurrentClientUser } from '@/lib/react-query/auth'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 
@@ -19,15 +19,15 @@ export function ChangeEmailButton() {
 	return (
 		<ResponsiveDialogDrawer
 			title='Change Email'
-			description='Enter your new email address. A confirmation link will be sent to BOTH email addresses. You must verify both to complete the change.'
+			description='Enter your new email address below.'
 			open={open}
 			onOpenChange={(isOpen) => {
 				setOpen(isOpen)
 				if (!isOpen) setNewEmail('')
 			}}
 			trigger={
-				<Button variant='outline' size='sm' className='shrink-0' disabled>
-					Disabled
+				<Button variant='outline' size='sm' className='shrink-0'>
+					Change
 				</Button>
 			}
 		>
@@ -47,6 +47,13 @@ export function ChangeEmailButton() {
 				}}
 				className='grid gap-4 py-4'
 			>
+				<div className='flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/30 p-3 text-sm text-orange-800 dark:text-orange-300'>
+					<AlertTriangle className='h-4 w-4 shrink-0 mt-0.5' />
+					<p>
+						A confirmation link will be sent to <strong>both</strong> your current and new email addresses. You must
+						verify both to complete the change.
+					</p>
+				</div>
 				<div className='grid gap-2'>
 					<Label htmlFor='new-email'>New email address</Label>
 					<Input
