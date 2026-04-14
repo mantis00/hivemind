@@ -1160,7 +1160,7 @@ export function useCreateSchedule() {
 			start_date,
 			end_date,
 			max_occurrences,
-			advance_task_count
+			advance_task_count = 1
 		}: {
 			enclosure_ids: UUID[]
 			template_id: UUID | null
@@ -1174,7 +1174,7 @@ export function useCreateSchedule() {
 			start_date: string
 			end_date: string | null
 			max_occurrences: number | null
-			advance_task_count: number
+			advance_task_count?: number
 		}) => {
 			const supabase = createClient()
 			const rows = enclosure_ids.map((enclosure_id) => ({
