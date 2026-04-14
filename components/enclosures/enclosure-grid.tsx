@@ -18,7 +18,7 @@ import {
 	Download
 } from 'lucide-react'
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
@@ -119,8 +119,7 @@ export default function EnclosureGrid() {
 		return list
 	}, [filteredSpeciesSource, appliedSearch, sortKey, isSorted, sortUp])
 	const searchCount = appliedSearch ? displayedSpecies.length : 0
-	const [itemHeight, setItemHeight] = useState<number>(114)
-	const [dynamicTableHeight, setDynamicTableHeight] = useState<number>(680)
+	const TARGET_ROWS = 8
 	const [openSpeciesId, setOpenSpeciesId] = useState<UUID | null>(null)
 	const [detailsView, setDetailsView] = useState<'details' | 'edit'>('details')
 
@@ -299,23 +298,6 @@ export default function EnclosureGrid() {
 		() => displayedSpecies.find((s) => s.id === openSpeciesId) ?? null,
 		[displayedSpecies, openSpeciesId]
 	)
-	const measureRef = useRef<HTMLDivElement>(null)
-	const virtuosoRef = useRef<HTMLDivElement>(null)
-
-	useLayoutEffect(() => {
-		if (measureRef.current) {
-			const height = measureRef.current.getBoundingClientRect().height
-			if (height > 0) {
-				setItemHeight(height)
-			}
-		}
-	}, [displayedSpecies])
-
-	// Handle total list height changes from Virtuoso
-	const handleTotalListHeightChanged = (height: number) => {
-		const maxHeight = 680
-		setDynamicTableHeight(Math.min(height, maxHeight))
-	}
 
 	const handleSortChange = (sortOn: string) => {
 		if (!displayedSpecies?.length) return
@@ -334,15 +316,6 @@ export default function EnclosureGrid() {
 		setSearchValue('')
 		setAppliedSearch('')
 	}
-
-	// Calculate initial table height based on item count
-	const initialTableHeight = useMemo(() => {
-		const maxHeight = 680
-		const calculatedHeight = itemHeight * displayedSpecies.length
-		return Math.min(calculatedHeight, maxHeight)
-	}, [itemHeight, displayedSpecies.length])
-
-	const tableHeight = dynamicTableHeight || initialTableHeight
 
 	return (
 		<>
@@ -579,17 +552,16 @@ export default function EnclosureGrid() {
 						))}
 					</div>
 				) : displayedSpecies?.length && displayedSpecies?.length > 0 ? (
-					<>
-						{/* Hidden measurement element */}
-						<div
-							ref={measureRef}
-							aria-hidden='true'
-							style={{ position: 'absolute', visibility: 'hidden', pointerEvents: 'none' }}
-						>
-							<div className='p-2 pb-0 last:pb-2'>
+					displayedSpecies.length <= TARGET_ROWS ? (
+						<div className='rounded-lg border bg-card p-2 flex flex-col gap-2'>
+							{displayedSpecies.map((sp) => (
 								<SpeciesRow
-									species={displayedSpecies[0]}
-									onDetailsOpenChange={() => {}}
+									key={sp.id}
+									species={sp}
+									onDetailsOpenChange={() => {
+										setDetailsView('details')
+										setOpenSpeciesId(sp.id)
+									}}
 									sortKey={sortKey}
 									enclosureStatusFilter={enclosureStatusFilter}
 									selectMode={selectMode}
@@ -597,16 +569,16 @@ export default function EnclosureGrid() {
 									onSelectChange={handleSelectChange}
 									onSelectAll={handleSelectAll}
 								/>
-							</div>
+							))}
 						</div>
-						<div ref={virtuosoRef} className='rounded-lg border bg-card'>
+					) : (
+						<div className='rounded-lg border bg-card'>
 							<Virtuoso
 								className='scrollbar-no-track'
-								style={{ height: `${tableHeight}px`, transition: 'height 0.2s ease-in-out' }}
+								style={{ height: '680px' }}
 								data={displayedSpecies}
 								computeItemKey={(_, sp) => sp.id}
 								increaseViewportBy={200}
-								totalListHeightChanged={handleTotalListHeightChanged}
 								itemContent={(index, sp) => (
 									<div className='p-2 pb-0 last:pb-2'>
 										<SpeciesRow
@@ -626,7 +598,7 @@ export default function EnclosureGrid() {
 								)}
 							/>
 						</div>
-					</>
+					)
 				) : (
 					<div className='rounded-lg border border-dashed p-8 text-center'>
 						{searchValue.trim() ? (
