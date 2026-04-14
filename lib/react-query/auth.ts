@@ -60,8 +60,15 @@ export function useCurrentClientUserClaims() {
 
 export function useResestPassword() {
 	return useMutation({
-		mutationFn: async ({ password }: { password: string }) => {
+		mutationFn: async ({ currentPassword, password }: { currentPassword: string; password: string }) => {
 			const supabase = createClient()
+			const { data: userData, error: userError } = await supabase.auth.getUser()
+			if (userError || !userData.user?.email) throw new Error('Unable to verify current user.')
+			const { error: authError } = await supabase.auth.signInWithPassword({
+				email: userData.user.email,
+				password: currentPassword
+			})
+			if (authError) throw new Error('Current password is incorrect.')
 			const { error } = await supabase.auth.updateUser({ password })
 			if (error) throw error
 		},
