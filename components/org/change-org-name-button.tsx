@@ -11,8 +11,9 @@ import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import { toast } from 'sonner'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-export function ChangeOrgNameButton() {
+export function ChangeOrgNameButton({ disabled }: { disabled?: boolean }) {
 	const [open, setOpen] = useState(false)
 	const [newName, setNewName] = useState('')
 	const changeOrgName = useChangeOrgName()
@@ -36,9 +37,18 @@ export function ChangeOrgNameButton() {
 			open={open}
 			onOpenChange={handleOpenChange}
 			trigger={
-				<Button variant='outline' size='sm' className='shrink-0'>
-					<span className='hidden sm:inline'>Change Name</span> <Edit className='w-4 h-4' />
-				</Button>
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<span className={disabled ? 'cursor-not-allowed' : undefined}>
+								<Button variant='outline' size='sm' className='shrink-0' disabled={disabled}>
+									<span className='hidden sm:inline'>Change Name</span> <Edit className='w-4 h-4' />
+								</Button>
+							</span>
+						</TooltipTrigger>
+						{disabled && <TooltipContent>You don&apos;t have permission to perform this action</TooltipContent>}
+					</Tooltip>
+				</TooltipProvider>
 			}
 		>
 			<form
