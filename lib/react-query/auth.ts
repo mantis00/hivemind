@@ -172,7 +172,7 @@ export function useUpdateEmail() {
 			queryClient.invalidateQueries({ queryKey: ['currentUser'] })
 			queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] })
 			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
-			toast.success('Confirmation sent — check your inbox to verify the new email.')
+			toast.success('Confirmation sent — check both your current and new email to verify the change.')
 		}
 	})
 }
