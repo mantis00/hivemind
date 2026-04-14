@@ -3,13 +3,13 @@
 import * as React from 'react'
 import { type EnclosureTimelineRow, TimelineRecordType } from '@/lib/react-query/queries'
 import { type ColumnDef, flexRender } from '@tanstack/react-table'
-import { ArrowUpDown, Flag } from 'lucide-react'
+import { ArrowUpDown } from 'lucide-react'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { RECORD_TYPE_LABELS, RECORD_TYPE_STYLES } from './history-constants'
+import { RECORD_TYPE_LABELS, RECORD_TYPE_STYLES } from './enclosure-history-constants'
 
 // Only shows tooltip when the text is actually overflowing its container
 function TruncatedCell({
@@ -114,17 +114,6 @@ export function getTimelineColumns(): ColumnDef<EnclosureTimelineRow>[] {
 			header: 'Type',
 			cell: ({ row }) => {
 				const type = row.getValue('record_type') as TimelineRecordType
-				const details = row.original.details
-				const isFlagged = type === 'note' && details === 'FLAGGED'
-
-				if (isFlagged) {
-					return (
-						<Badge className='bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 font-medium gap-1'>
-							<Flag className='h-3 w-3' />
-							Note
-						</Badge>
-					)
-				}
 
 				return <Badge className={cn('font-medium', RECORD_TYPE_STYLES[type])}>{RECORD_TYPE_LABELS[type]}</Badge>
 			}

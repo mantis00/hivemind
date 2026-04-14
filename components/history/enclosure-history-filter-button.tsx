@@ -12,8 +12,8 @@ import { Separator } from '@/components/ui/separator'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
 import { TimelineRecordType, type EnclosureTimelineRow } from '@/lib/react-query/queries'
-import { type TimelineFilters } from '@/components/history/history-filters'
-import { RECORD_TYPE_OPTIONS } from './history-constants'
+import { type TimelineFilters } from '@/components/history/enclosure-history-filters'
+import { RECORD_TYPE_OPTIONS } from './enclosure-history-constants'
 
 type OpenFilter = 'species' | 'enclosures' | 'users' | 'taskTypes' | null
 
@@ -128,21 +128,39 @@ export function HistoryFilterButton({
 				<p className='text-sm font-medium text-muted-foreground'>
 					Activity Type {filters.recordTypes.length > 0 && `(${filters.recordTypes.length})`}
 				</p>
-				<div className='flex gap-2'>
-					{RECORD_TYPE_OPTIONS.map((opt) => (
-						<button
-							key={opt.value}
-							type='button'
-							onClick={() => handleRecordTypeToggle(opt.value, !filters.recordTypes.includes(opt.value))}
-							className={`flex-1 rounded-full border py-2 text-sm transition-colors ${
-								filters.recordTypes.includes(opt.value)
-									? 'border-primary bg-primary text-primary-foreground'
-									: 'border-border bg-background text-foreground'
-							}`}
-						>
-							{opt.label}
-						</button>
-					))}
+				<div className='flex flex-col gap-2'>
+					<div className='flex gap-2'>
+						{RECORD_TYPE_OPTIONS.slice(0, 2).map((opt) => (
+							<button
+								key={opt.value}
+								type='button'
+								onClick={() => handleRecordTypeToggle(opt.value, !filters.recordTypes.includes(opt.value))}
+								className={`flex-1 rounded-full border py-2 text-sm transition-colors ${
+									filters.recordTypes.includes(opt.value)
+										? 'border-primary bg-primary text-primary-foreground'
+										: 'border-border bg-background text-foreground'
+								}`}
+							>
+								{opt.label}
+							</button>
+						))}
+					</div>
+					<div className='flex gap-2'>
+						{RECORD_TYPE_OPTIONS.slice(2).map((opt) => (
+							<button
+								key={opt.value}
+								type='button'
+								onClick={() => handleRecordTypeToggle(opt.value, !filters.recordTypes.includes(opt.value))}
+								className={`flex-1 rounded-full border py-2 text-sm transition-colors ${
+									filters.recordTypes.includes(opt.value)
+										? 'border-primary bg-primary text-primary-foreground'
+										: 'border-border bg-background text-foreground'
+								}`}
+							>
+								{opt.label}
+							</button>
+						))}
+					</div>
 				</div>
 			</div>
 
