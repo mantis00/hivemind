@@ -76,7 +76,7 @@ export default function OrgCards() {
 											year: 'numeric'
 										})}
 									</span>
-									{userOrg.access_lvl < 2 && <LeaveOrgButton />}
+									{userOrg.access_lvl < 2 && <LeaveOrgButton orgId={userOrg.orgs.org_id} />}
 									<Button
 										size='sm'
 										className='h-7 px-2 gap-1 text-xs'

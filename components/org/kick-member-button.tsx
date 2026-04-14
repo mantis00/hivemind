@@ -43,8 +43,8 @@ export function KickMemberButton({
 			description='Are you sure you want to kick this member?'
 			trigger={
 				isControlled ? null : (
-					<Button variant='destructive'>
-						Kick Member <UserRoundX />
+					<Button variant='destructive' size='sm' className='h-7 px-2 gap-1 text-xs'>
+						Kick Member <UserRoundX className='w-3 h-3' />
 					</Button>
 				)
 			}
@@ -52,9 +52,20 @@ export function KickMemberButton({
 			onOpenChange={setOpen}
 		>
 			<form onSubmit={handleSubmit}>
-				<Button type='submit' variant='destructive' className='w-full'>
-					{kickMemberMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
-				</Button>
+				<div className='py-2' />
+				<div className='flex justify-end gap-2'>
+					<Button
+						type='button'
+						variant='outline'
+						disabled={kickMemberMutation.isPending}
+						onClick={() => setOpen(false)}
+					>
+						Cancel
+					</Button>
+					<Button type='submit' variant='destructive' disabled={kickMemberMutation.isPending}>
+						{kickMemberMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Confirm'}
+					</Button>
+				</div>
 			</form>
 		</ResponsiveDialogDrawer>
 	)
