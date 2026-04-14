@@ -1,7 +1,7 @@
 'use client'
 
 import { useOrgTaskHistory, useOrgTaskHistoryInRange } from '@/lib/react-query/queries'
-import { type TimelineFilters } from '@/components/history/history-filters'
+import { type TimelineFilters } from '@/components/history/enclosure-history-filters'
 import { UUID } from 'crypto'
 import * as React from 'react'
 import { format, subDays } from 'date-fns'
@@ -13,10 +13,10 @@ import {
 	useReactTable
 } from '@tanstack/react-table'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { getTimelineColumns } from './history-columns'
-import { HistoryFilters } from './history-filters'
-import { exportToCsv } from './history-export'
-import { DEFAULT_FILTERS, DESKTOP_COL_WIDTHS, MOBILE_COL_WIDTHS } from './history-constants'
+import { getTimelineColumns } from './enclosure-history-columns'
+import { HistoryFilters } from './enclosure-history-filters'
+import { exportToCsv } from './enclosure-history-export'
+import { DEFAULT_FILTERS, DESKTOP_COL_WIDTHS, MOBILE_COL_WIDTHS } from './enclosure-history-constants'
 import { SharedHistoryTable } from './shared-history-table'
 
 // ============================================================================

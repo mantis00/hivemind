@@ -12,8 +12,8 @@ import { Separator } from '@/components/ui/separator'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
 import { TimelineRecordType, type EnclosureTimelineRow } from '@/lib/react-query/queries'
-import { type TimelineFilters } from '@/components/history/history-filters'
-import { RECORD_TYPE_OPTIONS } from './history-constants'
+import { type TimelineFilters } from '@/components/history/enclosure-history-filters'
+import { RECORD_TYPE_OPTIONS } from './enclosure-history-constants'
 
 type OpenFilter = 'species' | 'enclosures' | 'users' | 'taskTypes' | null
 

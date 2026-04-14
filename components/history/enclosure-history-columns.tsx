@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { RECORD_TYPE_LABELS, RECORD_TYPE_STYLES } from './history-constants'
+import { RECORD_TYPE_LABELS, RECORD_TYPE_STYLES } from './enclosure-history-constants'
 
 // Only shows tooltip when the text is actually overflowing its container
 function TruncatedCell({

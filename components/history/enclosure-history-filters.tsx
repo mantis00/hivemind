@@ -18,8 +18,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
 import { cn } from '@/lib/utils'
-import { RECORD_TYPE_OPTIONS } from './history-constants'
-import { HistoryFilterButton } from './history-filter-button'
+import { RECORD_TYPE_OPTIONS } from './enclosure-history-constants'
+import { HistoryFilterButton } from './enclosure-history-filter-button'
 import { GlobalSearchToggle } from '@/components/tasks/global-search-toggle'
 
 export type TimelineFilters = {

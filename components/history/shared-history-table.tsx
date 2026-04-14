@@ -13,7 +13,7 @@ import {
 	HEADER_HEIGHT,
 	ESTIMATED_ROW_HEIGHT_DESKTOP,
 	ESTIMATED_ROW_HEIGHT_MOBILE
-} from './history-constants'
+} from './enclosure-history-constants'
 
 // ============================================================================
 // Generic shared table renderer — used by both HistoryTable and UserActionsTable

@@ -12,32 +12,7 @@ import { Separator } from '@/components/ui/separator'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
 import { type ActivityLogEntry } from '@/lib/react-query/queries'
-
-// ============================================================================
-// Shared filter types — imported by user-history-table.tsx
-// ============================================================================
-
-export type UserActionFilters = {
-	searchQuery: string
-	actions: string[]
-	entityTypes: string[]
-	users: string[]
-	dateFrom: string | null
-	dateTo: string | null
-}
-
-export const DEFAULT_USER_ACTION_FILTERS: UserActionFilters = {
-	searchQuery: '',
-	actions: [],
-	entityTypes: [],
-	users: [],
-	dateFrom: null,
-	dateTo: null
-}
-
-// ============================================================================
-// Local constants
-// ============================================================================
+import { type UserActionFilters } from './user-history-constants'
 
 const ACTION_OPTIONS = ['create', 'update', 'delete', 'deactivate']
 const ENTITY_TYPE_OPTIONS = ['task', 'enclosure', 'org_species', 'enclosure_schedule', 'membership']
