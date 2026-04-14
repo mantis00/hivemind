@@ -60,6 +60,19 @@ export function useCurrentClientUserClaims() {
 
 export function useResestPassword() {
 	return useMutation({
+		mutationFn: async ({ password }: { password: string }) => {
+			const supabase = createClient()
+			const { error } = await supabase.auth.updateUser({ password })
+			if (error) throw error
+		},
+		onSuccess: () => {
+			toast.success('Password updated successfully!')
+		}
+	})
+}
+
+export function useChangePassword() {
+	return useMutation({
 		mutationFn: async ({ currentPassword, password }: { currentPassword: string; password: string }) => {
 			const supabase = createClient()
 			const { data: userData, error: userError } = await supabase.auth.getUser()

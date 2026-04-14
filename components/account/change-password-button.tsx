@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Eye, EyeOff, LoaderCircle } from 'lucide-react'
-import { useResestPassword } from '@/lib/react-query/auth'
+import { useChangePassword } from '@/lib/react-query/auth'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { cn } from '@/lib/utils'
 
@@ -20,7 +20,7 @@ export function ChangePasswordButton() {
 	const currentPasswordRef = useRef<HTMLInputElement>(null)
 	const passwordRef = useRef<HTMLInputElement>(null)
 	const confirmPasswordRef = useRef<HTMLInputElement>(null)
-	const resetPassword = useResestPassword()
+	const resetPassword = useChangePassword()
 
 	const toggleShowCurrentPassword = () => {
 		const input = currentPasswordRef.current
