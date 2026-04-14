@@ -1,6 +1,6 @@
 'use client'
 
-import { useOrgUserActions, useOrgUserActionsInRange, type ActivityLogEntry } from '@/lib/react-query/queries'
+import { useOrgUserActions, useOrgUserActionsInRange } from '@/lib/react-query/queries'
 import { UUID } from 'crypto'
 import * as React from 'react'
 import { format, subDays } from 'date-fns'
