@@ -55,8 +55,8 @@ export function useCreateOrg() {
 				if (upsertError) throw upsertError
 			}
 		},
-		onSuccess: (data, variables) => {
-			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
 			toast.success('Organization created!')
 		}
 	})
@@ -78,8 +78,8 @@ export function useDeleteOrg() {
 			const { error: orgError } = await supabase.from('orgs').delete().eq('org_id', orgId)
 			if (orgError) throw orgError
 		},
-		onSuccess: (data, variables) => {
-			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
 			toast.success('Organization deleted.')
 		}
 	})
@@ -97,7 +97,7 @@ export function useLeaveOrg() {
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgMembers', variables.orgId] })
-			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
 			toast.success('You have left the organization.')
 		}
 	})
@@ -274,10 +274,11 @@ export function useAcceptInvite() {
 
 			if (updateError) throw updateError
 		},
-		onSuccess: (data, variables) => {
+		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
-			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
 			queryClient.invalidateQueries({ queryKey: ['orgMembers'] })
+			queryClient.invalidateQueries({ queryKey: ['orgMemberProfiles'] })
 			queryClient.invalidateQueries({ queryKey: ['profiles'] })
 			toast.success('Invite accepted!')
 		}

@@ -2,16 +2,13 @@
 
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
-import { LoaderCircle, LogOut } from 'lucide-react'
+import { LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useLeaveOrg } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
 import { UUID } from 'crypto'
-import { useParams } from 'next/navigation'
 
-export function LeaveOrgButton() {
-	const params = useParams()
-	const orgId = params?.orgId as UUID | undefined
+export function LeaveOrgButton({ orgId }: { orgId: UUID }) {
 	const [open, setOpen] = useState(false)
 	const { data: user } = useCurrentClientUser()
 	const leaveOrgMutation = useLeaveOrg()
@@ -35,8 +32,8 @@ export function LeaveOrgButton() {
 			title='Leave Organization'
 			description='Are you sure you want to leave this organization? This action cannot be undone.'
 			trigger={
-				<Button variant='destructive'>
-					Leave Organization <LogOut />
+				<Button variant='destructive' size='sm' className='h-7 px-2 gap-1 text-xs'>
+					Leave Organization
 				</Button>
 			}
 			open={open}
@@ -48,7 +45,7 @@ export function LeaveOrgButton() {
 					<Button type='button' variant='outline' disabled={leaveOrgMutation.isPending} onClick={() => setOpen(false)}>
 						Cancel
 					</Button>
-					<Button type='submit' variant='destructive' disabled={leaveOrgMutation.isPending || !user || !orgId}>
+					<Button type='submit' variant='destructive' disabled={leaveOrgMutation.isPending || !user}>
 						{leaveOrgMutation.isPending ? <LoaderCircle className='animate-spin' /> : 'Leave Organization'}
 					</Button>
 				</div>

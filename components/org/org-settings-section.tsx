@@ -13,7 +13,7 @@ export function OrgSettingsSection() {
 	const orgId = params?.orgId as UUID | undefined
 	const isOwnerOrSuperadmin = useIsOwnerOrSuperadmin(orgId)
 
-	if (!isOwnerOrSuperadmin) return null
+	const disabled = !isOwnerOrSuperadmin
 
 	return (
 		<>
@@ -35,7 +35,7 @@ export function OrgSettingsSection() {
 								<p className='text-sm text-muted-foreground'>Change the displayed name of your organization</p>
 							</div>
 						</div>
-						<ChangeOrgNameButton />
+						<ChangeOrgNameButton disabled={disabled} />
 					</div>
 				</CardContent>
 			</Card>
@@ -57,7 +57,7 @@ export function OrgSettingsSection() {
 								<p className='text-sm text-muted-foreground'>Permanently delete this organization and all its data</p>
 							</div>
 						</div>
-						<DeleteOrgButton />
+						<DeleteOrgButton disabled={disabled} />
 					</div>
 				</CardContent>
 			</Card>
