@@ -124,21 +124,39 @@ export function UserHistoryFilterButton({
 				<p className='text-sm font-medium text-muted-foreground'>
 					Entity Type {filters.entityTypes.length > 0 && `(${filters.entityTypes.length})`}
 				</p>
-				<div className='flex gap-2 flex-wrap'>
-					{ENTITY_TYPE_OPTIONS.map((opt) => (
-						<button
-							key={opt}
-							type='button'
-							onClick={() => handleEntityTypeToggle(opt, !filters.entityTypes.includes(opt))}
-							className={`flex-1 rounded-full border py-2 text-sm transition-colors ${
-								filters.entityTypes.includes(opt)
-									? 'border-primary bg-primary text-primary-foreground'
-									: 'border-border bg-background text-foreground'
-							}`}
-						>
-							{toLabel(opt)}
-						</button>
-					))}
+				<div className='flex flex-col gap-2'>
+					<div className='flex gap-2'>
+						{ENTITY_TYPE_OPTIONS.slice(0, 3).map((opt) => (
+							<button
+								key={opt}
+								type='button'
+								onClick={() => handleEntityTypeToggle(opt, !filters.entityTypes.includes(opt))}
+								className={`flex-1 rounded-full border py-2 text-sm transition-colors ${
+									filters.entityTypes.includes(opt)
+										? 'border-primary bg-primary text-primary-foreground'
+										: 'border-border bg-background text-foreground'
+								}`}
+							>
+								{toLabel(opt)}
+							</button>
+						))}
+					</div>
+					<div className='flex gap-2'>
+						{ENTITY_TYPE_OPTIONS.slice(3).map((opt) => (
+							<button
+								key={opt}
+								type='button'
+								onClick={() => handleEntityTypeToggle(opt, !filters.entityTypes.includes(opt))}
+								className={`flex-1 rounded-full border py-2 text-sm transition-colors ${
+									filters.entityTypes.includes(opt)
+										? 'border-primary bg-primary text-primary-foreground'
+										: 'border-border bg-background text-foreground'
+								}`}
+							>
+								{toLabel(opt)}
+							</button>
+						))}
+					</div>
 				</div>
 			</div>
 
