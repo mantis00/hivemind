@@ -1,4 +1,4 @@
-import { UserActionsTable } from '@/components/history/user-table'
+import { UserActionsTable } from '@/components/history/user-history-table'
 import { UUID } from 'crypto'
 
 export default async function HistoryPage({ params }: { params: Promise<{ orgId: string }> }) {

@@ -29,7 +29,8 @@ import {
 	ArrowRightLeft,
 	Calendar,
 	MessageSquare,
-	History
+	History,
+	SquareStack
 } from 'lucide-react'
 import {
 	DropdownMenu,
@@ -264,7 +265,7 @@ export function AppSidebar() {
 													href={orgId ? `/protected/orgs/${orgId}/history` : '/protected/orgs'}
 													onClick={closeMobileOnNav}
 												>
-													<Boxes className='size-4' />
+													<SquareStack className='size-4' />
 													<span>Enclosure History</span>
 												</Link>
 											</SidebarMenuSubButton>
@@ -275,7 +276,7 @@ export function AppSidebar() {
 													href={orgId ? `/protected/orgs/${orgId}/history/user-history` : '/protected/orgs'}
 													onClick={closeMobileOnNav}
 												>
-													<Users className='size-4' />
+													<SquareStack className='size-4' />
 													<span>User History</span>
 												</Link>
 											</SidebarMenuSubButton>
