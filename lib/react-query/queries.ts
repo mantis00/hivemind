@@ -368,8 +368,6 @@ export type EnclosureTimelineRow = {
 	template_type: string | null
 	priority: string | null
 	time_window: string | null
-	old_count: number | null
-	new_count: number | null
 }
 
 export function useEnclosureLineage(enclosureId: UUID) {
@@ -1137,7 +1135,7 @@ export function useTaskById(taskId: UUID) {
 		queryKey: ['taskById', taskId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase.from('tasks').select('*').eq('id', taskId).single()) as {
+			const { data, error } = (await supabase.from('tasks').select('*').eq('id', taskId).maybeSingle()) as {
 				data: Task | null
 				error: PostgrestError | null
 			}

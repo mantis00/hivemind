@@ -4,25 +4,64 @@ import { useState } from 'react'
 import { UUID } from 'crypto'
 import { useRouter } from 'next/navigation'
 
-import { useDeleteTask } from '@/lib/react-query/mutations'
+import { useDeleteTask, useDeleteTasks } from '@/lib/react-query/mutations'
 
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { LoaderCircle, Trash2 } from 'lucide-react'
 
-export function DeleteTaskButton({
-	taskId,
-	taskName,
-	redirectTo
-}: {
-	taskId: UUID
-	taskName: string | null
+interface DeleteTaskButtonProps {
+	/** Single-task mode */
+	taskId?: UUID
+	/** Batch mode – provide a list of IDs instead of a single taskId */
+	taskIds?: UUID[]
+	taskName?: string | null
 	redirectTo?: string
-}) {
+	/** Called after a successful delete (in addition to any redirect) */
+	onDeleted?: () => void
+}
+
+export function DeleteTaskButton({ taskId, taskIds, taskName, redirectTo, onDeleted }: DeleteTaskButtonProps) {
 	const [open, setOpen] = useState(false)
 	const deleteTask = useDeleteTask()
+	const deleteTasks = useDeleteTasks()
 	const router = useRouter()
+
+	const isBatch = Array.isArray(taskIds) && taskIds.length > 0
+	const isPending = isBatch ? deleteTasks.isPending : deleteTask.isPending
+
+	const handleDelete = () => {
+		if (isBatch) {
+			deleteTasks.mutate(
+				{ taskIds: taskIds! },
+				{
+					onSuccess: () => {
+						setOpen(false)
+						onDeleted?.()
+					}
+				}
+			)
+		} else if (taskId) {
+			deleteTask.mutate(
+				{ taskId },
+				{
+					onSuccess: () => {
+						setOpen(false)
+						onDeleted?.()
+						if (redirectTo) router.push(redirectTo)
+						else router.back()
+					}
+				}
+			)
+		}
+	}
+
+	const confirmLabel = isBatch ? `Delete ${taskIds!.length} task${taskIds!.length === 1 ? '' : 's'}` : 'Delete'
+
+	const bodyText = isBatch
+		? `Are you sure you want to permanently delete ${taskIds!.length} task${taskIds!.length === 1 ? '' : 's'}?`
+		: `Are you sure you want to delete task:${taskName ? ` "${taskName}"` : ' this task'}?`
 
 	return (
 		<>
@@ -42,47 +81,29 @@ export function DeleteTaskButton({
 						</Button>
 					</TooltipTrigger>
 					<TooltipContent>
-						<p>Delete task</p>
+						<p>{isBatch ? `Delete ${taskIds!.length} tasks` : 'Delete task'}</p>
 					</TooltipContent>
 				</Tooltip>
 			</TooltipProvider>
 
 			<ResponsiveDialogDrawer
-				title='Delete Task'
+				title={isBatch ? 'Delete Tasks' : 'Delete Task'}
 				description='This action cannot be undone.'
 				trigger={null}
 				open={open}
 				onOpenChange={setOpen}
 				footer={
 					<div className='flex gap-2 w-full'>
-						<Button variant='outline' className='flex-1' onClick={() => setOpen(false)} disabled={deleteTask.isPending}>
+						<Button variant='outline' className='flex-1' onClick={() => setOpen(false)} disabled={isPending}>
 							Cancel
 						</Button>
-						<Button
-							variant='destructive'
-							className='flex-1'
-							disabled={deleteTask.isPending}
-							onClick={() =>
-								deleteTask.mutate(
-									{ taskId },
-									{
-										onSuccess: () => {
-											setOpen(false)
-											if (redirectTo) router.push(redirectTo)
-											else router.back()
-										}
-									}
-								)
-							}
-						>
-							{deleteTask.isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Delete'}
+						<Button variant='destructive' className='flex-1' disabled={isPending} onClick={handleDelete}>
+							{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : confirmLabel}
 						</Button>
 					</div>
 				}
 			>
-				<p className='text-sm text-muted-foreground'>
-					Are you sure you want to delete task:{taskName ? ` "${taskName}"` : ' this task'}?
-				</p>
+				<p className='text-sm text-muted-foreground'>{bodyText}</p>
 			</ResponsiveDialogDrawer>
 		</>
 	)

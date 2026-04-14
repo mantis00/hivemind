@@ -2,19 +2,7 @@ import { type EnclosureTimelineRow } from '@/lib/react-query/queries'
 import { format } from 'date-fns'
 
 export function exportToCsv(data: EnclosureTimelineRow[]) {
-	const headers = [
-		'Date',
-		'Type',
-		'Enclosure',
-		'Species',
-		'Summary',
-		'Details',
-		'User',
-		'Priority',
-		'Time Window',
-		'Old Count',
-		'New Count'
-	]
+	const headers = ['Date', 'Type', 'Enclosure', 'Species', 'Summary', 'Details', 'User', 'Priority', 'Time Window']
 	const rows = data.map((row) => [
 		row.event_date,
 		row.record_type,
@@ -24,9 +12,7 @@ export function exportToCsv(data: EnclosureTimelineRow[]) {
 		row.details ?? '',
 		row.user_name ?? '',
 		row.priority ?? '',
-		row.time_window ?? '',
-		row.old_count != null ? String(row.old_count) : '',
-		row.new_count != null ? String(row.new_count) : ''
+		row.time_window ?? ''
 	])
 	const csvContent = [headers, ...rows]
 		.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))

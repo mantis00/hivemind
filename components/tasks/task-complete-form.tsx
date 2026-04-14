@@ -253,23 +253,25 @@ export function TaskCompleteForm({ taskId, orgId, enclosureId, batchTaskIds }: T
 				{taskDesc && <p className='text-sm text-muted-foreground'>{taskDesc}</p>}
 
 				<div className='flex flex-wrap items-center gap-4 pt-1 text-sm text-muted-foreground'>
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									type='button'
-									variant='ghost'
-									size='sm'
-									className='h-7 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground font-normal shrink-0 bg-muted hover:bg-muted/70'
-									onClick={() => setEnclosureDialogOpen(true)}
-								>
-									<Box className='h-3.5 w-3.5 shrink-0' />
-									{enclosureName}
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>View Enclosure</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
+					{!isBatchMode && (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										type='button'
+										variant='ghost'
+										size='sm'
+										className='h-7 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground font-normal shrink-0 bg-muted hover:bg-muted/70'
+										onClick={() => setEnclosureDialogOpen(true)}
+									>
+										<Box className='h-3.5 w-3.5 shrink-0' />
+										{enclosureName}
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>View Enclosure</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					)}
 					{isEnclosureInactive ? (
 						<Badge variant='outline' className='font-semibold text-destructive'>
 							Inactive Enclosure

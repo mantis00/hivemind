@@ -197,6 +197,24 @@ export function TaskScheduleSection({
 						endCount={flexEndCount}
 						onEndCountChange={onFlexEndCountChange}
 					/>
+					<div className='space-y-1'>
+						<div className='flex items-center justify-between'>
+							<Label className='text-sm'>
+								Advance Task Count <span className='text-destructive'>*</span>
+							</Label>
+						</div>
+						<Input
+							type='number'
+							min={1}
+							placeholder='e.g. 7'
+							value={advanceTaskCount}
+							onChange={(e) => onAdvanceTaskCountChange(e.target.value)}
+							className='w-32'
+						/>
+						<p className='text-xs text-muted-foreground'>
+							How many future tasks to generate at a time for this schedule.
+						</p>
+					</div>
 					<TimeWindowField value={timeWindow} onChange={onTimeWindowChange} />
 				</div>
 			)}

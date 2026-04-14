@@ -1096,40 +1096,11 @@ export function useStartTask() {
 	})
 }
 
-export function useCompleteTask() {
-	const queryClient = useQueryClient()
-
-	return useMutation({
-		mutationFn: async ({ task_id, enclosure_id, user_id }: { task_id: UUID; enclosure_id: UUID; user_id: UUID }) => {
-			const supabase = createClient()
-
-			if (!task_id) {
-				throw new Error('Task ID missing!')
-			}
-
-			const { error } = await supabase
-				.from('tasks')
-				.update({ status: 'completed', completed_time: new Date().toISOString(), completed_by: user_id })
-				.eq('id', task_id)
-				.eq('enclosure_id', enclosure_id)
-
-			if (error) throw error
-		},
-		onSuccess: (_, variables) => {
-			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
-			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
-			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
-			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-		}
-	})
-}
-
 export function useCreateTask() {
 	const queryClient = useQueryClient()
-
 	return useMutation({
 		mutationFn: async ({
-			enclosure_id,
+			enclosure_ids,
 			template_id,
 			name,
 			description,
@@ -1138,7 +1109,7 @@ export function useCreateTask() {
 			due_date,
 			time_window
 		}: {
-			enclosure_id: UUID
+			enclosure_ids: UUID[]
 			template_id: UUID | null
 			name: string | null
 			description: string | null
@@ -1148,41 +1119,35 @@ export function useCreateTask() {
 			time_window: string
 		}) => {
 			const supabase = createClient()
-
-			const { data, error } = await supabase
-				.from('tasks')
-				.insert({
-					enclosure_id,
-					template_id,
-					name,
-					description,
-					assigned_to,
-					priority,
-					status: 'pending',
-					due_date,
-					time_window
-				})
-				.select()
-				.single()
-
+			const rows = enclosure_ids.map((enclosure_id) => ({
+				enclosure_id,
+				template_id,
+				name,
+				description,
+				assigned_to,
+				priority,
+				status: 'pending',
+				due_date,
+				time_window
+			}))
+			const { data, error } = await supabase.from('tasks').insert(rows).select()
 			if (error) throw error
 			return data
 		},
-		onSuccess: () => {
+		onSuccess: (data) => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Task created!')
+			toast.success(`${data?.length ?? 'Tasks'} task${data?.length === 1 ? '' : 's'} created!`)
 		}
 	})
 }
 
 export function useCreateSchedule() {
 	const queryClient = useQueryClient()
-
 	return useMutation({
 		mutationFn: async ({
-			enclosure_id,
+			enclosure_ids,
 			template_id,
 			schedule_type,
 			schedule_rule,
@@ -1196,7 +1161,7 @@ export function useCreateSchedule() {
 			max_occurrences,
 			advance_task_count
 		}: {
-			enclosure_id: UUID
+			enclosure_ids: UUID[]
 			template_id: UUID | null
 			schedule_type: 'fixed_calendar' | 'relative_interval'
 			schedule_rule: string
@@ -1205,43 +1170,39 @@ export function useCreateSchedule() {
 			assigned_to: UUID | null
 			priority: string
 			time_window: string
-			start_date?: string
+			start_date: string
 			end_date: string | null
 			max_occurrences: number | null
-			advance_task_count?: number
+			advance_task_count: number
 		}) => {
 			const supabase = createClient()
-
-			const { data, error } = await supabase
-				.from('enclosure_schedules')
-				.insert({
-					enclosure_id,
-					template_id,
-					schedule_type,
-					schedule_rule,
-					task_name,
-					task_description,
-					assigned_to,
-					priority,
-					time_window,
-					start_date,
-					end_date,
-					max_occurrences,
-					advance_task_count,
-					is_active: true
-				})
-				.select()
-				.single()
-
+			const rows = enclosure_ids.map((enclosure_id) => ({
+				enclosure_id,
+				template_id,
+				schedule_type,
+				schedule_rule,
+				task_name,
+				task_description,
+				assigned_to,
+				priority,
+				time_window,
+				start_date,
+				end_date,
+				max_occurrences,
+				advance_task_count,
+				is_active: true
+			}))
+			const { data, error } = await supabase.from('enclosure_schedules').insert(rows).select()
 			if (error) throw error
 			return data
 		},
-		onSuccess: () => {
+		onSuccess: async (data) => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success(`${data?.length ?? ''} recurring schedule${data?.length === 1 ? '' : 's'} created!`)
+			await new Promise((resolve) => setTimeout(resolve, 1000))
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Recurring schedule created!')
 		}
 	})
 }
@@ -1291,7 +1252,7 @@ export function useSubmitTaskForm() {
 			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Task completed!')
+			// toast.success('Task completed!') removing this, we already show a completion indicator where this is used.
 		}
 	})
 }
@@ -1970,6 +1931,26 @@ export function useDeleteTask() {
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.taskId] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Task deleted!')
+		}
+	})
+}
+
+export function useDeleteTasks() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ taskIds }: { taskIds: UUID[] }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('tasks').delete().in('id', taskIds)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById'] })
+			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success('Tasks deleted!')
 		}
 	})
 }

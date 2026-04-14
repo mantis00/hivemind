@@ -97,10 +97,6 @@ function HistoryTableInner({
 		setIsMounted(true)
 	}, [])
 
-	React.useEffect(() => {
-		console.log('[useOrgTaskHistory] allData length:', allData.length, allData)
-	}, [allData])
-
 	const filteredData = React.useMemo(() => {
 		return data.filter((row) => {
 			if (filters.searchQuery) {
