@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 
 import { useCallback, useMemo, useState } from 'react'
+import { useIsMounted } from '@/hooks/use-is-mounted'
 import Image from 'next/image'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
@@ -60,6 +61,8 @@ export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useOrgSpecies(orgId as UUID)
+	const isMounted = useIsMounted()
+	const effectiveLoading = isMounted && isLoading
 	const orgSpeciesById = useMemo(() => new Map((orgSpecies ?? []).map((s) => [s.id, s])), [orgSpecies])
 	const activeOrgSpecies = useMemo(() => (orgSpecies ?? []).filter((s) => s.is_active), [orgSpecies])
 
@@ -453,7 +456,7 @@ export default function EnclosureGrid() {
 						<Select
 							onValueChange={(value) => handleFilterChange(value as EnclosureStatusFilter)}
 							value={enclosureStatusFilter}
-							disabled={isLoading}
+							disabled={effectiveLoading}
 						>
 							<SelectTrigger className='w-46'>
 								<SelectValue placeholder='Enclosures' className='flex-1 min-w-0 truncate' />
@@ -471,7 +474,7 @@ export default function EnclosureGrid() {
 							</SelectContent>
 						</Select>
 					)}
-					<Select onValueChange={handleSortChange} value={sortKey} disabled={isLoading}>
+					<Select onValueChange={handleSortChange} value={sortKey} disabled={effectiveLoading}>
 						<SelectTrigger className='w-45'>
 							<SelectValue placeholder='Sort' className='flex-1 min-w-0 truncate' />
 							{isSorted && (
@@ -508,7 +511,7 @@ export default function EnclosureGrid() {
 							const newSortUp = !sortUp
 							setSortUp(newSortUp)
 						}}
-						disabled={isLoading || !isSorted}
+						disabled={effectiveLoading || !isSorted}
 					>
 						{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
 					</Button>
