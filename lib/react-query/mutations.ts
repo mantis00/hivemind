@@ -2151,6 +2151,18 @@ export function useDeleteCareInstruction() {
 	return useMutation({
 		mutationFn: async ({ docId }: { docId: string; speciesId: UUID }) => {
 			const supabase = createClient()
+
+			const { data: doc, error: fetchError } = await supabase
+				.from('species_care_instructions')
+				.select('file_url')
+				.eq('id', docId)
+				.single()
+			if (fetchError) throw fetchError
+
+			const url = new URL(doc.file_url)
+			const storagePath = url.pathname.split('/storage/v1/object/public/care_instructions/')[1]
+			if (storagePath) await supabase.storage.from('care_instructions').remove([storagePath])
+
 			const { error } = await supabase.from('species_care_instructions').delete().eq('id', docId)
 			if (error) throw error
 		},
@@ -2212,6 +2224,18 @@ export function useDeleteOrgCareInstruction() {
 	return useMutation({
 		mutationFn: async ({ docId }: { docId: string; orgSpeciesId: UUID }) => {
 			const supabase = createClient()
+
+			const { data: doc, error: fetchError } = await supabase
+				.from('species_care_instructions')
+				.select('file_url')
+				.eq('id', docId)
+				.single()
+			if (fetchError) throw fetchError
+
+			const url = new URL(doc.file_url)
+			const storagePath = url.pathname.split('/storage/v1/object/public/care_instructions/')[1]
+			if (storagePath) await supabase.storage.from('care_instructions').remove([storagePath])
+
 			const { error } = await supabase.from('species_care_instructions').delete().eq('id', docId)
 			if (error) throw error
 		},
