@@ -2138,7 +2138,7 @@ export function useDeleteCareInstruction() {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: async ({ docId, speciesId }: { docId: string; speciesId: UUID }) => {
+		mutationFn: async ({ docId }: { docId: string; speciesId: UUID }) => {
 			const supabase = createClient()
 			const { error } = await supabase.from('species_care_instructions').delete().eq('id', docId)
 			if (error) throw error
