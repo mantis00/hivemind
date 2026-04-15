@@ -86,7 +86,6 @@ export type Species = {
 	care_instructions: string
 	created_at: string
 	picture_url: string
-	care_instructions_urls: string[]
 }
 
 export type OrgSpecies = {
@@ -100,7 +99,6 @@ export type OrgSpecies = {
 		scientific_name: string
 		picture_url: string
 	}
-	care_instructions_urls: string[]
 }
 
 export type Location = {
@@ -424,22 +422,6 @@ export function useOrgEnclosureLineage(orgId: UUID) {
 	})
 }
 
-export type EnclosureLineage = {
-	id: UUID
-	enclosure_id: UUID
-	source_enclosure_id: UUID
-	created_at: string
-}
-
-export type EnclosureCouuntHistory = {
-	id: UUID
-	enclosure_id: UUID
-	old_count: number
-	new_count: number
-	changed_by: UUID
-	changed_at: string
-}
-
 export type SpeciesCareInstructions = {
 	id: UUID
 	species_id: UUID
@@ -448,42 +430,6 @@ export type SpeciesCareInstructions = {
 	file_url: string
 	created_at: string
 	is_hidden_by_org: boolean
-}
-
-export function useEnclosureLineage(enclosureId: UUID) {
-	return useQuery({
-		queryKey: ['enclosureLineage', enclosureId],
-		queryFn: async () => {
-			const supabase = createClient()
-			const { data, error } = await supabase
-				.from('enclosure_lineage')
-				.select('id, enclosure_id, source_enclosure_id, created_at')
-				.eq('enclosure_id', enclosureId)
-			if (error) throw error
-			return data as EnclosureLineage[]
-		},
-		enabled: !!enclosureId
-	})
-}
-
-export function useOrgEnclosureLineage(orgId: UUID) {
-	return useQuery({
-		queryKey: ['orgEnclosureLineage', orgId],
-		queryFn: async () => {
-			const supabase = createClient()
-			const { data: orgEncs, error: encError } = await supabase.from('enclosures').select('id').eq('org_id', orgId)
-			if (encError) throw encError
-			const ids = (orgEncs ?? []).map((e) => e.id)
-			if (ids.length === 0) return []
-			const { data, error } = await supabase
-				.from('enclosure_lineage')
-				.select('id, enclosure_id, source_enclosure_id, created_at')
-				.in('enclosure_id', ids)
-			if (error) throw error
-			return data as EnclosureLineage[]
-		},
-		enabled: !!orgId
-	})
 }
 
 export function useUserOrgs(userId: string) {
@@ -1164,6 +1110,23 @@ export function useSpeciesCareInstructions(speciesId: UUID) {
 			return data as SpeciesCareInstructions[]
 		},
 		enabled: !!speciesId
+	})
+}
+
+export function useOrgSpeciesCareInstructions(orgSpeciesId: UUID) {
+	return useQuery({
+		queryKey: ['orgSpeciesCareInstructions', orgSpeciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('species_care_instructions')
+				.select('*')
+				.eq('org_species_id', orgSpeciesId)
+				.order('created_at', { ascending: true })
+			if (error) throw error
+			return data as SpeciesCareInstructions[]
+		},
+		enabled: !!orgSpeciesId
 	})
 }
 

@@ -2159,3 +2159,64 @@ export function useDeleteCareInstruction() {
 		}
 	})
 }
+
+export function useAddOrgCareInstruction() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			orgSpeciesId,
+			orgName,
+			file,
+			label
+		}: {
+			orgSpeciesId: UUID
+			orgName: string
+			file: File
+			label: string
+		}) => {
+			const supabase = createClient()
+
+			const orgSlug = orgName
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-|-$/g, '')
+			const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+			const storageName = `orgs/${orgSlug}/${Date.now()}-${safeName}`
+
+			const { data: uploadData, error: uploadError } = await supabase.storage
+				.from('care_instructions')
+				.upload(storageName, file)
+
+			if (uploadError) throw uploadError
+
+			const { data: publicData } = supabase.storage.from('care_instructions').getPublicUrl(uploadData.path)
+
+			const { error: insertError } = await supabase.from('species_care_instructions').insert({
+				org_species_id: orgSpeciesId,
+				file_name: label,
+				file_url: publicData.publicUrl
+			})
+
+			if (insertError) throw insertError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgSpeciesCareInstructions', variables.orgSpeciesId] })
+		}
+	})
+}
+
+export function useDeleteOrgCareInstruction() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ docId }: { docId: string; orgSpeciesId: UUID }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('species_care_instructions').delete().eq('id', docId)
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgSpeciesCareInstructions', variables.orgSpeciesId] })
+		}
+	})
+}

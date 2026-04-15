@@ -95,7 +95,7 @@ export function CareInstructionsDropzone({
 	return (
 		<>
 			<div className='flex flex-col gap-2'>
-				<Label className='text-xs text-muted-foreground'>Care Instruction Documents (optional)</Label>
+				<Label className='text-xs text-muted-foreground'>Care Instruction Documents</Label>
 
 				{hasItems && (
 					<div className='flex flex-col gap-1.5'>
