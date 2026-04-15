@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
+import Image from 'next/image'
 
 function isImage(name: string) {
 	return /\.(png|jpe?g|gif|webp)$/i.test(name)
@@ -42,18 +43,20 @@ export function CareInstructionsDropzone({
 	onDocAdd,
 	onPendingRemove
 }: CareInstructionsDropzoneProps) {
-	const [preview, setPreview] = useState<{ src: string; name: string; isObjectUrl: boolean } | null>(null)
+	const [preview, setPreview] = useState<{ src: string; name: string; isObjectUrl: boolean; isImg: boolean } | null>(
+		null
+	)
 	const [adding, setAdding] = useState(false)
 	const [stagedFile, setStagedFile] = useState<File | null>(null)
 	const [docLabel, setDocLabel] = useState('')
 
 	const openExisting = (url: string, name: string) => {
-		setPreview({ src: url, name, isObjectUrl: false })
+		setPreview({ src: url, name, isObjectUrl: false, isImg: isImage(url) })
 	}
 
 	const openPending = (file: File) => {
 		const src = URL.createObjectURL(file)
-		setPreview({ src, name: file.name, isObjectUrl: true })
+		setPreview({ src, name: file.name, isObjectUrl: true, isImg: isImage(file.name) })
 	}
 
 	const closePreview = useCallback(() => {
@@ -234,9 +237,9 @@ export function CareInstructionsDropzone({
 				className='sm:max-w-4xl h-[85vh]'
 			>
 				{preview &&
-					(isImage(preview.name) ? (
-						<div className='flex-1 flex items-center justify-center min-h-0 overflow-auto'>
-							<img src={preview.src} alt={preview.name} className='max-w-full max-h-full object-contain' />
+					(preview.isImg ? (
+						<div className='relative flex-1 min-h-0 overflow-auto'>
+							<Image src={preview.src} alt={preview.name} fill unoptimized className='object-contain' />
 						</div>
 					) : (
 						<iframe

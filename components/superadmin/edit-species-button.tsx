@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircle, ZoomInIcon } from 'lucide-react'
 import Image from 'next/image'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { SpeciesImageDropzone } from '@/components/superadmin/species-image-dropzone'
@@ -36,6 +36,7 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 	const [uploadProgress, setUploadProgress] = useState(0)
 	const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([])
 	const [removedDocIds, setRemovedDocIds] = useState<string[]>([])
+	const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
 
 	const updateSpecies = useUpdateSpecies()
 	const updateImage = useUpdateSpeciesImage()
@@ -167,13 +168,40 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 				{species.picture_url && !previewUrl && (
 					<div className='flex flex-col gap-1.5'>
 						<Label className='text-xs text-muted-foreground'>Current Image</Label>
-						<Image
-							src={species.picture_url}
-							alt={species.common_name}
-							width={400}
-							height={144}
-							className='rounded-md max-h-36 w-full object-contain border'
-						/>
+						<button
+							type='button'
+							className='relative group rounded-md border overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+							onClick={() => setImagePreviewOpen(true)}
+						>
+							<Image
+								src={species.picture_url}
+								alt={species.common_name}
+								width={400}
+								height={144}
+								className='max-h-36 w-full object-contain'
+							/>
+							<div className='absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center'>
+								<ZoomInIcon className='h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow' />
+							</div>
+						</button>
+						<ResponsiveDialogDrawer
+							title={species.common_name}
+							description={species.scientific_name}
+							trigger={null}
+							open={imagePreviewOpen}
+							onOpenChange={setImagePreviewOpen}
+							className='sm:max-w-3xl h-[85vh]'
+						>
+							<div className='relative flex-1 min-h-0'>
+								<Image
+									src={species.picture_url}
+									alt={species.common_name}
+									fill
+									unoptimized
+									className='object-contain'
+								/>
+							</div>
+						</ResponsiveDialogDrawer>
 					</div>
 				)}
 
