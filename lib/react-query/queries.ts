@@ -85,6 +85,7 @@ export type Species = {
 	care_instructions: string
 	created_at: string
 	picture_url: string
+	care_instructions_urls: string[]
 }
 
 export type OrgSpecies = {
@@ -98,6 +99,7 @@ export type OrgSpecies = {
 		scientific_name: string
 		picture_url: string
 	}
+	care_instructions_urls: string[]
 }
 
 export type Location = {
@@ -339,6 +341,16 @@ export type EnclosureCouuntHistory = {
 	new_count: number
 	changed_by: UUID
 	changed_at: string
+}
+
+export type SpeciesCareInstructions = {
+	id: UUID
+	species_id: UUID
+	org_species_id: UUID
+	file_name: string
+	file_url: string
+	created_at: string
+	is_hidden_by_org: boolean
 }
 
 export function useEnclosureLineage(enclosureId: UUID) {
@@ -1005,6 +1017,23 @@ export function useAllSpecies() {
 			if (error) throw error
 			return data
 		}
+	})
+}
+
+export function useSpeciesCareInstructions(speciesId: UUID) {
+	return useQuery({
+		queryKey: ['speciesCareInstructions', speciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('species_care_instructions')
+				.select('*')
+				.eq('species_id', speciesId)
+				.order('created_at', { ascending: true })
+			if (error) throw error
+			return data as SpeciesCareInstructions[]
+		},
+		enabled: !!speciesId
 	})
 }
 

@@ -1,8 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { type Species } from '@/lib/react-query/queries'
-import { useUpdateSpecies, useUpdateSpeciesImage } from '@/lib/react-query/mutations'
+import { useCallback, useState } from 'react'
+import { type Species, useSpeciesCareInstructions } from '@/lib/react-query/queries'
+import {
+	useAddCareInstruction,
+	useDeleteCareInstruction,
+	useUpdateSpecies,
+	useUpdateSpeciesImage
+} from '@/lib/react-query/mutations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,6 +16,7 @@ import { LoaderCircle } from 'lucide-react'
 import Image from 'next/image'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { SpeciesImageDropzone } from '@/components/superadmin/species-image-dropzone'
+import { CareInstructionsDropzone, type PendingDoc } from './care-instructions-dropzone'
 import { createClient } from '@/lib/supabase/client'
 import { DeleteSpeciesButton } from '@/components/superadmin/delete-species-button'
 
@@ -28,9 +34,17 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 	const [uploading, setUploading] = useState(false)
 	const [uploadProgress, setUploadProgress] = useState(0)
+	const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([])
+	const [removedDocIds, setRemovedDocIds] = useState<string[]>([])
 
 	const updateSpecies = useUpdateSpecies()
 	const updateImage = useUpdateSpeciesImage()
+	const addCareInstruction = useAddCareInstruction()
+	const deleteCareInstruction = useDeleteCareInstruction()
+	const { data: existingDocs } = useSpeciesCareInstructions(species.id)
+
+	// Filter out docs that have been marked for removal
+	const visibleDocs = (existingDocs ?? []).filter((d) => !removedDocIds.includes(d.id))
 
 	const resetForm = () => {
 		setScientificName(species.scientific_name)
@@ -40,7 +54,21 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 		setSelectedImage(null)
 		setPreviewUrl(null)
 		setUploadProgress(0)
+		setPendingDocs([])
+		setRemovedDocIds([])
 	}
+
+	const handleDocAdd = useCallback((doc: PendingDoc) => {
+		setPendingDocs((prev) => [...prev, doc])
+	}, [])
+
+	const handlePendingRemove = useCallback((idx: number) => {
+		setPendingDocs((prev) => prev.filter((_, i) => i !== idx))
+	}, [])
+
+	const handleExistingCareRemove = useCallback((docId: string) => {
+		setRemovedDocIds((prev) => [...prev, docId])
+	}, [])
 
 	const handleOpenChange = (isOpen: boolean) => {
 		if (!isOpen) resetForm()
@@ -54,6 +82,23 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
+		setUploading(true)
+
+		try {
+			for (const docId of removedDocIds) {
+				await deleteCareInstruction.mutateAsync({ docId, speciesId: species.id })
+			}
+
+			for (const doc of pendingDocs) {
+				await addCareInstruction.mutateAsync({ speciesId: species.id, file: doc.file, label: doc.label })
+			}
+		} catch (err) {
+			console.error('Care instruction update failed:', err)
+			setUploading(false)
+			return
+		}
+
+		setUploading(false)
 
 		updateSpecies.mutate({
 			species_id: species.id,
@@ -173,6 +218,15 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 						/>
 					</div>
 				</div>
+
+				<CareInstructionsDropzone
+					existingDocs={visibleDocs}
+					pendingDocs={pendingDocs}
+					uploading={uploading}
+					onExistingRemove={handleExistingCareRemove}
+					onDocAdd={handleDocAdd}
+					onPendingRemove={handlePendingRemove}
+				/>
 			</form>
 		</ResponsiveDialogDrawer>
 	)

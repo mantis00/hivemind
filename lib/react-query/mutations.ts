@@ -790,14 +790,19 @@ export function useCreateSpecies() {
 				throw new Error('Scientific name and common name are required')
 			}
 
-			const { error } = await supabase.from('species').insert({
-				scientific_name: scientific_name.trim(),
-				common_name: common_name.trim(),
-				care_instructions: care_instructions.trim(),
-				...(picture_url ? { picture_url } : {})
-			})
+			const { data, error } = await supabase
+				.from('species')
+				.insert({
+					scientific_name: scientific_name.trim(),
+					common_name: common_name.trim(),
+					care_instructions: care_instructions.trim(),
+					...(picture_url ? { picture_url } : {})
+				})
+				.select('id')
+				.single()
 
 			if (error) throw error
+			return data
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
@@ -2093,6 +2098,53 @@ export function useMarkEnclosuresPrinted() {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			toast.success('Enclosures marked as printed.')
+		}
+	})
+}
+
+export function useAddCareInstruction() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ speciesId, file, label }: { speciesId: UUID; file: File; label: string }) => {
+			const supabase = createClient()
+
+			const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+			const storageName = `defaults/${Date.now()}-${safeName}`
+
+			const { data: uploadData, error: uploadError } = await supabase.storage
+				.from('care_instructions')
+				.upload(storageName, file)
+
+			if (uploadError) throw uploadError
+
+			const { data: publicData } = supabase.storage.from('care_instructions').getPublicUrl(uploadData.path)
+
+			const { error: insertError } = await supabase.from('species_care_instructions').insert({
+				species_id: speciesId,
+				file_name: label,
+				file_url: publicData.publicUrl
+			})
+
+			if (insertError) throw insertError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['speciesCareInstructions', variables.speciesId] })
+		}
+	})
+}
+
+export function useDeleteCareInstruction() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ docId, speciesId }: { docId: string; speciesId: UUID }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('species_care_instructions').delete().eq('id', docId)
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['speciesCareInstructions', variables.speciesId] })
 		}
 	})
 }

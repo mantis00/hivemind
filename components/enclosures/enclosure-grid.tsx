@@ -348,13 +348,9 @@ export default function EnclosureGrid() {
 		<>
 			<div className='mx-auto items-center w-full'>
 				{!isMobile && <EnclosureCounts />}
-				<div className='mb-2 flex items-center flex-row gap-2 justify-end'>
+				<div className='mb-2 flex items-center flex-row gap-2 justify-end pt-2'>
 					{selectMode && (
 						<div className='flex items-center gap-2 mr-auto'>
-							<Button variant='ghost' size='sm' className='gap-1.5 text-xs' onClick={toggleSelectMode}>
-								<XIcon className='h-3.5 w-3.5' />
-								Cancel
-							</Button>
 							{selectedIds.size === 0 ? (
 								<Button
 									size='sm'
@@ -368,7 +364,6 @@ export default function EnclosureGrid() {
 								</Button>
 							) : (
 								<>
-									<span className='text-xs text-muted-foreground'>{selectedIds.size} selected</span>
 									<Button
 										size='sm'
 										variant='outline'
@@ -402,6 +397,7 @@ export default function EnclosureGrid() {
 											Set Inactive
 										</Button>
 									)}
+									<span className='text-xs text-muted-foreground'>{selectedIds.size} selected</span>
 								</>
 							)}
 						</div>
@@ -437,7 +433,7 @@ export default function EnclosureGrid() {
 									<DropdownMenuLabel className='text-muted-foreground'>Selection</DropdownMenuLabel>
 									<DropdownMenuItem onSelect={toggleSelectMode}>
 										<ListChecks className='h-4 w-4' />
-										Select
+										{selectMode ? 'Cancel' : 'Select'}
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
@@ -454,7 +450,7 @@ export default function EnclosureGrid() {
 								disabled={enclosureStatusFilter === 'all'}
 							>
 								<ListChecks className='h-4 w-4' />
-								Select
+								{selectMode ? 'Cancel' : 'Select'}
 							</Button>
 							<ManageSpeciesButton />
 							<CreateEnclosureButton />

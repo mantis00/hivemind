@@ -95,15 +95,20 @@ export default function SpeciesRow({
 										) : (
 											<p className='font-medium text-sm truncate'>{species.custom_common_name}</p>
 										)}
-										<Badge variant='outline' className='shrink-0 text-xs'>
-											{enclosures?.length} {enclosures?.length === 1 ? 'enclosure' : 'enclosures'}
-										</Badge>
 									</div>
 									{sortKey === 'scientific_name' ? (
 										<p className='text-xs text-muted-foreground italic truncate'>{species.custom_common_name}</p>
 									) : (
 										<p className='text-xs text-muted-foreground italic truncate'>{species.species?.scientific_name}</p>
 									)}
+									<div className='flex items-center gap-1.5 mt-0.5'>
+										<Badge variant='outline' className='shrink-0 text-xs px-1.5 py-0'>
+											{enclosures?.length} {enclosures?.length === 1 ? 'enclosure' : 'enclosures'}
+										</Badge>
+										<Badge variant='secondary' className='shrink-0 text-xs px-1.5 py-0'>
+											{(enclosures ?? []).reduce((sum, e) => sum + (e.current_count ?? 0), 0)} specimen
+										</Badge>
+									</div>
 								</div>
 							</button>
 						</CollapsibleTrigger>
