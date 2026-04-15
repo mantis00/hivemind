@@ -60,7 +60,7 @@ export default function OrgCards() {
 									<p className='font-semibold text-sm truncate'>{userOrg.orgs.name}</p>
 									<div className='flex items-center gap-2 text-xs text-muted-foreground'>
 										<Badge variant='secondary' className='text-xs font-normal h-4 px-1.5'>
-											{getAccessLevelName(userOrg.access_lvl)}
+											{userOrg.is_superadmin_view ? 'Superadmin' : getAccessLevelName(userOrg.access_lvl)}
 										</Badge>
 									</div>
 								</div>
@@ -76,7 +76,9 @@ export default function OrgCards() {
 											year: 'numeric'
 										})}
 									</span>
-									{userOrg.access_lvl < 2 && <LeaveOrgButton orgId={userOrg.orgs.org_id} />}
+									{!userOrg.is_superadmin_view && userOrg.access_lvl < 2 && (
+										<LeaveOrgButton orgId={userOrg.orgs.org_id} />
+									)}
 									<Button
 										size='sm'
 										className='h-7 px-2 gap-1 text-xs'

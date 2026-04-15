@@ -26,6 +26,7 @@ export type UserOrg = {
 	org_id: UUID
 	access_lvl: number
 	orgs: Org
+	is_superadmin_view?: boolean
 }
 
 export type OrgMember = {
@@ -422,17 +423,43 @@ export function useOrgEnclosureLineage(orgId: UUID) {
 }
 
 export function useUserOrgs(userId: string) {
+	const { data: profile } = useCurrentUserProfile()
+	const isSuperadmin = profile?.is_superadmin === true
+
 	return useQuery({
-		queryKey: ['orgs'],
+		queryKey: ['orgs', isSuperadmin],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
+
+			// Fetch the user's actual memberships
+			const { data: memberships, error: membershipError } = (await supabase
 				.from('user_org_role')
 				.select('org_id, access_lvl, orgs(name, org_id, created_at)')
 				.eq('user_id', userId)) as { data: UserOrg[] | null; error: PostgrestError | null }
 
-			if (error) throw error
-			return data
+			if (membershipError) throw membershipError
+
+			if (!isSuperadmin) return memberships
+
+			// Superadmin: fetch ALL orgs and merge with actual memberships
+			const { data: allOrgs, error: allOrgsError } = (await supabase
+				.from('orgs')
+				.select('org_id, name, created_at')) as { data: Org[] | null; error: PostgrestError | null }
+
+			if (allOrgsError) throw allOrgsError
+
+			const membershipMap = new Map((memberships ?? []).map((m) => [m.org_id, m]))
+
+			return (allOrgs ?? []).map((org) => {
+				const existing = membershipMap.get(org.org_id)
+				if (existing) return existing
+				return {
+					org_id: org.org_id,
+					access_lvl: 0,
+					orgs: org,
+					is_superadmin_view: true
+				} as UserOrg
+			})
 		},
 		enabled: !!userId
 	})
@@ -458,8 +485,10 @@ export function useOrgMembers(orgId: UUID) {
 
 export function useIsOwnerOrSuperadmin(orgId: UUID | undefined): boolean {
 	const { data: user } = useCurrentClientUser()
+	const { data: profile } = useCurrentUserProfile()
 	const { data: orgMembers } = useOrgMembers(orgId as UUID)
 	if (!user || !orgId) return false
+	if (profile?.is_superadmin) return true
 	const accessLevel = orgMembers?.find((m) => m.user_id === user.id)?.access_lvl ?? 0
 	return accessLevel >= 2
 }
@@ -528,6 +557,12 @@ export function useVerifyOrgMembership(userId: string, orgId: UUID) {
 		queryKey: ['verifyOrgMembership', userId, orgId],
 		queryFn: async () => {
 			const supabase = createClient()
+
+			// Check if user is a superadmin (superadmins can access any org)
+			const { data: profile } = await supabase.from('profiles').select('is_superadmin').eq('id', userId).maybeSingle()
+
+			if (profile?.is_superadmin) return true
+
 			const { data, error } = (await supabase
 				.from('user_org_role')
 				.select('user_id')

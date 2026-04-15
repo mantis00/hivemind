@@ -4,8 +4,6 @@ export default function getAccessLevelName(accessLevel: number) {
 			return 'Caretaker'
 		case 2:
 			return 'Owner'
-		case 3:
-			return 'Superadmin'
 		default:
 			return 'Caretaker'
 	}

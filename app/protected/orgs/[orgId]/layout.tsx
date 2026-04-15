@@ -28,7 +28,10 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
 		.eq('org_id', orgId)
 		.maybeSingle()
 
-	if (membershipError || !membership) {
+	// Allow access if user is a superadmin, even without org membership
+	const { data: profile } = await supabase.from('profiles').select('is_superadmin').eq('id', user.id).maybeSingle()
+
+	if ((membershipError || !membership) && !profile?.is_superadmin) {
 		throw new Error('You do not have access to this organization') // thrown and caught by protected/error.tsx
 	}
 

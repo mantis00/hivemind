@@ -34,11 +34,11 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 	const { data: profiles, isLoading: isLoadingProfiles } = useAllProfiles()
 	const { data: orgMembers, isLoading: isLoadingOrgMembers } = useOrgMembers(orgId)
 
-	// Filter out users who are already members of the organization
+	// Filter out users who are already members or are superadmins (superadmins can access all orgs)
 	const inviteCandidates = useMemo(() => {
 		const memberIds = new Set((orgMembers ?? []).map((member) => member.user_id))
 		return (profiles ?? []).filter((profile) => {
-			return !memberIds.has(String(profile.id))
+			return !memberIds.has(String(profile.id)) && !profile.is_superadmin
 		})
 	}, [orgMembers, profiles])
 	const inviteOptions = useMemo<VirtualizedOption[]>(
