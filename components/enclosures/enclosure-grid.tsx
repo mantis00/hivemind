@@ -1,6 +1,12 @@
 'use client'
 
-import { type OrgSpecies, useOrgEnclosures, useOrgSpecies } from '@/lib/react-query/queries'
+import {
+	type OrgSpecies,
+	useOrgEnclosures,
+	useOrgSpecies,
+	useSpeciesCareInstructions,
+	useOrgSpeciesCareInstructions
+} from '@/lib/react-query/queries'
 import type { Enclosure } from '@/lib/react-query/queries'
 import {
 	ArrowDownIcon,
@@ -42,6 +48,7 @@ import {
 	DropdownMenuTrigger
 } from '../ui/dropdown-menu'
 import { EditSpeciesOrgForm } from './edit-species-org'
+import { CareInstructionDocs } from './care-instruction-docs'
 import { EnclosureCounts } from './enclosure-counts'
 import { useBatchActivateEnclosures, useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 import { toast } from 'sonner'
@@ -122,6 +129,13 @@ export default function EnclosureGrid() {
 	const TARGET_ROWS = 8
 	const [openSpeciesId, setOpenSpeciesId] = useState<UUID | null>(null)
 	const [detailsView, setDetailsView] = useState<'details' | 'edit'>('details')
+
+	const openSpeciesMasterSpeciesId = openSpeciesId
+		? (orgSpeciesById.get(openSpeciesId)?.master_species_id ?? null)
+		: null
+	const { data: defaultDocs } = useSpeciesCareInstructions(openSpeciesMasterSpeciesId as UUID)
+	const { data: orgDocs } = useOrgSpeciesCareInstructions(openSpeciesId as UUID)
+	const visibleDefaultDocs = (defaultDocs ?? []).filter((d) => !d.is_hidden_by_org)
 
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
@@ -659,6 +673,7 @@ export default function EnclosureGrid() {
 								<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
 								<p className='text-sm leading-relaxed'>{openSpecies.custom_care_instructions}</p>
 							</div>
+							<CareInstructionDocs defaultDocs={defaultDocs ?? []} orgDocs={orgDocs ?? []} />
 						</div>
 					)}
 				</ResponsiveDialogDrawer>
