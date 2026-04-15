@@ -135,7 +135,6 @@ export default function EnclosureGrid() {
 		: null
 	const { data: defaultDocs } = useSpeciesCareInstructions(openSpeciesMasterSpeciesId as UUID)
 	const { data: orgDocs } = useOrgSpeciesCareInstructions(openSpeciesId as UUID)
-	const visibleDefaultDocs = (defaultDocs ?? []).filter((d) => !d.is_hidden_by_org)
 
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
