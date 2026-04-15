@@ -27,7 +27,10 @@ import {
 	ClipboardList,
 	FolderHeart,
 	ArrowRightLeft,
-	Calendar
+	Calendar,
+	MessageSquare,
+	History,
+	SquareStack
 } from 'lucide-react'
 import {
 	DropdownMenu,
@@ -52,6 +55,7 @@ import { useOrgDetails } from '@/lib/react-query/queries'
 import { UUID } from 'crypto'
 import { useLogout } from '@/lib/react-query/auth'
 import { getOrgIdFromPathname } from '@/context/verify-org-path'
+import { FeedbackDialog } from '@/components/feedback/feedback-dialog'
 
 export function AppSidebar() {
 	const pathname = usePathname()
@@ -75,6 +79,8 @@ export function AppSidebar() {
 
 	const [orgMenuOpen, setOrgMenuOpen] = useState(true)
 	const [caretakingMenuOpen, setCaretakingMenuOpen] = useState(true)
+	const [historyMenuOpen, setHistoryMenuOpen] = useState(true)
+	const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false)
 
 	const handleOrgClick = () => {
 		if (state === 'collapsed') {
@@ -92,6 +98,14 @@ export function AppSidebar() {
 		setCaretakingMenuOpen((open) => !open)
 	}
 
+	const handleHistoryClick = () => {
+		if (state === 'collapsed') {
+			toggleSidebar()
+			return
+		}
+		setHistoryMenuOpen((open) => !open)
+	}
+
 	const logoutMutation = useLogout()
 
 	const closeMobileOnNav = () => {
@@ -100,6 +114,7 @@ export function AppSidebar() {
 
 	return (
 		<Sidebar variant='floating' collapsible='icon'>
+			<FeedbackDialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen} />
 			<SidebarContent>
 				<SidebarGroup>
 					<SidebarMenuButton
@@ -230,12 +245,68 @@ export function AppSidebar() {
 									</SidebarMenuSub>
 								)}
 							</SidebarMenuItem>
+							<SidebarMenuItem>
+								<SidebarMenuButton
+									className='text-xl my-1 justify-between w-full'
+									tooltip='History'
+									onClick={handleHistoryClick}
+								>
+									<div className='flex items-center gap-2 text-lg font-bold'>
+										<History className='size-4' />
+										<span>History</span>
+									</div>
+									<ChevronDown className={cn('size-4 ml-2 transition-transform', historyMenuOpen && 'rotate-180')} />
+								</SidebarMenuButton>
+								{historyMenuOpen && (
+									<SidebarMenuSub>
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild>
+												<Link
+													href={orgId ? `/protected/orgs/${orgId}/history` : '/protected/orgs'}
+													onClick={closeMobileOnNav}
+												>
+													<SquareStack className='size-4' />
+													<span>Enclosure History</span>
+												</Link>
+											</SidebarMenuSubButton>
+										</SidebarMenuSubItem>{' '}
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild>
+												<Link
+													href={orgId ? `/protected/orgs/${orgId}/history/user-history` : '/protected/orgs'}
+													onClick={closeMobileOnNav}
+												>
+													<SquareStack className='size-4' />
+													<span>User History</span>
+												</Link>
+											</SidebarMenuSubButton>
+										</SidebarMenuSubItem>{' '}
+									</SidebarMenuSub>
+								)}
+							</SidebarMenuItem>
 						</SidebarMenu>
 					</SidebarGroupContent>
 				</SidebarGroup>
 			</SidebarContent>
 			<SidebarFooter>
 				<SidebarMenu className='gap-2'>
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							asChild
+							tooltip='Share Feedback / Report Bugs'
+							className='justify-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 bg-sidebar-accent hover:bg-sidebar-accent-hover active:bg-sidebar-accent-active text-sidebar-accent-foreground'
+						>
+							<button
+								type='button'
+								onClick={() => {
+									setFeedbackDialogOpen(true)
+								}}
+							>
+								<MessageSquare className='size-4' />
+								<span className='group-data-[collapsible=icon]:hidden'>Share Feedback/Bugs</span>
+							</button>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							asChild

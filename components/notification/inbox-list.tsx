@@ -92,7 +92,7 @@ export function InboxList({
 	const [dynamicHeight, setDynamicHeight] = useState<number>(MAX_HEIGHT)
 
 	const handleTotalListHeightChanged = useCallback((height: number) => {
-		setDynamicHeight(Math.min(height + 8, MAX_HEIGHT))
+		setDynamicHeight(Math.min(height, MAX_HEIGHT))
 	}, [])
 
 	// Compute virtuoso container height
@@ -187,7 +187,7 @@ export function InboxList({
 					))}
 				</div>
 			) : filteredNotifications.length > 0 ? (
-				<div className='rounded-lg border bg-card'>
+				<div className='rounded-lg border bg-card py-1 overflow-hidden'>
 					<Virtuoso
 						style={{
 							height: `${dynamicHeight || containerHeight}px`,
@@ -196,8 +196,8 @@ export function InboxList({
 						data={filteredNotifications}
 						increaseViewportBy={200}
 						totalListHeightChanged={handleTotalListHeightChanged}
-						itemContent={(_, notification) => (
-							<div className='px-1 pb-0 last:pb-1'>
+						itemContent={(index, notification) => (
+							<div className={cn('px-1', index < filteredNotifications.length - 1 && 'pb-1')}>
 								<NotificationRow
 									notification={notification}
 									isSelected={selectedIds.has(notification.id as string)}

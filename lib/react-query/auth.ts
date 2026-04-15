@@ -71,6 +71,26 @@ export function useResestPassword() {
 	})
 }
 
+export function useChangePassword() {
+	return useMutation({
+		mutationFn: async ({ currentPassword, password }: { currentPassword: string; password: string }) => {
+			const supabase = createClient()
+			const { data: userData, error: userError } = await supabase.auth.getUser()
+			if (userError || !userData.user?.email) throw new Error('Unable to verify current user.')
+			const { error: authError } = await supabase.auth.signInWithPassword({
+				email: userData.user.email,
+				password: currentPassword
+			})
+			if (authError) throw new Error('Current password is incorrect.')
+			const { error } = await supabase.auth.updateUser({ password })
+			if (error) throw error
+		},
+		onSuccess: () => {
+			toast.success('Password updated successfully!')
+		}
+	})
+}
+
 export function useLogin() {
 	const router = useRouter()
 
@@ -152,7 +172,7 @@ export function useUpdateEmail() {
 			queryClient.invalidateQueries({ queryKey: ['currentUser'] })
 			queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] })
 			queryClient.invalidateQueries({ queryKey: ['allProfiles'] })
-			toast.success('Confirmation sent — check your inbox to verify the new email.')
+			toast.success('Confirmation sent — check both your current and new email to verify the change.')
 		}
 	})
 }

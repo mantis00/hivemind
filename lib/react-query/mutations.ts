@@ -21,11 +21,11 @@ export function useCreateOrg() {
 
 			if (orgError) throw orgError
 
-			// Add creator as Superadmin (3)
+			// Add creator as Owner (2)
 			const { error: relationError } = await supabase.from('user_org_role').insert({
 				user_id: userId,
 				org_id: org.org_id,
-				access_lvl: 3
+				access_lvl: 2
 			})
 
 			if (relationError) {
@@ -33,30 +33,9 @@ export function useCreateOrg() {
 				await supabase.from('orgs').delete().eq('org_id', org.org_id)
 				throw relationError
 			}
-
-			// Add all other existing superadmins to the org
-			const { data: superadmins, error: superadminsError } = await supabase
-				.from('profiles')
-				.select('id')
-				.eq('is_superadmin', true)
-				.neq('id', userId)
-
-			if (superadminsError) throw superadminsError
-
-			if (superadmins && superadmins.length > 0) {
-				const { error: upsertError } = await supabase.from('user_org_role').upsert(
-					superadmins.map((s) => ({
-						user_id: s.id,
-						org_id: org.org_id,
-						access_lvl: 3
-					})),
-					{ onConflict: 'user_id,org_id' }
-				)
-				if (upsertError) throw upsertError
-			}
 		},
-		onSuccess: (data, variables) => {
-			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
 			toast.success('Organization created!')
 		}
 	})
@@ -78,8 +57,8 @@ export function useDeleteOrg() {
 			const { error: orgError } = await supabase.from('orgs').delete().eq('org_id', orgId)
 			if (orgError) throw orgError
 		},
-		onSuccess: (data, variables) => {
-			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
 			toast.success('Organization deleted.')
 		}
 	})
@@ -97,7 +76,7 @@ export function useLeaveOrg() {
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgMembers', variables.orgId] })
-			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
 			toast.success('You have left the organization.')
 		}
 	})
@@ -274,10 +253,11 @@ export function useAcceptInvite() {
 
 			if (updateError) throw updateError
 		},
-		onSuccess: (data, variables) => {
+		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['invites'] })
-			queryClient.invalidateQueries({ queryKey: ['orgs', variables.userId] })
+			queryClient.invalidateQueries({ queryKey: ['orgs'] })
 			queryClient.invalidateQueries({ queryKey: ['orgMembers'] })
+			queryClient.invalidateQueries({ queryKey: ['orgMemberProfiles'] })
 			queryClient.invalidateQueries({ queryKey: ['profiles'] })
 			toast.success('Invite accepted!')
 		}
@@ -1101,40 +1081,11 @@ export function useStartTask() {
 	})
 }
 
-export function useCompleteTask() {
-	const queryClient = useQueryClient()
-
-	return useMutation({
-		mutationFn: async ({ task_id, enclosure_id, user_id }: { task_id: UUID; enclosure_id: UUID; user_id: UUID }) => {
-			const supabase = createClient()
-
-			if (!task_id) {
-				throw new Error('Task ID missing!')
-			}
-
-			const { error } = await supabase
-				.from('tasks')
-				.update({ status: 'completed', completed_time: new Date().toISOString(), completed_by: user_id })
-				.eq('id', task_id)
-				.eq('enclosure_id', enclosure_id)
-
-			if (error) throw error
-		},
-		onSuccess: (_, variables) => {
-			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
-			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
-			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
-			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-		}
-	})
-}
-
 export function useCreateTask() {
 	const queryClient = useQueryClient()
-
 	return useMutation({
 		mutationFn: async ({
-			enclosure_id,
+			enclosure_ids,
 			template_id,
 			name,
 			description,
@@ -1143,7 +1094,7 @@ export function useCreateTask() {
 			due_date,
 			time_window
 		}: {
-			enclosure_id: UUID
+			enclosure_ids: UUID[]
 			template_id: UUID | null
 			name: string | null
 			description: string | null
@@ -1153,41 +1104,35 @@ export function useCreateTask() {
 			time_window: string
 		}) => {
 			const supabase = createClient()
-
-			const { data, error } = await supabase
-				.from('tasks')
-				.insert({
-					enclosure_id,
-					template_id,
-					name,
-					description,
-					assigned_to,
-					priority,
-					status: 'pending',
-					due_date,
-					time_window
-				})
-				.select()
-				.single()
-
+			const rows = enclosure_ids.map((enclosure_id) => ({
+				enclosure_id,
+				template_id,
+				name,
+				description,
+				assigned_to,
+				priority,
+				status: 'pending',
+				due_date,
+				time_window
+			}))
+			const { data, error } = await supabase.from('tasks').insert(rows).select()
 			if (error) throw error
 			return data
 		},
-		onSuccess: () => {
+		onSuccess: (data) => {
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Task created!')
+			toast.success(`${data?.length ?? 'Tasks'} task${data?.length === 1 ? '' : 's'} created!`)
 		}
 	})
 }
 
 export function useCreateSchedule() {
 	const queryClient = useQueryClient()
-
 	return useMutation({
 		mutationFn: async ({
-			enclosure_id,
+			enclosure_ids,
 			template_id,
 			schedule_type,
 			schedule_rule,
@@ -1199,9 +1144,9 @@ export function useCreateSchedule() {
 			start_date,
 			end_date,
 			max_occurrences,
-			advance_task_count
+			advance_task_count = 1
 		}: {
-			enclosure_id: UUID
+			enclosure_ids: UUID[]
 			template_id: UUID | null
 			schedule_type: 'fixed_calendar' | 'relative_interval'
 			schedule_rule: string
@@ -1210,43 +1155,39 @@ export function useCreateSchedule() {
 			assigned_to: UUID | null
 			priority: string
 			time_window: string
-			start_date?: string
+			start_date: string
 			end_date: string | null
 			max_occurrences: number | null
 			advance_task_count?: number
 		}) => {
 			const supabase = createClient()
-
-			const { data, error } = await supabase
-				.from('enclosure_schedules')
-				.insert({
-					enclosure_id,
-					template_id,
-					schedule_type,
-					schedule_rule,
-					task_name,
-					task_description,
-					assigned_to,
-					priority,
-					time_window,
-					start_date,
-					end_date,
-					max_occurrences,
-					advance_task_count,
-					is_active: true
-				})
-				.select()
-				.single()
-
+			const rows = enclosure_ids.map((enclosure_id) => ({
+				enclosure_id,
+				template_id,
+				schedule_type,
+				schedule_rule,
+				task_name,
+				task_description,
+				assigned_to,
+				priority,
+				time_window,
+				start_date,
+				end_date,
+				max_occurrences,
+				advance_task_count,
+				is_active: true
+			}))
+			const { data, error } = await supabase.from('enclosure_schedules').insert(rows).select()
 			if (error) throw error
 			return data
 		},
-		onSuccess: () => {
+		onSuccess: async (data) => {
 			queryClient.invalidateQueries({ queryKey: ['schedulesForEnclosures'] })
+			toast.success(`${data?.length ?? ''} recurring schedule${data?.length === 1 ? '' : 's'} created!`)
+			await new Promise((resolve) => setTimeout(resolve, 1000))
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
 			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Recurring schedule created!')
 		}
 	})
 }
@@ -1296,7 +1237,7 @@ export function useSubmitTaskForm() {
 			queryClient.invalidateQueries({ queryKey: ['taskById', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers', variables.task_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Task completed!')
+			// toast.success('Task completed!') removing this, we already show a completion indicator where this is used.
 		}
 	})
 }
@@ -1979,6 +1920,26 @@ export function useDeleteTask() {
 	})
 }
 
+export function useDeleteTasks() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ taskIds }: { taskIds: UUID[] }) => {
+			const supabase = createClient()
+			const { error } = await supabase.from('tasks').delete().in('id', taskIds)
+			if (error) throw error
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosures'] })
+			queryClient.invalidateQueries({ queryKey: ['tasksForEnclosuresInRange'] })
+			queryClient.invalidateQueries({ queryKey: ['taskById'] })
+			queryClient.invalidateQueries({ queryKey: ['taskFormAnswers'] })
+			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+			toast.success('Tasks deleted!')
+		}
+	})
+}
+
 export function useSubscribeToPush() {
 	const queryClient = useQueryClient()
 
@@ -2098,6 +2059,56 @@ export function useMarkEnclosuresPrinted() {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			toast.success('Enclosures marked as printed.')
+		}
+	})
+}
+
+export function useCreateFeedback() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			type,
+			title,
+			description,
+			userId,
+			orgId
+		}: {
+			type: 'bug' | 'feedback'
+			title: string
+			description: string
+			userId: string
+			orgId: UUID
+		}) => {
+			const trimmedTitle = title.trim()
+			const trimmedDescription = description.trim()
+
+			if (!trimmedTitle || !trimmedDescription) {
+				throw new Error('Feedback title and description are required')
+			}
+
+			if (!userId || !orgId) {
+				throw new Error('Feedback requires a user and organization context')
+			}
+
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('feedback')
+				.insert({
+					org_id: orgId,
+					user_id: userId,
+					type,
+					title: trimmedTitle,
+					description: trimmedDescription
+				})
+				.select('feedback_id, created_at')
+				.single()
+
+			if (error) throw error
+			return data
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['feedback', variables.orgId] })
 		}
 	})
 }

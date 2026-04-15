@@ -1,6 +1,7 @@
 // tasks page
 import { TasksDataTable } from '@/components/tasks/tasks-table'
 import { EnclosureHeading } from '@/components/enclosures/enclosure-heading'
+import { BackToEnclosures } from '@/components/navigation/back-to-enclosures'
 import { UUID } from 'crypto'
 
 export default async function Page({ params }: { params: Promise<{ orgId: UUID; enclosureId: UUID }> }) {
@@ -9,8 +10,9 @@ export default async function Page({ params }: { params: Promise<{ orgId: UUID; 
 	return (
 		<div className='space-y-4 w-full justify-center items-center'>
 			<div className='flex-col mx-auto max-w-5xl'>
-				<div className='pb-5'>
+				<div className='pb-5 flex items-start justify-between'>
 					<EnclosureHeading enclosureId={enclosureId} orgId={orgId} />
+					<BackToEnclosures />
 				</div>
 				<div className='flex flex-col gap-6'>
 					<section className='space-y-3'>

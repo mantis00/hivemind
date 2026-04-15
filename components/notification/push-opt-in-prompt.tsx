@@ -17,9 +17,10 @@ import {
 interface PushOptInPromptProps {
 	open: boolean
 	onOpenChange: (open: boolean) => void
+	onUserAction?: () => void
 }
 
-export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
+export function PushOptInPrompt({ open, onOpenChange, onUserAction }: PushOptInPromptProps) {
 	const { data: user } = useCurrentClientUser()
 	const subscribeMutation = useSubscribeToPush()
 
@@ -76,6 +77,7 @@ export function PushOptInPrompt({ open, onOpenChange }: PushOptInPromptProps) {
 		}
 		setDismissed(true)
 		onOpenChange(false)
+		onUserAction?.()
 	}
 
 	/* Enable notifications*/
