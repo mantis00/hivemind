@@ -5,24 +5,24 @@ import type { RecentActivityItem } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { timeWindowConfig } from '@/context/task-config'
+import { formatDate } from '@/context/format-date'
 
 type RecentActivityPanelProps = {
 	orgId: string
 	items: RecentActivityItem[]
-	timeZone: string
 }
 
-function formatDateTime(value: string, timeZone: string) {
+function getDueDateLabel(item: RecentActivityItem) {
+	if (!item.dueAt) {
+		return 'No due date'
+	}
+	const value = item.dueAt
 	const parsed = new Date(value)
 	if (Number.isNaN(parsed.getTime())) {
-		return value
+		return `Due ${value}`
 	}
-
-	return new Intl.DateTimeFormat('en-US', {
-		timeZone,
-		dateStyle: 'medium',
-		timeStyle: 'short'
-	}).format(parsed)
+	return `Due ${formatDate(value)}`
 }
 
 function getActivityBadgeLabel(item: RecentActivityItem) {
@@ -45,7 +45,7 @@ function getActivityBadgeLabel(item: RecentActivityItem) {
 	return 'Activity'
 }
 
-export function RecentActivityPanel({ orgId, items, timeZone }: RecentActivityPanelProps) {
+export function RecentActivityPanel({ orgId, items }: RecentActivityPanelProps) {
 	const visibleItems = items.slice(0, 6)
 
 	return (
@@ -74,10 +74,21 @@ export function RecentActivityPanel({ orgId, items, timeZone }: RecentActivityPa
 								className='flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/30'
 							>
 								<div className='flex items-center justify-between gap-3'>
-									<p className='font-medium'>{item.label}</p>
+									<div className='flex items-center gap-1.5 min-w-0'>
+										<p className='font-medium truncate'>{item.label}</p>
+										{item.timeWindow ? (
+											<span
+												className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold leading-none ${
+													(timeWindowConfig[item.timeWindow] ?? timeWindowConfig['Any']).color
+												}`}
+											>
+												{(timeWindowConfig[item.timeWindow] ?? timeWindowConfig['Any']).shortLabel}
+											</span>
+										) : null}
+									</div>
 									<Badge variant='outline'>{getActivityBadgeLabel(item)}</Badge>
 								</div>
-								<p className='text-sm text-muted-foreground'>{formatDateTime(item.occurredAt, timeZone)}</p>
+								<p className='text-sm text-muted-foreground'>{getDueDateLabel(item)}</p>
 							</Link>
 						))}
 					</div>

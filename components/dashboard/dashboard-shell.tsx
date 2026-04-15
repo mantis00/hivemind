@@ -4,12 +4,12 @@ import { useParams } from 'next/navigation'
 import type { UUID } from 'crypto'
 
 import { DashboardPage } from '@/components/dashboard/dashboard-page'
-import { DASHBOARD_SERVER_TIME_ZONE } from '@/components/dashboard/dashboard-helpers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
 	type DashboardData,
 	useDashboardActiveEnclosureCount,
 	useDashboardAtRiskEnclosures,
+	useDashboardCompletedTodayCount,
 	useDashboardRecentActivity,
 	useDashboardTasksDueToday,
 	useDashboardUpcomingTaskCount
@@ -47,6 +47,11 @@ export function DashboardShell() {
 		isLoading: isRecentActivityLoading,
 		error: recentActivityError
 	} = useDashboardRecentActivity(orgId)
+	const {
+		data: completedTodayCount = 0,
+		isLoading: isCompletedTodayLoading,
+		error: completedTodayError
+	} = useDashboardCompletedTodayCount(orgId)
 
 	const warnings = [
 		activeEnclosuresError
@@ -78,18 +83,24 @@ export function DashboardShell() {
 					stage: 'dashboard.recentActivity',
 					message: `Unable to load recent activity (${getErrorMessage(recentActivityError)}).`
 				}
+			: null,
+		completedTodayError
+			? {
+					stage: 'dashboard.completedTodayCount',
+					message: `Unable to load completed today count (${getErrorMessage(completedTodayError)}).`
+				}
 			: null
 	].filter(Boolean) as DashboardData['warnings']
 
 	const data: DashboardData = {
 		generatedAt: new Date().toISOString(),
-		timeZone: DASHBOARD_SERVER_TIME_ZONE,
 		kpis: {
 			activeEnclosures,
 			tasksDueToday: dueTodayTasks.length,
 			upcomingTasks: upcomingTasksCount,
 			alerts: atRiskData?.attentionNeededCount ?? 0
 		},
+		completedTodayCount,
 		atRiskEnclosures: atRiskData?.items ?? [],
 		upcomingSchedule: dueTodayTasks,
 		recentActivity,
@@ -101,7 +112,8 @@ export function DashboardShell() {
 		isAtRiskLoading ||
 		isDueTodayLoading ||
 		isUpcomingTasksLoading ||
-		isRecentActivityLoading
+		isRecentActivityLoading ||
+		isCompletedTodayLoading
 	const loadError = activeEnclosuresError ? getErrorMessage(activeEnclosuresError) : null
 
 	if (isLoading) {

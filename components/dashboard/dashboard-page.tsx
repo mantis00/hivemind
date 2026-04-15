@@ -25,7 +25,7 @@ function isDashboardEmpty(data: DashboardData) {
 
 export function DashboardPage({ orgId, data, loadError = null }: DashboardPageProps) {
 	const dashboardIsEmpty = isDashboardEmpty(data)
-	const completedTodayCount = data.recentActivity.length
+	const completedTodayCount = data.completedTodayCount
 	const atRiskEnclosureCount = data.atRiskEnclosures.length
 
 	return (
@@ -78,16 +78,11 @@ export function DashboardPage({ orgId, data, loadError = null }: DashboardPagePr
 				) : null}
 
 				<section className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
-					<AtRiskPanel orgId={orgId} items={data.atRiskEnclosures} timeZone={data.timeZone} />
-					<UpcomingSchedulePanel
-						orgId={orgId}
-						items={data.upcomingSchedule}
-						kpis={data.kpis}
-						timeZone={data.timeZone}
-					/>
+					<AtRiskPanel orgId={orgId} items={data.atRiskEnclosures} />
+					<UpcomingSchedulePanel orgId={orgId} items={data.upcomingSchedule} kpis={data.kpis} />
 				</section>
 
-				<RecentActivityPanel orgId={orgId} items={data.recentActivity} timeZone={data.timeZone} />
+				<RecentActivityPanel orgId={orgId} items={data.recentActivity} />
 			</div>
 		</>
 	)

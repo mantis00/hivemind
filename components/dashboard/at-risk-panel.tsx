@@ -5,14 +5,14 @@ import type { AtRiskEnclosureSummary } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatDate } from '@/context/format-date'
 
 type AtRiskPanelProps = {
 	orgId: string
 	items: AtRiskEnclosureSummary[]
-	timeZone: string
 }
 
-function formatDateTime(value: string | null, timeZone: string) {
+function formatDueDate(value: string | null) {
 	if (!value) {
 		return 'No due date'
 	}
@@ -22,14 +22,10 @@ function formatDateTime(value: string | null, timeZone: string) {
 		return value
 	}
 
-	return new Intl.DateTimeFormat('en-US', {
-		timeZone,
-		dateStyle: 'medium',
-		timeStyle: 'short'
-	}).format(parsed)
+	return formatDate(value)
 }
 
-export function AtRiskPanel({ orgId, items, timeZone }: AtRiskPanelProps) {
+export function AtRiskPanel({ orgId, items }: AtRiskPanelProps) {
 	return (
 		<Card>
 			<CardHeader>
@@ -55,16 +51,18 @@ export function AtRiskPanel({ orgId, items, timeZone }: AtRiskPanelProps) {
 								href={`/protected/orgs/${orgId}/enclosures/${item.enclosureId}`}
 								className='flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/30'
 							>
-								<div className='flex items-center justify-between gap-3'>
-									<p className='font-medium'>{item.enclosureName}</p>
-									<div className='flex items-center gap-2'>
-										<Badge variant='destructive'>{item.overdueCount} overdue</Badge>
-										<Badge variant='secondary'>{item.highPriorityCount} high priority</Badge>
+								<div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+									<p className='min-w-0 break-words font-medium'>{item.enclosureName}</p>
+									<div className='flex shrink-0 flex-col items-start gap-1 sm:items-end'>
+										<Badge variant='destructive' className='whitespace-nowrap'>
+											{item.overdueCount} overdue
+										</Badge>
+										<Badge variant='secondary' className='whitespace-nowrap'>
+											{item.highPriorityCount} high priority
+										</Badge>
 									</div>
 								</div>
-								<p className='text-sm text-muted-foreground'>
-									Next due: {formatDateTime(item.nextDueAt, timeZone)} ({timeZone})
-								</p>
+								<p className='text-sm text-muted-foreground'>Next due: {formatDueDate(item.nextDueAt)}</p>
 							</Link>
 						))}
 					</div>

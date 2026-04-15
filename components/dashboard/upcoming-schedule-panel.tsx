@@ -5,15 +5,16 @@ import type { DashboardKpis, UpcomingScheduleItem } from '@/lib/react-query/quer
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { timeWindowConfig } from '@/context/task-config'
+import { formatDate } from '@/context/format-date'
 
 type UpcomingSchedulePanelProps = {
 	orgId: string
 	items: UpcomingScheduleItem[]
 	kpis: DashboardKpis
-	timeZone: string
 }
 
-function formatDateTime(value: string | null, timeZone: string) {
+function formatDueDate(value: string | null) {
 	if (!value) {
 		return 'TBD'
 	}
@@ -23,11 +24,7 @@ function formatDateTime(value: string | null, timeZone: string) {
 		return value
 	}
 
-	return new Intl.DateTimeFormat('en-US', {
-		timeZone,
-		dateStyle: 'medium',
-		timeStyle: 'short'
-	}).format(parsed)
+	return formatDate(value)
 }
 
 type StatItemProps = {
@@ -44,7 +41,7 @@ function StatItem({ label, value }: StatItemProps) {
 	)
 }
 
-export function UpcomingSchedulePanel({ orgId, items, kpis, timeZone }: UpcomingSchedulePanelProps) {
+export function UpcomingSchedulePanel({ orgId, items, kpis }: UpcomingSchedulePanelProps) {
 	const highPriorityDueToday = items.filter((item) => item.priority?.toLowerCase() === 'high').length
 	const previewItems = items.slice(0, 4)
 
@@ -110,14 +107,25 @@ export function UpcomingSchedulePanel({ orgId, items, kpis, timeZone }: Upcoming
 									className='flex items-start justify-between gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30'
 								>
 									<div className='min-w-0'>
-										<p className='truncate text-sm font-medium'>{item.taskTitle}</p>
+										<div className='flex items-center gap-1.5'>
+											<p className='truncate text-sm font-medium'>{item.taskTitle}</p>
+											{item.timeWindow ? (
+												<span
+													className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold leading-none ${
+														(timeWindowConfig[item.timeWindow] ?? timeWindowConfig['Any']).color
+													}`}
+												>
+													{(timeWindowConfig[item.timeWindow] ?? timeWindowConfig['Any']).shortLabel}
+												</span>
+											) : null}
+										</div>
 										<p className='truncate text-xs text-muted-foreground'>{item.enclosureName}</p>
 									</div>
 									<div className='flex shrink-0 flex-col items-end gap-1'>
 										<Badge variant={item.priority?.toLowerCase() === 'high' ? 'destructive' : 'outline'}>
 											{item.priority?.toLowerCase() === 'high' ? 'High Priority' : (item.priority ?? 'Unspecified')}
 										</Badge>
-										<p className='text-xs text-muted-foreground'>{formatDateTime(item.dueAt, timeZone)}</p>
+										<p className='text-xs text-muted-foreground'>Due {formatDueDate(item.dueAt)}</p>
 									</div>
 								</Link>
 							))}
