@@ -373,10 +373,7 @@ export function CreateEnclosureButton({
 						</div>
 						<div className='flex flex-col gap-2'>
 							<Label>Life Stage</Label>
-							<Select
-								value={lifeStage}
-								onValueChange={(v) => setLifeStage(v as 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult')}
-							>
+							<Select value={lifeStage} onValueChange={(v) => setLifeStage(v as typeof lifeStage)}>
 								<SelectTrigger className='h-9 w-full'>
 									<SelectValue placeholder='Select stage...' />
 								</SelectTrigger>

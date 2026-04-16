@@ -41,9 +41,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const [count, setCount] = useState<number | undefined>(enclosure?.current_count)
 	const [isActive, setIsActive] = useState(enclosure?.is_active ?? true)
 	const [specimenTrackingId, setSpecimenTrackingId] = useState(enclosure?.institutional_specimen_id ?? '')
-	const [lifeStage, setLifeStage] = useState<'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'>(
-		enclosure?.life_stage ?? 'adult'
-	)
+	const [lifeStage, setLifeStage] = useState<'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'>(enclosure?.life_stage ?? '')
 	const [sourceType, setSourceType] = useState<'institution' | 'enclosure'>('institution')
 	const [externalSource, setExternalSource] = useState('')
 	const [sourceEnclosureQuery, setSourceEnclosureQuery] = useState('')
@@ -127,7 +125,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			savedLocationRef.current = undefined
 			setCount(enclosure?.current_count)
 			setIsActive(enclosure?.is_active ?? true)
-			setLifeStage(enclosure?.life_stage ?? 'adult')
+			setLifeStage(enclosure?.life_stage ?? '')
 			setSpecimenTrackingId(enclosure?.institutional_specimen_id ?? '')
 			setSourceType('institution')
 			setExternalSource('')
@@ -178,7 +176,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			(count ?? 0) !== (enclosure?.current_count ?? 0) ||
 			!locationUnchanged ||
 			isActive !== (enclosure?.is_active ?? true) ||
-			lifeStage !== (enclosure?.life_stage ?? 'adult') ||
+			lifeStage !== (enclosure?.life_stage ?? '') ||
 			specimenTrackingId.trim() !== (enclosure?.institutional_specimen_id ?? '') ||
 			resolvedExternalSource !== (enclosure?.institutional_external_source ?? '') ||
 			lineageChanged
@@ -354,7 +352,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							<Label>Life Stage</Label>
 							<Select value={lifeStage} onValueChange={(v) => setLifeStage(v as typeof lifeStage)}>
 								<SelectTrigger className='h-9 w-full'>
-									<SelectValue />
+									<SelectValue placeholder='Select stage...' />
 								</SelectTrigger>
 								<SelectContent>
 									{(['egg', 'larva', 'pupa', 'nymph', 'adult'] as const).map((stage) => (
