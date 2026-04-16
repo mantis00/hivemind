@@ -615,6 +615,13 @@ export default function EnclosureGrid() {
 					<div className='rounded-lg border border-dashed p-8 text-center'>
 						{searchValue.trim() ? (
 							<p className='text-muted-foreground text-sm'>No species found matching &ldquo;{searchValue}&rdquo;</p>
+						) : activeOrgSpecies.length > 0 && orgEnclosures?.length === 0 ? (
+							<>
+								<p className='text-muted-foreground text-sm font-medium'>No enclosures yet</p>
+								<p className='text-muted-foreground text-xs mt-1'>
+									Create enclosures using the Add Enclosure button above.
+								</p>
+							</>
 						) : (
 							<>
 								<p className='text-muted-foreground text-sm font-medium'>No species yet</p>

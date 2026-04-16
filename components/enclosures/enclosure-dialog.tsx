@@ -133,7 +133,7 @@ export function EnclosureDialog({
 								<div className='flex items-center gap-2 rounded-md border p-3'>
 									<IdCard className='h-4 w-4 text-muted-foreground shrink-0' />
 									<div className='min-w-0'>
-										<p className='text-xs text-muted-foreground'>Internal Tracking ID</p>
+										<p className='text-xs text-muted-foreground'>Specimen Tracking ID</p>
 										<p className='text-sm font-medium truncate'>{enclosure.institutional_specimen_id}</p>
 									</div>
 								</div>
