@@ -47,7 +47,6 @@ export function EditSpeciesOrgForm({ species, onDone }: EditSpeciesFormProps) {
 	const visibleDocs = (existingDocs ?? []).filter((d) => !removedDocIds.includes(d.id))
 	const params = useParams()
 	const orgId = params?.orgId as UUID
-	const { data: orgDetails } = useOrgDetails(orgId)
 
 	const handleDocAdd = useCallback((doc: PendingDoc) => {
 		setPendingDocs((prev) => [...prev, doc])
@@ -199,7 +198,6 @@ export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpecie
 
 	const params = useParams()
 	const orgId = params?.orgId
-	const { data: orgDetails } = useOrgDetails(orgId as UUID)
 
 	const handleDocAdd = useCallback((doc: PendingDoc) => {
 		setPendingDocs((prev) => [...prev, doc])
