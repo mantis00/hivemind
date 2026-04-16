@@ -150,7 +150,7 @@ export default function SpeciesRow({
 										})()}
 									<Virtuoso
 										style={{
-											height: enclosures?.length && enclosures?.length <= 4 ? `${enclosures?.length * 106}px` : '352px'
+											height: enclosures?.length && enclosures?.length <= 4 ? `${enclosures?.length * 106}px` : '424px'
 										}}
 										data={enclosures}
 										itemContent={(index, enclosure) => (
