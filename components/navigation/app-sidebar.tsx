@@ -30,7 +30,8 @@ import {
 	Calendar,
 	MessageSquare,
 	History,
-	SquareStack
+	SquareStack,
+	CircleHelp
 } from 'lucide-react'
 import {
 	DropdownMenu,
@@ -283,6 +284,14 @@ export function AppSidebar() {
 										</SidebarMenuSubItem>{' '}
 									</SidebarMenuSub>
 								)}
+							</SidebarMenuItem>
+							<SidebarMenuItem>
+								<SidebarMenuButton className='text-xl my-1 font-bold' asChild tooltip='Help'>
+									<Link href={orgId ? `/protected/orgs/${orgId}/help` : '/protected/orgs'} onClick={closeMobileOnNav}>
+										<CircleHelp className='size-4' />
+										<span>Help</span>
+									</Link>
+								</SidebarMenuButton>
 							</SidebarMenuItem>
 						</SidebarMenu>
 					</SidebarGroupContent>
