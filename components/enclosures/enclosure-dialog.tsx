@@ -20,7 +20,8 @@ import type { Enclosure, OrgSpecies } from '@/lib/react-query/queries'
 import {
 	useEnclosureCountHistory,
 	useSpeciesCareInstructions,
-	useOrgSpeciesCareInstructions
+	useOrgSpeciesCareInstructions,
+	useOneSpecies
 } from '@/lib/react-query/queries'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
@@ -64,6 +65,8 @@ export function EnclosureDialog({
 	const { data: countHistory, isLoading: historyLoading } = useEnclosureCountHistory(enclosure.id as UUID)
 	const { data: defaultDocs } = useSpeciesCareInstructions(species.master_species_id as UUID)
 	const { data: orgDocs } = useOrgSpeciesCareInstructions(species.id as UUID)
+	const { data: masterSpecies } = useOneSpecies(species.master_species_id as UUID)
+	const careInstructions = species.custom_care_instructions || masterSpecies?.care_instructions || null
 
 	const handleActiveChange = (value: boolean) => {
 		setIsActive(value)
@@ -223,7 +226,11 @@ export function EnclosureDialog({
 						<Separator />
 
 						{/* Care Instruction Documents */}
-						<CareInstructionDocs defaultDocs={defaultDocs ?? []} orgDocs={orgDocs ?? []} />
+						<CareInstructionDocs
+							defaultDocs={defaultDocs ?? []}
+							orgDocs={orgDocs ?? []}
+							careInstructions={careInstructions}
+						/>
 						<Separator />
 
 						<EnclosureNotesDialog enclosure={enclosure} open={notesOpen} onOpenChange={setNotesOpen} />

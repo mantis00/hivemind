@@ -5,7 +5,8 @@ import {
 	useOrgEnclosures,
 	useOrgSpecies,
 	useSpeciesCareInstructions,
-	useOrgSpeciesCareInstructions
+	useOrgSpeciesCareInstructions,
+	useOneSpecies
 } from '@/lib/react-query/queries'
 import type { Enclosure } from '@/lib/react-query/queries'
 import {
@@ -135,6 +136,7 @@ export default function EnclosureGrid() {
 		: null
 	const { data: defaultDocs } = useSpeciesCareInstructions(openSpeciesMasterSpeciesId as UUID)
 	const { data: orgDocs } = useOrgSpeciesCareInstructions(openSpeciesId as UUID)
+	const { data: masterSpecies } = useOneSpecies(openSpeciesMasterSpeciesId as UUID)
 
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
@@ -311,6 +313,7 @@ export default function EnclosureGrid() {
 		() => displayedSpecies.find((s) => s.id === openSpeciesId) ?? null,
 		[displayedSpecies, openSpeciesId]
 	)
+	const openSpeciesCareInstructions = openSpecies?.custom_care_instructions || masterSpecies?.care_instructions || null
 
 	const handleSortChange = (sortOn: string) => {
 		if (!displayedSpecies?.length) return
@@ -671,7 +674,7 @@ export default function EnclosureGrid() {
 							<CareInstructionDocs
 								defaultDocs={defaultDocs ?? []}
 								orgDocs={orgDocs ?? []}
-								careInstructions={openSpecies.custom_care_instructions}
+								careInstructions={openSpeciesCareInstructions}
 							/>
 						</div>
 					)}
