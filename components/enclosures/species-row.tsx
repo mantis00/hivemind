@@ -150,11 +150,11 @@ export default function SpeciesRow({
 										})()}
 									<Virtuoso
 										style={{
-											height: enclosures?.length && enclosures?.length <= 4 ? `${enclosures?.length * 114}px` : '352px'
+											height: enclosures?.length && enclosures?.length <= 4 ? `${enclosures?.length * 90}px` : '352px'
 										}}
 										data={enclosures}
 										itemContent={(index, enclosure) => (
-											<div className='p-1 pb-0 last:pb-2'>
+											<div className='p-1 pb-0'>
 												<EnclosureCard
 													enclosure={enclosure}
 													onClick={() => handleEnclosureClick(enclosure)}

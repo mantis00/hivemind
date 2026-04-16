@@ -668,11 +668,11 @@ export default function EnclosureGrid() {
 									No image available
 								</div>
 							)}
-							<div className='rounded-md bg-muted p-3'>
-								<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
-								<p className='text-sm leading-relaxed'>{openSpecies.custom_care_instructions}</p>
-							</div>
-							<CareInstructionDocs defaultDocs={defaultDocs ?? []} orgDocs={orgDocs ?? []} />
+							<CareInstructionDocs
+								defaultDocs={defaultDocs ?? []}
+								orgDocs={orgDocs ?? []}
+								careInstructions={openSpecies.custom_care_instructions}
+							/>
 						</div>
 					)}
 				</ResponsiveDialogDrawer>

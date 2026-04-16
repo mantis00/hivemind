@@ -2178,23 +2178,19 @@ export function useAddOrgCareInstruction() {
 	return useMutation({
 		mutationFn: async ({
 			orgSpeciesId,
-			orgName,
+			orgId,
 			file,
 			label
 		}: {
 			orgSpeciesId: UUID
-			orgName: string
+			orgId: string
 			file: File
 			label: string
 		}) => {
 			const supabase = createClient()
 
-			const orgSlug = orgName
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, '-')
-				.replace(/^-|-$/g, '')
 			const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-			const storageName = `orgs/${orgSlug}/${Date.now()}-${safeName}`
+			const storageName = `orgs/${orgId}/${Date.now()}-${safeName}`
 
 			const { data: uploadData, error: uploadError } = await supabase.storage
 				.from('care_instructions')

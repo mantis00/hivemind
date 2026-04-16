@@ -26,6 +26,7 @@ import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import { EditEnclosureButton } from './edit-enclosure-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
+
 import EnclosureNotesDialog from './enclosure-notes-dialog'
 import { EnclosureLineageGraph } from './enclosure-lineage-graph'
 import { Label } from '../ui/label'
@@ -125,16 +126,25 @@ export function EnclosureDialog({
 						{/* Tank Details */}
 						<div className='grid grid-cols-2 gap-3'>
 							{enclosure.institutional_specimen_id ? (
-								<div className='col-span-2 flex items-center gap-2 rounded-md border p-3'>
+								<div className='flex items-center gap-2 rounded-md border p-3'>
 									<IdCard className='h-4 w-4 text-muted-foreground shrink-0' />
-									<div>
+									<div className='min-w-0'>
 										<p className='text-xs text-muted-foreground'>Internal Tracking ID</p>
-										<p className='text-sm font-medium'>{enclosure.institutional_specimen_id}</p>
+										<p className='text-sm font-medium truncate'>{enclosure.institutional_specimen_id}</p>
 									</div>
 								</div>
 							) : (
 								''
 							)}
+							<div
+								className={`${enclosure.institutional_specimen_id ? '' : 'col-span-2'} flex items-center gap-2 rounded-md border p-3`}
+							>
+								<MapPin className='h-4 w-4 text-muted-foreground shrink-0' />
+								<div className='min-w-0'>
+									<p className='text-xs text-muted-foreground'>Location</p>
+									<p className='text-sm font-medium truncate'>{enclosure.locations?.name}</p>
+								</div>
+							</div>
 							<div className='flex items-center gap-2 rounded-md border p-3'>
 								<Calendar className='h-4 w-4 text-muted-foreground shrink-0' />
 								<div className='min-w-0'>
@@ -207,13 +217,6 @@ export function EnclosureDialog({
 										</div>
 									</PopoverContent>
 								</Popover>
-							</div>
-							<div className='col-span-2 flex items-center gap-2 rounded-md border p-3'>
-								<MapPin className='h-4 w-4 text-muted-foreground shrink-0' />
-								<div>
-									<p className='text-xs text-muted-foreground'>Location</p>
-									<p className='text-sm font-medium'>{enclosure.locations?.name}</p>
-								</div>
 							</div>
 						</div>
 

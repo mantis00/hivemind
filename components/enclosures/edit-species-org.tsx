@@ -71,7 +71,7 @@ export function EditSpeciesOrgForm({ species, onDone }: EditSpeciesFormProps) {
 			for (const doc of pendingDocs) {
 				await addOrgCareInstruction.mutateAsync({
 					orgSpeciesId: species.id,
-					orgName: orgDetails?.name ?? orgId,
+					orgId,
 					file: doc.file,
 					label: doc.label
 				})
@@ -235,7 +235,7 @@ export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpecie
 			for (const doc of pendingDocs) {
 				await addOrgCareInstruction.mutateAsync({
 					orgSpeciesId: species.id,
-					orgName: orgDetails?.name ?? (orgId as string),
+					orgId: orgId as string,
 					file: doc.file,
 					label: doc.label
 				})

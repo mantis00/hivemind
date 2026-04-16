@@ -6,6 +6,7 @@ import { FileIcon, X, ExternalLinkIcon, FileUpIcon, PlusIcon } from 'lucide-reac
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import Image from 'next/image'
 
@@ -98,52 +99,68 @@ export function CareInstructionsDropzone({
 				<Label className='text-xs text-muted-foreground'>Care Instruction Documents</Label>
 
 				{hasItems && (
-					<div className='flex flex-col gap-1.5'>
-						{existingDocs.map((doc) => (
-							<div key={doc.id} className='flex items-center gap-2 rounded-md border px-2 py-1.5 bg-muted/30 text-sm'>
-								<FileIcon className='h-4 w-4 shrink-0 text-muted-foreground' />
-								<button
-									type='button'
-									className='flex-1 min-w-0 truncate text-xs text-left hover:underline flex items-center gap-1'
-									onClick={() => openExisting(doc.file_url, doc.file_name ?? getFileName(doc.file_url))}
-								>
-									<span className='truncate'>{doc.file_name ?? getFileName(doc.file_url)}</span>
-									<ExternalLinkIcon className='h-3 w-3 shrink-0' />
-								</button>
-								<button
-									type='button'
-									className='ml-auto rounded-full p-0.5 hover:bg-muted-foreground/20 shrink-0'
-									onClick={() => onExistingRemove(doc.id)}
-									disabled={uploading}
-								>
-									<X className='h-3.5 w-3.5' />
-								</button>
-							</div>
-						))}
+					<div className='flex flex-col gap-1.5 max-h-52 overflow-y-auto scrollbar-no-track'>
+						{existingDocs.map((doc) => {
+							const ext = doc.file_url.split('.').pop()?.split('?')[0]?.toLowerCase()
+							return (
+								<div key={doc.id} className='flex items-center gap-2 rounded-md border px-2 py-1.5 bg-muted/30 text-sm'>
+									<FileIcon className='h-4 w-4 shrink-0 text-muted-foreground' />
+									<button
+										type='button'
+										className='flex-1 min-w-0 truncate text-xs text-left hover:underline flex items-center gap-1'
+										onClick={() => openExisting(doc.file_url, doc.file_name ?? getFileName(doc.file_url))}
+									>
+										<span className='truncate'>{doc.file_name ?? getFileName(doc.file_url)}</span>
+										<ExternalLinkIcon className='h-3 w-3 shrink-0' />
+									</button>
+									{ext && (
+										<Badge variant='secondary' className='text-[10px] px-1.5 py-0 uppercase shrink-0'>
+											{ext}
+										</Badge>
+									)}
+									<button
+										type='button'
+										className='rounded-full p-0.5 hover:bg-muted-foreground/20 shrink-0'
+										onClick={() => onExistingRemove(doc.id)}
+										disabled={uploading}
+									>
+										<X className='h-3.5 w-3.5' />
+									</button>
+								</div>
+							)
+						})}
 
-						{pendingDocs.map((doc, idx) => (
-							<div
-								key={`pending-${idx}-${doc.file.name}`}
-								className='flex items-center gap-2 rounded-md border border-dashed px-2 py-1.5 text-sm'
-							>
-								<FileIcon className='h-4 w-4 shrink-0 text-muted-foreground' />
-								<button
-									type='button'
-									className='flex-1 min-w-0 truncate text-xs text-left text-muted-foreground hover:underline'
-									onClick={() => openPending(doc.file)}
+						{pendingDocs.map((doc, idx) => {
+							const ext = doc.file.name.split('.').pop()?.toLowerCase()
+							return (
+								<div
+									key={`pending-${idx}-${doc.file.name}`}
+									className='flex items-center gap-2 rounded-md border border-dashed px-2 py-1.5 text-sm'
 								>
-									{doc.label}
-								</button>
-								<button
-									type='button'
-									className='ml-auto rounded-full p-0.5 hover:bg-muted-foreground/20 shrink-0'
-									onClick={() => onPendingRemove(idx)}
-									disabled={uploading}
-								>
-									<X className='h-3.5 w-3.5' />
-								</button>
-							</div>
-						))}
+									<FileIcon className='h-4 w-4 shrink-0 text-muted-foreground' />
+									<button
+										type='button'
+										className='flex-1 min-w-0 truncate text-xs text-left text-muted-foreground hover:underline'
+										onClick={() => openPending(doc.file)}
+									>
+										{doc.label}
+									</button>
+									{ext && (
+										<Badge variant='secondary' className='text-[10px] px-1.5 py-0 uppercase shrink-0'>
+											{ext}
+										</Badge>
+									)}
+									<button
+										type='button'
+										className='rounded-full p-0.5 hover:bg-muted-foreground/20 shrink-0'
+										onClick={() => onPendingRemove(idx)}
+										disabled={uploading}
+									>
+										<X className='h-3.5 w-3.5' />
+									</button>
+								</div>
+							)
+						})}
 					</div>
 				)}
 
