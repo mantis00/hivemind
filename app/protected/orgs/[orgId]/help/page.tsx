@@ -208,6 +208,28 @@ const pageSections: PageHelpSection[] = [
 				description: 'Record source details and specimen IDs during create or edit to keep lineage accurate.'
 			},
 			{
+				id: 'specimen-id-suggestions',
+				name: 'Use Specimen Tracking ID Suggestions',
+				description:
+					'When creating or editing an enclosure, reuse existing specimen tracking IDs. Suggestions show how many enclosures already use each ID.'
+			},
+			{
+				id: 'create-new-specimen-id',
+				name: 'Create a New Specimen Tracking ID',
+				description: 'If no suggestion matches, type a new specimen tracking ID and save.'
+			},
+			{
+				id: 'sources-optional',
+				name: 'Add Sources (Optional)',
+				description: 'Sources are optional. Add institution or enclosure sources when lineage context is needed.'
+			},
+			{
+				id: 'empty-enclosures-start',
+				name: 'Start from Empty Enclosure State',
+				description:
+					'If your organization has species but no enclosures yet, use Add Enclosure to create the first record.'
+			},
+			{
 				id: 'species-management',
 				name: 'Species Management',
 				description: 'Manage org species, switch common or scientific view, and request new species when needed.'
@@ -221,7 +243,10 @@ const pageSections: PageHelpSection[] = [
 		commonActions: [
 			'If you cannot create tasks or notes, check whether the enclosure is inactive.',
 			'If export is empty, switch to active enclosures or select active rows.',
-			'If species are missing in create flows, add them in Manage Species first.'
+			'If species are missing in create flows, add them in Manage Species first.',
+			'If you see No enclosures yet, click Add Enclosure above the list.',
+			'If you cannot find a specimen tracking ID, type a new one and continue.',
+			'If specimen suggestions look incomplete, confirm the selected species.'
 		],
 		relatedPages: ['Tasks', 'Global Navigation and Sidebar', 'History', 'Task Schedules']
 	},
