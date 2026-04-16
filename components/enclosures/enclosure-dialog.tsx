@@ -3,14 +3,15 @@ import { useState } from 'react'
 import {
 	MapPin,
 	Calendar,
-	Users,
 	ClipboardList,
 	LoaderCircle,
 	IdCard,
 	Network,
 	History,
 	TrendingUp,
-	TrendingDown
+	TrendingDown,
+	Bug,
+	Hash
 } from 'lucide-react'
 import { formatDate } from '@/context/format-date'
 import { formatRelativeTime } from '@/context/format-date-time'
@@ -158,7 +159,7 @@ export function EnclosureDialog({
 								</div>
 							</div>
 							<div className='flex items-center gap-2 rounded-md border p-3'>
-								<Users className='h-4 w-4 text-muted-foreground shrink-0' />
+								<Hash className='h-4 w-4 text-muted-foreground shrink-0' />
 								<div className='flex-1 min-w-0'>
 									<p className='text-xs text-muted-foreground'>Current Count</p>
 									<p className='text-sm font-medium'>{enclosure.current_count}</p>
@@ -220,6 +221,17 @@ export function EnclosureDialog({
 										</div>
 									</PopoverContent>
 								</Popover>
+							</div>
+							<div className='col-span-2 flex items-center gap-2 rounded-md border p-3'>
+								<Bug className='h-4 w-4 text-muted-foreground shrink-0' />
+								<div className='min-w-0'>
+									<p className='text-xs text-muted-foreground'>Life Stage</p>
+									<p className='text-sm font-medium'>
+										{enclosure.life_stage
+											? enclosure.life_stage.charAt(0).toUpperCase() + enclosure.life_stage.slice(1)
+											: '—'}
+									</p>
+								</div>
 							</div>
 						</div>
 

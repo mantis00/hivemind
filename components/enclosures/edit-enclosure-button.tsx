@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { LoaderCircle, Edit2Icon, X, PlusIcon } from 'lucide-react'
 import { useState, useMemo, useRef } from 'react'
 import { useUpdateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
@@ -40,6 +41,9 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const [count, setCount] = useState<number | undefined>(enclosure?.current_count)
 	const [isActive, setIsActive] = useState(enclosure?.is_active ?? true)
 	const [specimenTrackingId, setSpecimenTrackingId] = useState(enclosure?.institutional_specimen_id ?? '')
+	const [lifeStage, setLifeStage] = useState<'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'>(
+		enclosure?.life_stage ?? 'adult'
+	)
 	const [sourceType, setSourceType] = useState<'institution' | 'enclosure'>('institution')
 	const [externalSource, setExternalSource] = useState('')
 	const [sourceEnclosureQuery, setSourceEnclosureQuery] = useState('')
@@ -114,6 +118,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			savedLocationRef.current = undefined
 			setCount(enclosure?.current_count)
 			setIsActive(enclosure?.is_active ?? true)
+			setLifeStage(enclosure?.life_stage ?? 'adult')
 			setSpecimenTrackingId(enclosure?.institutional_specimen_id ?? '')
 			setSourceType('institution')
 			setExternalSource('')
@@ -164,6 +169,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			(count ?? 0) !== (enclosure?.current_count ?? 0) ||
 			!locationUnchanged ||
 			isActive !== (enclosure?.is_active ?? true) ||
+			lifeStage !== (enclosure?.life_stage ?? 'adult') ||
 			specimenTrackingId.trim() !== (enclosure?.institutional_specimen_id ?? '') ||
 			resolvedExternalSource !== (enclosure?.institutional_external_source ?? '') ||
 			lineageChanged
@@ -194,6 +200,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 				location_id: resolvedLocationId,
 				count: count ?? 0,
 				is_active: isActive,
+				life_stage: lifeStage,
 				institutional_specimen_id: specimenTrackingId.trim(),
 				institutional_external_source: resolvedExternalSource,
 				source_enclosure_ids: enclosureSourceIds
@@ -307,30 +314,49 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							</ComboboxContent>
 						</Combobox>
 					)}
-					<Label>Count</Label>
-					<Input
-						className='h-9'
-						id='count'
-						placeholder='Count'
-						value={count ?? ''}
-						type='number'
-						min='0'
-						onKeyDown={(e) => {
-							if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
-						}}
-						onChange={(e) => {
-							if (e.target.value === '') {
-								setCount(undefined)
-								return
-							}
-							const num = Number(e.target.value)
-							if (num < 0) return
-							setCount(num)
-						}}
-						onFocus={(e) => e.target.select()}
-						required
-						disabled={isPending}
-					/>
+					<div className='grid grid-cols-2 gap-4'>
+						<div className='flex flex-col gap-2'>
+							<Label>Count</Label>
+							<Input
+								className='h-9'
+								id='count'
+								placeholder='Count'
+								value={count ?? ''}
+								type='number'
+								min='0'
+								onKeyDown={(e) => {
+									if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
+								}}
+								onChange={(e) => {
+									if (e.target.value === '') {
+										setCount(undefined)
+										return
+									}
+									const num = Number(e.target.value)
+									if (num < 0) return
+									setCount(num)
+								}}
+								onFocus={(e) => e.target.select()}
+								required
+								disabled={isPending}
+							/>
+						</div>
+						<div className='flex flex-col gap-2'>
+							<Label>Life Stage</Label>
+							<Select value={lifeStage} onValueChange={(v) => setLifeStage(v as typeof lifeStage)}>
+								<SelectTrigger className='h-9 w-full'>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{(['egg', 'larva', 'pupa', 'nymph', 'adult'] as const).map((stage) => (
+										<SelectItem key={stage} value={stage}>
+											{stage.charAt(0).toUpperCase() + stage.slice(1)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
 					<Label>Specimen ID (Optional)</Label>
 					<Combobox
 						items={filteredEnclosures}

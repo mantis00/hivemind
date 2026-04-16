@@ -77,6 +77,7 @@ export type Enclosure = {
 	Species: Species
 	institutional_specimen_id: string
 	institutional_external_source: string
+	life_stage: 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'
 }
 
 export type Species = {
@@ -877,7 +878,7 @@ export function useOrgEnclosuresForSpecies(
 			let enclosureQuery = supabase
 				.from('enclosures')
 				.select(
-					'id, org_id, species_id, is_active, name, location, current_count, printed, locations(name, description), created_at, institutional_specimen_id, institutional_external_source'
+					'id, org_id, species_id, is_active, name, location, current_count, printed, locations(name, description), created_at, institutional_specimen_id, institutional_external_source, life_stage'
 				)
 				.eq('species_id', speciesId)
 				.eq('org_id', orgId)

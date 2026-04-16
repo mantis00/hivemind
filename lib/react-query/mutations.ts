@@ -354,6 +354,7 @@ export function useCreateEnclosure() {
 			species_id,
 			location,
 			current_count,
+			life_stage,
 			institutional_specimen_id,
 			institutional_external_source,
 			source_enclosure_transfers
@@ -362,6 +363,7 @@ export function useCreateEnclosure() {
 			species_id: UUID
 			location: UUID
 			current_count: number
+			life_stage: 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'
 			institutional_specimen_id?: string
 			institutional_external_source?: string
 			source_enclosure_transfers?: { id: UUID; count: number }[]
@@ -374,6 +376,7 @@ export function useCreateEnclosure() {
 					species_id: species_id,
 					location: location,
 					current_count: current_count,
+					life_stage,
 					...(institutional_specimen_id ? { institutional_specimen_id } : {}),
 					...(institutional_external_source ? { institutional_external_source } : {})
 				})
@@ -419,6 +422,9 @@ export function useCreateEnclosure() {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosureCount', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure created!')
+		},
+		onError: (error) => {
+			toast.error(error instanceof Error ? error.message : 'Failed to create enclosure')
 		}
 	})
 }
@@ -522,6 +528,7 @@ export function useUpdateEnclosure() {
 			location_id,
 			count,
 			is_active,
+			life_stage,
 			institutional_specimen_id,
 			institutional_external_source,
 			source_enclosure_ids
@@ -531,6 +538,7 @@ export function useUpdateEnclosure() {
 			location_id: UUID
 			count: number
 			is_active: boolean
+			life_stage: 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'
 			institutional_specimen_id?: string
 			institutional_external_source?: string
 			source_enclosure_ids?: UUID[]
@@ -543,6 +551,7 @@ export function useUpdateEnclosure() {
 					location: location_id,
 					current_count: count,
 					is_active,
+					life_stage,
 					institutional_specimen_id: institutional_specimen_id ?? '',
 					institutional_external_source: institutional_external_source ?? ''
 				})
@@ -571,6 +580,9 @@ export function useUpdateEnclosure() {
 			queryClient.invalidateQueries({ queryKey: ['enclosureCountHistory', variables.enclosure_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure updated!')
+		},
+		onError: (error) => {
+			toast.error(error instanceof Error ? error.message : 'Failed to update enclosure')
 		}
 	})
 }
