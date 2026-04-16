@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { type OrgSpecies, useOrgSpeciesCareInstructions, useOrgDetails } from '@/lib/react-query/queries'
+import { type OrgSpecies, useOrgSpeciesCareInstructions } from '@/lib/react-query/queries'
 import {
 	useUpdateOrgSpecies,
 	useDeactivateOrgSpecies,
