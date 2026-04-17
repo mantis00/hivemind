@@ -276,7 +276,11 @@ export function CreateEnclosureButton({
 						{isPending ? (
 							<LoaderCircle className='h-4 w-4 animate-spin' />
 						) : creationType === 'batch' ? (
-							`Create ${batchCount ?? '?'} Enclosure${(batchCount ?? 0) === 1 ? '' : 's'}`
+							batchCount ? (
+								`Create ${batchCount} Enclosure${batchCount === 1 ? '' : 's'}`
+							) : (
+								'Create Enclosures'
+							)
 						) : (
 							'Create Enclosure'
 						)}
