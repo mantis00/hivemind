@@ -333,6 +333,7 @@ export function CreateEnclosureButton({
 						<Input
 							type='number'
 							min='1'
+							placeholder='Count'
 							value={batchCount ?? ''}
 							onChange={(e) => {
 								if (e.target.value === '') {
