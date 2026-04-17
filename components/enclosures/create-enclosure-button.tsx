@@ -169,9 +169,8 @@ export function CreateEnclosureButton({
 		setCount(undefined)
 		setSourceType('institution')
 		setExternalSource('')
-		setSourceEnclosureQuery('')
-		setSpecimenTrackingId('')
 		setSources([])
+		setSpecimenTrackingId('')
 		setLifeStage('')
 	}
 
@@ -220,7 +219,10 @@ export function CreateEnclosureButton({
 			resolvedLocationId = existing.id as UUID
 		}
 
-		const externalSources = sources.filter((s) => s.type === 'institution').map((s) => s.value)
+		const externalSources = [
+			...sources.filter((s) => s.type === 'institution').map((s) => s.value),
+			...(externalSource.trim() ? [externalSource.trim()] : [])
+		]
 		const enclosureSources = sources
 			.filter((s) => s.type === 'enclosure')
 			.map((s) => ({ id: s.value as UUID, count: 0 }))
@@ -270,7 +272,15 @@ export function CreateEnclosureButton({
 					<Button
 						type='button'
 						className='flex-1'
-						disabled={isPending || !user || !species || !location || count === undefined}
+						disabled={
+							isPending ||
+							!user ||
+							!species ||
+							!location ||
+							count === undefined ||
+							!lifeStage ||
+							(creationType === 'batch' && !batchCount)
+						}
 						onClick={handleSubmit}
 					>
 						{isPending ? (
