@@ -1,16 +1,22 @@
 'use client'
 
-import { useState } from 'react'
-import { type Species } from '@/lib/react-query/queries'
-import { useUpdateSpecies, useUpdateSpeciesImage } from '@/lib/react-query/mutations'
+import { useCallback, useState } from 'react'
+import { type Species, useSpeciesCareInstructions } from '@/lib/react-query/queries'
+import {
+	useAddCareInstruction,
+	useDeleteCareInstruction,
+	useUpdateSpecies,
+	useUpdateSpeciesImage
+} from '@/lib/react-query/mutations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircle, ZoomInIcon } from 'lucide-react'
 import Image from 'next/image'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { SpeciesImageDropzone } from '@/components/superadmin/species-image-dropzone'
+import { CareInstructionsDropzone, type PendingDoc } from './care-instructions-dropzone'
 import { createClient } from '@/lib/supabase/client'
 import { DeleteSpeciesButton } from '@/components/superadmin/delete-species-button'
 
@@ -28,9 +34,18 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 	const [uploading, setUploading] = useState(false)
 	const [uploadProgress, setUploadProgress] = useState(0)
+	const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([])
+	const [removedDocIds, setRemovedDocIds] = useState<string[]>([])
+	const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
 
 	const updateSpecies = useUpdateSpecies()
 	const updateImage = useUpdateSpeciesImage()
+	const addCareInstruction = useAddCareInstruction()
+	const deleteCareInstruction = useDeleteCareInstruction()
+	const { data: existingDocs } = useSpeciesCareInstructions(species.id)
+
+	// Filter out docs that have been marked for removal
+	const visibleDocs = (existingDocs ?? []).filter((d) => !removedDocIds.includes(d.id))
 
 	const resetForm = () => {
 		setScientificName(species.scientific_name)
@@ -40,7 +55,21 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 		setSelectedImage(null)
 		setPreviewUrl(null)
 		setUploadProgress(0)
+		setPendingDocs([])
+		setRemovedDocIds([])
 	}
+
+	const handleDocAdd = useCallback((doc: PendingDoc) => {
+		setPendingDocs((prev) => [...prev, doc])
+	}, [])
+
+	const handlePendingRemove = useCallback((idx: number) => {
+		setPendingDocs((prev) => prev.filter((_, i) => i !== idx))
+	}, [])
+
+	const handleExistingCareRemove = useCallback((docId: string) => {
+		setRemovedDocIds((prev) => [...prev, docId])
+	}, [])
 
 	const handleOpenChange = (isOpen: boolean) => {
 		if (!isOpen) resetForm()
@@ -54,6 +83,23 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
+		setUploading(true)
+
+		try {
+			for (const docId of removedDocIds) {
+				await deleteCareInstruction.mutateAsync({ docId, speciesId: species.id })
+			}
+
+			for (const doc of pendingDocs) {
+				await addCareInstruction.mutateAsync({ speciesId: species.id, file: doc.file, label: doc.label })
+			}
+		} catch (err) {
+			console.error('Care instruction update failed:', err)
+			setUploading(false)
+			return
+		}
+
+		setUploading(false)
 
 		updateSpecies.mutate({
 			species_id: species.id,
@@ -122,13 +168,40 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 				{species.picture_url && !previewUrl && (
 					<div className='flex flex-col gap-1.5'>
 						<Label className='text-xs text-muted-foreground'>Current Image</Label>
-						<Image
-							src={species.picture_url}
-							alt={species.common_name}
-							width={400}
-							height={144}
-							className='rounded-md max-h-36 w-full object-contain border'
-						/>
+						<button
+							type='button'
+							className='relative group rounded-md border overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+							onClick={() => setImagePreviewOpen(true)}
+						>
+							<Image
+								src={species.picture_url}
+								alt={species.common_name}
+								width={400}
+								height={144}
+								className='max-h-36 w-full object-contain'
+							/>
+							<div className='absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center'>
+								<ZoomInIcon className='h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow' />
+							</div>
+						</button>
+						<ResponsiveDialogDrawer
+							title={species.common_name}
+							description={species.scientific_name}
+							trigger={null}
+							open={imagePreviewOpen}
+							onOpenChange={setImagePreviewOpen}
+							className='sm:max-w-3xl h-[85vh]'
+						>
+							<div className='relative flex-1 min-h-0'>
+								<Image
+									src={species.picture_url}
+									alt={species.common_name}
+									fill
+									unoptimized
+									className='object-contain'
+								/>
+							</div>
+						</ResponsiveDialogDrawer>
 					</div>
 				)}
 
@@ -173,6 +246,15 @@ export function EditSpeciesButton({ species, open, onOpenChange }: EditSpeciesDi
 						/>
 					</div>
 				</div>
+
+				<CareInstructionsDropzone
+					existingDocs={visibleDocs}
+					pendingDocs={pendingDocs}
+					uploading={uploading}
+					onExistingRemove={handleExistingCareRemove}
+					onDocAdd={handleDocAdd}
+					onPendingRemove={handlePendingRemove}
+				/>
 			</form>
 		</ResponsiveDialogDrawer>
 	)

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PlusIcon, LoaderCircle, X } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { useCreateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
@@ -44,6 +45,7 @@ export function CreateEnclosureButton({
 	const [externalSource, setExternalSource] = useState('')
 	const [sourceEnclosureQuery, setSourceEnclosureQuery] = useState('')
 	const [sources, setSources] = useState<{ type: 'institution' | 'enclosure'; value: string; label: string }[]>([])
+	const [lifeStage, setLifeStage] = useState<'egg' | 'larva' | 'pupa' | 'nymph' | 'adult' | ''>('')
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
 	const createLocationMutation = useCreateLocation()
@@ -141,7 +143,7 @@ export function CreateEnclosureButton({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		if (!species || !location) return
+		if (!species || !location || !lifeStage) return
 
 		const species_id = selectedSpecies
 		if (!species_id) return
@@ -171,6 +173,7 @@ export function CreateEnclosureButton({
 				species_id: species_id.id as UUID,
 				location: resolvedLocationId,
 				current_count: count ?? 0,
+				life_stage: lifeStage,
 				institutional_external_source: externalSources.length > 0 ? externalSources.join(', ') : undefined,
 				institutional_specimen_id: specimenTrackingId.trim() || undefined,
 				source_enclosure_transfers: enclosureSources.length > 0 ? enclosureSources : undefined
@@ -184,6 +187,7 @@ export function CreateEnclosureButton({
 					setLocation('')
 					setLocationQuery('')
 					setCount(undefined)
+					setLifeStage('')
 					setSourceType('institution')
 					setExternalSource('')
 					setSourceEnclosureQuery('')
@@ -341,29 +345,48 @@ export function CreateEnclosureButton({
 							</ComboboxContent>
 						</Combobox>
 					)}
-					<Label>Count</Label>
-					<Input
-						className='h-9'
-						placeholder='Count'
-						value={count ?? ''}
-						type='number'
-						min='0'
-						onKeyDown={(e) => {
-							if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
-						}}
-						onChange={(e) => {
-							if (e.target.value === '') {
-								setCount(undefined)
-								return
-							}
-							const num = Number(e.target.value)
-							if (num < 0) return
-							setCount(num)
-						}}
-						onFocus={(e) => e.target.select()}
-						required
-						disabled={isPending}
-					/>
+					<div className='grid grid-cols-2 gap-4'>
+						<div className='flex flex-col gap-2'>
+							<Label>Count</Label>
+							<Input
+								className='h-9'
+								placeholder='Count'
+								value={count ?? ''}
+								type='number'
+								min='0'
+								onKeyDown={(e) => {
+									if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
+								}}
+								onChange={(e) => {
+									if (e.target.value === '') {
+										setCount(undefined)
+										return
+									}
+									const num = Number(e.target.value)
+									if (num < 0) return
+									setCount(num)
+								}}
+								onFocus={(e) => e.target.select()}
+								required
+								disabled={isPending}
+							/>
+						</div>
+						<div className='flex flex-col gap-2'>
+							<Label>Life Stage</Label>
+							<Select value={lifeStage} onValueChange={(v) => setLifeStage(v as typeof lifeStage)}>
+								<SelectTrigger className='h-9 w-full'>
+									<SelectValue placeholder='Select stage...' />
+								</SelectTrigger>
+								<SelectContent>
+									{(['egg', 'larva', 'pupa', 'nymph', 'adult'] as const).map((stage) => (
+										<SelectItem key={stage} value={stage}>
+											{stage.charAt(0).toUpperCase() + stage.slice(1)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
 					<Label>Specimen Tracking ID (Optional)</Label>
 					<Combobox
 						items={filteredSpecimenIds}

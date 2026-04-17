@@ -1,6 +1,6 @@
 'use client'
 
-import { Calendar, MapPin, Users } from 'lucide-react'
+import { Calendar, Hash, MapPin } from 'lucide-react'
 import { type Enclosure } from '@/lib/react-query/queries'
 
 import { Card, CardContent } from '@/components/ui/card'
@@ -72,7 +72,7 @@ export function EnclosureCard({
 							</div>
 						</div>
 						<Badge variant='secondary' className='gap-1 self-center shrink-0'>
-							<Users className='h-3 w-3' />
+							<Hash className='h-3 w-3' />
 							{enclosure.current_count}
 						</Badge>
 					</div>

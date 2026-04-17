@@ -77,6 +77,7 @@ export type Enclosure = {
 	Species: Species
 	institutional_specimen_id: string
 	institutional_external_source: string
+	life_stage: 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'
 }
 
 export type Species = {
@@ -420,6 +421,16 @@ export function useOrgEnclosureLineage(orgId: UUID) {
 		},
 		enabled: !!orgId
 	})
+}
+
+export type SpeciesCareInstructions = {
+	id: UUID
+	species_id: UUID
+	org_species_id: UUID
+	file_name: string
+	file_url: string
+	created_at: string
+	is_hidden_by_org: boolean
 }
 
 export function useUserOrgs(userId: string) {
@@ -867,7 +878,7 @@ export function useOrgEnclosuresForSpecies(
 			let enclosureQuery = supabase
 				.from('enclosures')
 				.select(
-					'id, org_id, species_id, is_active, name, location, current_count, printed, locations(name, description), created_at, institutional_specimen_id, institutional_external_source'
+					'id, org_id, species_id, is_active, name, location, current_count, printed, locations(name, description), created_at, institutional_specimen_id, institutional_external_source, life_stage'
 				)
 				.eq('species_id', speciesId)
 				.eq('org_id', orgId)
@@ -1083,6 +1094,40 @@ export function useAllSpecies() {
 			if (error) throw error
 			return data
 		}
+	})
+}
+
+export function useSpeciesCareInstructions(speciesId: UUID) {
+	return useQuery({
+		queryKey: ['speciesCareInstructions', speciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('species_care_instructions')
+				.select('*')
+				.eq('species_id', speciesId)
+				.order('created_at', { ascending: true })
+			if (error) throw error
+			return data as SpeciesCareInstructions[]
+		},
+		enabled: !!speciesId
+	})
+}
+
+export function useOrgSpeciesCareInstructions(orgSpeciesId: UUID) {
+	return useQuery({
+		queryKey: ['orgSpeciesCareInstructions', orgSpeciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('species_care_instructions')
+				.select('*')
+				.eq('org_species_id', orgSpeciesId)
+				.order('created_at', { ascending: true })
+			if (error) throw error
+			return data as SpeciesCareInstructions[]
+		},
+		enabled: !!orgSpeciesId
 	})
 }
 

@@ -1,8 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import { type OrgSpecies } from '@/lib/react-query/queries'
-import { useUpdateOrgSpecies, useDeactivateOrgSpecies, useAddBatchSpeciesToOrg } from '@/lib/react-query/mutations'
+import { useCallback, useState } from 'react'
+import { type OrgSpecies, useOrgSpeciesCareInstructions } from '@/lib/react-query/queries'
+import {
+	useUpdateOrgSpecies,
+	useDeactivateOrgSpecies,
+	useAddBatchSpeciesToOrg,
+	useAddOrgCareInstruction,
+	useDeleteOrgCareInstruction
+} from '@/lib/react-query/mutations'
+import { CareInstructionsDropzone, type PendingDoc } from '@/components/superadmin/care-instructions-dropzone'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,15 +35,58 @@ interface EditSpeciesFormProps {
 export function EditSpeciesOrgForm({ species, onDone }: EditSpeciesFormProps) {
 	const [commonName, setCommonName] = useState(species.custom_common_name)
 	const [careInstructions, setCareInstructions] = useState(species.custom_care_instructions ?? '')
+	const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([])
+	const [removedDocIds, setRemovedDocIds] = useState<string[]>([])
+	const [uploading, setUploading] = useState(false)
 	const updateSpecies = useUpdateOrgSpecies()
 	const deactivateSpecies = useDeactivateOrgSpecies()
 	const activateSpecies = useAddBatchSpeciesToOrg()
+	const addOrgCareInstruction = useAddOrgCareInstruction()
+	const deleteOrgCareInstruction = useDeleteOrgCareInstruction()
+	const { data: existingDocs } = useOrgSpeciesCareInstructions(species.id)
+	const visibleDocs = (existingDocs ?? []).filter((d) => !removedDocIds.includes(d.id))
 	const params = useParams()
 	const orgId = params?.orgId as UUID
 
+	const handleDocAdd = useCallback((doc: PendingDoc) => {
+		setPendingDocs((prev) => [...prev, doc])
+	}, [])
+
+	const handlePendingRemove = useCallback((idx: number) => {
+		setPendingDocs((prev) => prev.filter((_, i) => i !== idx))
+	}, [])
+
+	const handleExistingRemove = useCallback((docId: string) => {
+		setRemovedDocIds((prev) => [...prev, docId])
+	}, [])
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		if (commonName === species.custom_common_name && careInstructions === species.custom_care_instructions) {
+		setUploading(true)
+		try {
+			for (const docId of removedDocIds) {
+				await deleteOrgCareInstruction.mutateAsync({ docId, orgSpeciesId: species.id })
+			}
+			for (const doc of pendingDocs) {
+				await addOrgCareInstruction.mutateAsync({
+					orgSpeciesId: species.id,
+					orgId,
+					file: doc.file,
+					label: doc.label
+				})
+			}
+		} catch (err) {
+			console.error('Care instruction update failed:', err)
+			setUploading(false)
+			return
+		}
+		setUploading(false)
+		if (
+			commonName === species.custom_common_name &&
+			careInstructions === species.custom_care_instructions &&
+			removedDocIds.length === 0 &&
+			pendingDocs.length === 0
+		) {
 			toast.info('No changes to save.')
 			return
 		}
@@ -74,16 +124,24 @@ export function EditSpeciesOrgForm({ species, onDone }: EditSpeciesFormProps) {
 					/>
 				</div>
 			</div>
+			<CareInstructionsDropzone
+				existingDocs={visibleDocs}
+				pendingDocs={pendingDocs}
+				uploading={uploading}
+				onExistingRemove={handleExistingRemove}
+				onDocAdd={handleDocAdd}
+				onPendingRemove={handlePendingRemove}
+			/>
 			<div className='flex flex-col gap-2'>
-				<Button type='submit' disabled={updateSpecies.isPending} className='w-full'>
-					{updateSpecies.isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
+				<Button type='submit' disabled={updateSpecies.isPending || uploading} className='w-full'>
+					{updateSpecies.isPending || uploading ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
 				</Button>
 				<div className='flex gap-2'>
 					<Button
 						type='button'
 						variant='outline'
 						onClick={onDone}
-						disabled={updateSpecies.isPending}
+						disabled={updateSpecies.isPending || uploading}
 						className='flex-1'
 					>
 						Cancel
@@ -127,16 +185,37 @@ export function EditSpeciesOrgForm({ species, onDone }: EditSpeciesFormProps) {
 export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpeciesDialogProps) {
 	const [commonName, setCommonName] = useState(species.custom_common_name)
 	const [careInstructions, setCareInstructions] = useState(species.custom_care_instructions ?? '')
+	const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([])
+	const [removedDocIds, setRemovedDocIds] = useState<string[]>([])
+	const [uploading, setUploading] = useState(false)
 	const updateSpecies = useUpdateOrgSpecies()
 	const deactivateSpecies = useDeactivateOrgSpecies()
 	const activateSpecies = useAddBatchSpeciesToOrg()
+	const addOrgCareInstruction = useAddOrgCareInstruction()
+	const deleteOrgCareInstruction = useDeleteOrgCareInstruction()
+	const { data: existingDocs } = useOrgSpeciesCareInstructions(species.id)
+	const visibleDocs = (existingDocs ?? []).filter((d) => !removedDocIds.includes(d.id))
 
 	const params = useParams()
 	const orgId = params?.orgId
 
+	const handleDocAdd = useCallback((doc: PendingDoc) => {
+		setPendingDocs((prev) => [...prev, doc])
+	}, [])
+
+	const handlePendingRemove = useCallback((idx: number) => {
+		setPendingDocs((prev) => prev.filter((_, i) => i !== idx))
+	}, [])
+
+	const handleExistingRemove = useCallback((docId: string) => {
+		setRemovedDocIds((prev) => [...prev, docId])
+	}, [])
+
 	const resetForm = () => {
 		setCommonName(species.custom_common_name)
 		setCareInstructions(species.custom_care_instructions ?? '')
+		setPendingDocs([])
+		setRemovedDocIds([])
 	}
 
 	const handleOpenChange = (isOpen: boolean) => {
@@ -146,6 +225,25 @@ export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpecie
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
+		setUploading(true)
+		try {
+			for (const docId of removedDocIds) {
+				await deleteOrgCareInstruction.mutateAsync({ docId, orgSpeciesId: species.id })
+			}
+			for (const doc of pendingDocs) {
+				await addOrgCareInstruction.mutateAsync({
+					orgSpeciesId: species.id,
+					orgId: orgId as string,
+					file: doc.file,
+					label: doc.label
+				})
+			}
+		} catch (err) {
+			console.error('Care instruction update failed:', err)
+			setUploading(false)
+			return
+		}
+		setUploading(false)
 
 		updateSpecies.mutate({
 			species_id: species.id,
@@ -157,7 +255,7 @@ export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpecie
 		handleOpenChange(false)
 	}
 
-	const isPending = updateSpecies.isPending || deactivateSpecies.isPending || activateSpecies.isPending
+	const isPending = updateSpecies.isPending || deactivateSpecies.isPending || activateSpecies.isPending || uploading
 
 	return (
 		<ResponsiveDialogDrawer
@@ -194,7 +292,15 @@ export function EditSpeciesOrgButton({ species, open, onOpenChange }: EditSpecie
 							placeholder='Enter care instructions…'
 						/>
 					</div>
-				</div>
+				</div>{' '}
+				<CareInstructionsDropzone
+					existingDocs={visibleDocs}
+					pendingDocs={pendingDocs}
+					uploading={uploading}
+					onExistingRemove={handleExistingRemove}
+					onDocAdd={handleDocAdd}
+					onPendingRemove={handlePendingRemove}
+				/>{' '}
 				<div className='flex flex-col gap-2'>
 					<Button type='submit' disabled={isPending} className='w-full'>
 						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Save Changes'}
