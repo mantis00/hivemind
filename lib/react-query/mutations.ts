@@ -425,8 +425,9 @@ export function useCreateEnclosure() {
 			const count = data?.length ?? 1
 			toast.success(`${count} enclosure${count === 1 ? '' : 's'} created!`)
 		},
-		onError: (error) => {
-			toast.error(error instanceof Error ? error.message : 'Failed to create enclosure')
+		onError: (error, variables) => {
+			const count = variables.quantity ?? 1
+			toast.error(error instanceof Error ? error.message : `Failed to create enclosure${count === 1 ? '' : 's'}`)
 		}
 	})
 }

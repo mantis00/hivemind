@@ -49,7 +49,7 @@ export function CreateEnclosureButton({
 
 	// Creation type
 	const [creationType, setCreationType] = useState<CreationType>('single')
-	const [batchCount, setBatchCount] = useState<number>(1)
+	const [batchCount, setBatchCount] = useState<number | undefined>(undefined)
 
 	// Form fields
 	const [species, setSpecies] = useState('')
@@ -159,7 +159,7 @@ export function CreateEnclosureButton({
 
 	const reset = () => {
 		setCreationType('single')
-		setBatchCount(1)
+		setBatchCount(undefined)
 		setSpecies('')
 		setSpeciesOpen(false)
 		setShowScientific(false)
@@ -198,8 +198,8 @@ export function CreateEnclosureButton({
 			toast.error('Please enter a number of enclosures.')
 			return
 		}
-		if (creationType === 'batch' && batchCount > 1000) {
-			toast.error('Cannot batch create more than 1000 enclosures at once.')
+		if (creationType === 'batch' && (batchCount ?? 0) > 500) {
+			toast.error('Cannot batch create more than 500 enclosures at once.')
 			return
 		}
 
@@ -231,7 +231,7 @@ export function CreateEnclosureButton({
 				species_id: selectedSpeciesObj.id as UUID,
 				location: resolvedLocationId,
 				current_count: count,
-				quantity: creationType === 'batch' ? batchCount : 1,
+				quantity: creationType === 'batch' ? (batchCount ?? 1) : 1,
 				life_stage: lifeStage as 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult',
 				institutional_external_source: externalSources.length > 0 ? externalSources.join(', ') : undefined,
 				institutional_specimen_id: specimenTrackingId.trim() || undefined,
@@ -276,7 +276,7 @@ export function CreateEnclosureButton({
 						{isPending ? (
 							<LoaderCircle className='h-4 w-4 animate-spin' />
 						) : creationType === 'batch' ? (
-							`Create ${batchCount} Enclosure${batchCount === 1 ? '' : 's'}`
+							`Create ${batchCount ?? '?'} Enclosure${(batchCount ?? 0) === 1 ? '' : 's'}`
 						) : (
 							'Create Enclosure'
 						)}
@@ -333,8 +333,12 @@ export function CreateEnclosureButton({
 						<Input
 							type='number'
 							min='1'
-							value={batchCount}
+							value={batchCount ?? ''}
 							onChange={(e) => {
+								if (e.target.value === '') {
+									setBatchCount(undefined)
+									return
+								}
 								const val = parseInt(e.target.value, 10)
 								if (!isNaN(val) && val >= 1) setBatchCount(val)
 							}}
