@@ -436,7 +436,6 @@ export default function EnclosureGrid() {
 						<>
 							<Button
 								variant='outline'
-								size='sm'
 								onClick={toggleSelectMode}
 								className='gap-1.5'
 								disabled={enclosureStatusFilter === 'all'}
