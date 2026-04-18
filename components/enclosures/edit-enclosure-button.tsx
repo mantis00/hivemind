@@ -162,7 +162,10 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 		e.preventDefault()
 		if (!species || !location) return
 
-		const externalSources = sources.filter((s) => s.type === 'institution').map((s) => s.value)
+		const externalSources = [
+			...sources.filter((s) => s.type === 'institution').map((s) => s.value),
+			...(externalSource.trim() ? [externalSource.trim()] : [])
+		]
 		const enclosureSourceIds = sources.filter((s) => s.type === 'enclosure').map((s) => s.value as UUID)
 		const resolvedExternalSource = externalSources.length > 0 ? externalSources.join(', ') : ''
 

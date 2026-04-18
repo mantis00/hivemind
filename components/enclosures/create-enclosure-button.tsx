@@ -1,16 +1,19 @@
 'use client'
 
+import { useState, useMemo } from 'react'
+import { PlusIcon, LoaderCircle, X, ChevronDown } from 'lucide-react'
+import { useParams } from 'next/navigation'
+import { UUID } from 'crypto'
+import { toast } from 'sonner'
+
 import { Button } from '@/components/ui/button'
-import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, LoaderCircle, X } from 'lucide-react'
-import { useState, useMemo } from 'react'
-import { useCreateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
-import { useCurrentClientUser } from '@/lib/react-query/auth'
-import { OrgSpecies, type Enclosure, useOrgEnclosures, useOrgLocations, useOrgSpecies } from '@/lib/react-query/queries'
-import { useParams } from 'next/navigation'
+import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import {
 	Combobox,
 	ComboboxCollection,
@@ -19,9 +22,18 @@ import {
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxList
-} from '../ui/combobox'
-import { UUID } from 'crypto'
-import { Badge } from '../ui/badge'
+} from '@/components/ui/combobox'
+import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
+
+import { useCreateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
+import { useCurrentClientUser } from '@/lib/react-query/auth'
+import { type Enclosure, useOrgEnclosures, useOrgLocations, useOrgSpecies } from '@/lib/react-query/queries'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type CreationType = 'single' | 'batch'
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function CreateEnclosureButton({
 	open: propsOpen,
@@ -34,8 +46,14 @@ export function CreateEnclosureButton({
 	const [localOpen, setLocalOpen] = useState(false)
 	const open = controlled ? propsOpen! : localOpen
 	const setOpen = controlled ? (val: boolean) => propsOnOpenChange?.(val) : setLocalOpen
+
+	// Creation type
+	const [creationType, setCreationType] = useState<CreationType>('single')
+	const [batchCount, setBatchCount] = useState<number | undefined>(undefined)
+
+	// Form fields
 	const [species, setSpecies] = useState('')
-	const [speciesQuery, setSpeciesQuery] = useState('')
+	const [speciesOpen, setSpeciesOpen] = useState(false)
 	const [showScientific, setShowScientific] = useState(false)
 	const [location, setLocation] = useState('')
 	const [locationQuery, setLocationQuery] = useState('')
@@ -46,17 +64,21 @@ export function CreateEnclosureButton({
 	const [sourceEnclosureQuery, setSourceEnclosureQuery] = useState('')
 	const [sources, setSources] = useState<{ type: 'institution' | 'enclosure'; value: string; label: string }[]>([])
 	const [lifeStage, setLifeStage] = useState<'egg' | 'larva' | 'pupa' | 'nymph' | 'adult' | ''>('')
+	const [createLocation, setCreateLocation] = useState(false)
+
 	const { data: user } = useCurrentClientUser()
 	const createEnclosureMutation = useCreateEnclosure()
 	const createLocationMutation = useCreateLocation()
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 
-	const [createLocation, setCreateLocation] = useState(false)
-
 	const { data: orgSpecies } = useOrgSpecies(orgId as UUID)
 	const { data: orgLocations } = useOrgLocations(orgId as UUID)
 	const { data: orgEnclosures } = useOrgEnclosures(orgId as UUID)
+
+	const isPending = createEnclosureMutation.isPending || createLocationMutation.isPending
+
+	// ── Filtering helpers ────────────────────────────────────────────────────
 
 	const scoreMatch = (str: string | undefined, val: string): number => {
 		if (!str) return -1
@@ -67,26 +89,21 @@ export function CreateEnclosureButton({
 		return -1
 	}
 
-	const filteredSpecies = useMemo(() => {
-		if (!speciesQuery.trim()) return orgSpecies ?? []
-		const val = speciesQuery.trim().toLowerCase()
-		return (orgSpecies ?? [])
-			.map((spec) => {
-				const field = showScientific ? spec.species?.scientific_name : spec.custom_common_name
-				return { spec, score: scoreMatch(field, val) }
-			})
-			.filter(({ score }) => score >= 0)
-			.sort((a, b) => a.score - b.score)
-			.map(({ spec }) => spec)
-	}, [speciesQuery, orgSpecies, showScientific])
+	const speciesOptions = useMemo<VirtualizedOption[]>(
+		() =>
+			(orgSpecies ?? []).map((spec) => ({
+				value: spec.custom_common_name,
+				label: showScientific ? (spec.species?.scientific_name ?? spec.custom_common_name) : spec.custom_common_name,
+				subLabel: showScientific ? spec.custom_common_name : (spec.species?.scientific_name ?? undefined)
+			})),
+		[orgSpecies, showScientific]
+	)
 
 	const filteredLocations = useMemo(() => {
 		if (!locationQuery.trim()) return orgLocations ?? []
 		const val = locationQuery.trim().toLowerCase()
 		return (orgLocations ?? [])
-			.map((loc) => {
-				return { loc, score: scoreMatch(loc.name, val) }
-			})
+			.map((loc) => ({ loc, score: scoreMatch(loc.name, val) }))
 			.filter(({ score }) => score >= 0)
 			.sort((a, b) => a.score - b.score)
 			.map(({ loc }) => loc)
@@ -96,7 +113,6 @@ export function CreateEnclosureButton({
 		() => orgSpecies?.find((spec) => spec?.custom_common_name === species),
 		[orgSpecies, species]
 	)
-
 	const selectedSpeciesId = selectedSpecies?.id
 
 	const specimenIdOptions = useMemo(() => {
@@ -139,14 +155,55 @@ export function CreateEnclosureButton({
 			.map(({ enc }) => enc)
 	}, [sourceEnclosureOptions, sourceEnclosureQuery])
 
-	const isPending = createEnclosureMutation.isPending || createLocationMutation.isPending
+	// ── Reset ────────────────────────────────────────────────────────────────
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault()
-		if (!species || !location || !lifeStage) return
+	const reset = () => {
+		setCreationType('single')
+		setBatchCount(undefined)
+		setSpecies('')
+		setSpeciesOpen(false)
+		setShowScientific(false)
+		setCreateLocation(false)
+		setLocation('')
+		setLocationQuery('')
+		setCount(undefined)
+		setSourceType('institution')
+		setExternalSource('')
+		setSources([])
+		setSpecimenTrackingId('')
+		setLifeStage('')
+	}
 
-		const species_id = selectedSpecies
-		if (!species_id) return
+	// ── Submit ────────────────────────────────────────────────────────────────
+
+	const handleSubmit = async () => {
+		if (!species) {
+			toast.error('Please select a species.')
+			return
+		}
+		if (!location) {
+			toast.error('Please select a location.')
+			return
+		}
+		if (count === undefined) {
+			toast.error('Please enter a count.')
+			return
+		}
+		if (!lifeStage) {
+			toast.error('Please select a life stage.')
+			return
+		}
+		if (creationType === 'batch' && (!batchCount || batchCount < 1)) {
+			toast.error('Please enter a number of enclosures.')
+			return
+		}
+		if (creationType === 'batch' && (batchCount ?? 0) > 500) {
+			toast.error('Cannot batch create more than 500 enclosures at once.')
+			return
+		}
+
+		const selectedSpeciesObj = orgSpecies?.find((spec) => spec?.custom_common_name === species)
+		if (!selectedSpeciesObj) return
 
 		let resolvedLocationId: UUID
 
@@ -162,7 +219,10 @@ export function CreateEnclosureButton({
 			resolvedLocationId = existing.id as UUID
 		}
 
-		const externalSources = sources.filter((s) => s.type === 'institution').map((s) => s.value)
+		const externalSources = [
+			...sources.filter((s) => s.type === 'institution').map((s) => s.value),
+			...(externalSource.trim() ? [externalSource.trim()] : [])
+		]
 		const enclosureSources = sources
 			.filter((s) => s.type === 'enclosure')
 			.map((s) => ({ id: s.value as UUID, count: 0 }))
@@ -170,10 +230,11 @@ export function CreateEnclosureButton({
 		createEnclosureMutation.mutate(
 			{
 				orgId: orgId as UUID,
-				species_id: species_id.id as UUID,
+				species_id: selectedSpeciesObj.id as UUID,
 				location: resolvedLocationId,
-				current_count: count ?? 0,
-				life_stage: lifeStage,
+				current_count: count,
+				quantity: creationType === 'batch' ? (batchCount ?? 1) : 1,
+				life_stage: lifeStage as 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult',
 				institutional_external_source: externalSources.length > 0 ? externalSources.join(', ') : undefined,
 				institutional_specimen_id: specimenTrackingId.trim() || undefined,
 				source_enclosure_transfers: enclosureSources.length > 0 ? enclosureSources : undefined
@@ -181,29 +242,24 @@ export function CreateEnclosureButton({
 			{
 				onSuccess: () => {
 					setOpen(false)
-					setSpecies('')
-					setSpeciesQuery('')
-					setCreateLocation(false)
-					setLocation('')
-					setLocationQuery('')
-					setCount(undefined)
-					setLifeStage('')
-					setSourceType('institution')
-					setExternalSource('')
-					setSourceEnclosureQuery('')
-					setSpecimenTrackingId('')
-					setSources([])
+					reset()
 				}
 			}
 		)
 	}
 
+	// ── Render ────────────────────────────────────────────────────────────────
+
 	return (
 		<ResponsiveDialogDrawer
 			title='Create Enclosure'
-			description='Species, location, and count are required'
+			description='Species, location, and count are required.'
 			open={open}
-			onOpenChange={(isOpen) => setOpen(isOpen)}
+			onOpenChange={(isOpen) => {
+				if (!isOpen) reset()
+				setOpen(isOpen)
+			}}
+			className='sm:max-w-2xl'
 			trigger={
 				controlled ? null : (
 					<Button onClick={() => setOpen(true)} size='default'>
@@ -211,75 +267,169 @@ export function CreateEnclosureButton({
 					</Button>
 				)
 			}
+			footer={
+				<div className='flex gap-2 w-full'>
+					<Button
+						type='button'
+						className='flex-1'
+						disabled={
+							isPending ||
+							!user ||
+							!species ||
+							!location ||
+							count === undefined ||
+							!lifeStage ||
+							(creationType === 'batch' && !batchCount)
+						}
+						onClick={handleSubmit}
+					>
+						{isPending ? (
+							<LoaderCircle className='h-4 w-4 animate-spin' />
+						) : creationType === 'batch' ? (
+							batchCount ? (
+								`Create ${batchCount} Enclosure${batchCount === 1 ? '' : 's'}`
+							) : (
+								'Create Enclosures'
+							)
+						) : (
+							'Create Enclosure'
+						)}
+					</Button>
+				</div>
+			}
 		>
-			<form onSubmit={handleSubmit} className='flex flex-col gap-4'>
-				<div className='grid grid-cols-1 gap-4'>
+			<div data-vaul-no-drag className='overflow-y-auto flex-1 min-h-0 space-y-5 pl-1 pr-5 pb-4'>
+				{/* ── Creation Type ── */}
+				<div className='space-y-2'>
+					<Label className='text-sm font-semibold'>Creation Type</Label>
+					<RadioGroup
+						value={creationType}
+						onValueChange={(v) => setCreationType(v as CreationType)}
+						className='space-y-1'
+					>
+						{(
+							[
+								{
+									value: 'single',
+									label: 'Single Enclosure',
+									desc: 'Create one new enclosure'
+								},
+								{
+									value: 'batch',
+									label: 'Batch Enclosures',
+									desc: 'Create multiple enclosures with the same data'
+								}
+							] as const
+						).map(({ value, label, desc }) => (
+							<label
+								key={value}
+								htmlFor={`enctype-${value}`}
+								className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 transition-colors ${
+									creationType === value ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
+								}`}
+							>
+								<RadioGroupItem value={value} id={`enctype-${value}`} />
+								<div className='min-w-0'>
+									<p className='text-sm font-medium'>{label}</p>
+									<p className='text-xs text-muted-foreground'>{desc}</p>
+								</div>
+							</label>
+						))}
+					</RadioGroup>
+				</div>
+
+				{/* ── Batch Count ── */}
+				{creationType === 'batch' && (
+					<div className='space-y-1'>
+						<Label className='text-sm'>
+							Number of Enclosures <span className='text-destructive'>*</span>
+						</Label>
+						<Input
+							type='number'
+							min='1'
+							placeholder='Count'
+							value={batchCount ?? ''}
+							onChange={(e) => {
+								if (e.target.value === '') {
+									setBatchCount(undefined)
+									return
+								}
+								const val = parseInt(e.target.value, 10)
+								if (!isNaN(val) && val >= 1) setBatchCount(val)
+							}}
+							onFocus={(e) => e.target.select()}
+							onKeyDown={(e) => {
+								if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
+							}}
+							className='w-28'
+							disabled={isPending}
+						/>
+					</div>
+				)}
+
+				<Separator />
+
+				{/* ── Species ── */}
+				<div className='space-y-2'>
 					<div className='flex items-center justify-between'>
-						<Label>Species</Label>
+						<Label>
+							Species <span className='text-destructive'>*</span>
+						</Label>
 						<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>
 							<button
 								type='button'
 								className={`w-full text-center px-2.5 py-1 transition-colors ${!showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
-								onClick={() => {
-									setShowScientific(false)
-									setSpeciesQuery(species ?? '')
-								}}
+								onClick={() => setShowScientific(false)}
 							>
 								Common
 							</button>
 							<button
 								type='button'
 								className={`w-full text-center px-2.5 py-1 transition-colors ${showScientific ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-background'}`}
-								onClick={() => {
-									setShowScientific(true)
-									const scientificName = orgSpecies?.find((s) => s.custom_common_name === species)?.species
-										?.scientific_name
-									setSpeciesQuery(scientificName ?? '')
-								}}
+								onClick={() => setShowScientific(true)}
 							>
 								Scientific
 							</button>
 						</div>
 					</div>
-					<Combobox
-						items={filteredSpecies}
-						filter={() => true}
-						value={species}
-						onValueChange={(value) => {
-							setSpecies(value ?? '')
-							setSpeciesQuery(value ?? '')
-						}}
+					<button
+						type='button'
+						disabled={isPending}
+						onClick={() => setSpeciesOpen((v) => !v)}
+						className={`flex h-9 w-full items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
+							speciesOpen
+								? 'border-ring ring-ring/50 ring-[3px]'
+								: 'border-input hover:bg-accent hover:text-accent-foreground'
+						} bg-background disabled:cursor-not-allowed disabled:opacity-50`}
 					>
-						<ComboboxInput
-							className='h-9'
-							placeholder='Search species...'
-							value={speciesQuery}
-							onChange={(event) => setSpeciesQuery(event.target.value)}
-							disabled={isPending}
-							showClear
-						/>
-						<ComboboxContent>
-							<ComboboxEmpty>No matching species.</ComboboxEmpty>
-							<ComboboxList className='max-h-42 scrollbar-no-track'>
-								<ComboboxCollection>
-									{(spec: OrgSpecies) => (
-										<ComboboxItem key={spec.id} value={spec.custom_common_name}>
-											{showScientific ? (
-												<span className='flex flex-col'>
-													<span>{spec.species?.scientific_name}</span>
-													<span className='text-xs text-muted-foreground'>{spec.custom_common_name}</span>
-												</span>
-											) : (
-												spec.custom_common_name
-											)}
-										</ComboboxItem>
-									)}
-								</ComboboxCollection>
-							</ComboboxList>
-						</ComboboxContent>
-					</Combobox>
+						<span className={`truncate ${species ? '' : 'text-muted-foreground'}`}>
+							{species ? (speciesOptions.find((o) => o.value === species)?.label ?? species) : 'Search species...'}
+						</span>
+						<ChevronDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+					</button>
+					{speciesOpen && (
+						<div className='rounded-md border overflow-hidden'>
+							<VirtualizedCommand
+								height='300'
+								options={speciesOptions}
+								placeholder='Search species...'
+								selectedOption={species}
+								emptyMessage='No matching species.'
+								onSelectOption={(value) => {
+									setSpecies(value === species ? '' : value)
+									setSpeciesOpen(false)
+								}}
+							/>
+						</div>
+					)}
+				</div>
+
+				{/* ── Location ── */}
+				<div className='space-y-2'>
 					<div className='flex items-center justify-between'>
-						<Label>Enclosure Location</Label>
+						<Label>
+							Enclosure Location <span className='text-destructive'>*</span>
+						</Label>
 						<div className='flex items-center rounded-md border text-xs overflow-hidden w-34'>
 							<button
 								type='button'
@@ -345,49 +495,65 @@ export function CreateEnclosureButton({
 							</ComboboxContent>
 						</Combobox>
 					)}
-					<div className='grid grid-cols-2 gap-4'>
-						<div className='flex flex-col gap-2'>
-							<Label>Count</Label>
-							<Input
-								className='h-9'
-								placeholder='Count'
-								value={count ?? ''}
-								type='number'
-								min='0'
-								onKeyDown={(e) => {
-									if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
-								}}
-								onChange={(e) => {
-									if (e.target.value === '') {
-										setCount(undefined)
-										return
-									}
-									const num = Number(e.target.value)
-									if (num < 0) return
-									setCount(num)
-								}}
-								onFocus={(e) => e.target.select()}
-								required
-								disabled={isPending}
-							/>
-						</div>
-						<div className='flex flex-col gap-2'>
-							<Label>Life Stage</Label>
-							<Select value={lifeStage} onValueChange={(v) => setLifeStage(v as typeof lifeStage)}>
-								<SelectTrigger className='h-9 w-full'>
-									<SelectValue placeholder='Select stage...' />
-								</SelectTrigger>
-								<SelectContent>
-									{(['egg', 'larva', 'pupa', 'nymph', 'adult'] as const).map((stage) => (
-										<SelectItem key={stage} value={stage}>
-											{stage.charAt(0).toUpperCase() + stage.slice(1)}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
+				</div>
+
+				{/* ── Count + Life Stage ── */}
+				<div className='grid grid-cols-2 gap-4'>
+					<div className='flex flex-col gap-2'>
+						<Label>
+							Count <span className='text-destructive'>*</span>
+						</Label>
+						<Input
+							className='h-9'
+							placeholder='Count'
+							value={count ?? ''}
+							type='number'
+							min='0'
+							onKeyDown={(e) => {
+								if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
+							}}
+							onChange={(e) => {
+								if (e.target.value === '') {
+									setCount(undefined)
+									return
+								}
+								const num = Number(e.target.value)
+								if (num < 0) return
+								setCount(num)
+							}}
+							onFocus={(e) => e.target.select()}
+							disabled={isPending}
+						/>
+						{creationType === 'batch' && (
+							<p className='text-xs text-muted-foreground'>
+								Each of the {batchCount} enclosures will start with this count.
+							</p>
+						)}
 					</div>
-					<Label>Specimen Tracking ID (Optional)</Label>
+					<div className='flex flex-col gap-2'>
+						<Label>
+							Life Stage <span className='text-destructive'>*</span>
+						</Label>
+						<Select value={lifeStage} onValueChange={(v) => setLifeStage(v as typeof lifeStage)}>
+							<SelectTrigger className='h-9 w-full'>
+								<SelectValue placeholder='Select stage...' />
+							</SelectTrigger>
+							<SelectContent>
+								{(['egg', 'larva', 'pupa', 'nymph', 'adult'] as const).map((stage) => (
+									<SelectItem key={stage} value={stage}>
+										{stage.charAt(0).toUpperCase() + stage.slice(1)}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+				</div>
+
+				{/* ── Specimen Tracking ID ── */}
+				<div className='space-y-1'>
+					<Label>
+						Specimen Tracking ID <span className='text-muted-foreground font-normal text-xs'>(optional)</span>
+					</Label>
 					<Combobox
 						items={filteredSpecimenIds}
 						filter={() => true}
@@ -399,7 +565,7 @@ export function CreateEnclosureButton({
 							placeholder='Specimen tracking ID...'
 							value={specimenTrackingId}
 							onChange={(event) => setSpecimenTrackingId(event.target.value)}
-							disabled={isPending || !speciesQuery}
+							disabled={isPending || !species}
 							showClear
 						/>
 						<ComboboxContent>
@@ -424,8 +590,14 @@ export function CreateEnclosureButton({
 							</ComboboxList>
 						</ComboboxContent>
 					</Combobox>
+				</div>
+
+				{/* ── Source ── */}
+				<div className='space-y-2'>
 					<div className='flex items-center justify-between'>
-						<Label>Sources (Optional)</Label>
+						<Label>
+							Source <span className='text-muted-foreground font-normal text-xs'>(optional)</span>
+						</Label>
 						<div className='flex items-center rounded-md border text-xs overflow-hidden w-44'>
 							<button
 								type='button'
@@ -457,7 +629,7 @@ export function CreateEnclosureButton({
 										e.preventDefault()
 										setSources((prev) => [
 											...prev,
-											{ type: 'institution', value: externalSource.trim(), label: externalSource.trim(), count: '' }
+											{ type: 'institution', value: externalSource.trim(), label: externalSource.trim() }
 										])
 										setExternalSource('')
 									}
@@ -472,7 +644,7 @@ export function CreateEnclosureButton({
 								onClick={() => {
 									setSources((prev) => [
 										...prev,
-										{ type: 'institution', value: externalSource.trim(), label: externalSource.trim(), count: '' }
+										{ type: 'institution', value: externalSource.trim(), label: externalSource.trim() }
 									])
 									setExternalSource('')
 								}}
@@ -494,9 +666,7 @@ export function CreateEnclosureButton({
 										{
 											type: 'enclosure',
 											value: selected.id,
-											label: `${selected.name} (${selected.locations?.name ?? 'Unknown'})`,
-											count: '',
-											maxCount: selected.current_count
+											label: `${selected.name} (${selected.locations?.name ?? 'Unknown'})`
 										}
 									])
 								}
@@ -554,15 +724,7 @@ export function CreateEnclosureButton({
 						</div>
 					)}
 				</div>
-				<div className='flex flex-col gap-3 justify-center'>
-					<Button type='submit' disabled={isPending || !user || !species || !location || count === undefined}>
-						{isPending ? <LoaderCircle className='animate-spin' /> : 'Create Enclosure'}
-					</Button>
-					<Button type='button' variant='outline' size='default' disabled={isPending} onClick={() => setOpen(false)}>
-						Cancel
-					</Button>
-				</div>
-			</form>
+			</div>
 		</ResponsiveDialogDrawer>
 	)
 }

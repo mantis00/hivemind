@@ -355,6 +355,7 @@ export function useCreateEnclosure() {
 			location,
 			current_count,
 			life_stage,
+			quantity = 1,
 			institutional_specimen_id,
 			institutional_external_source,
 			source_enclosure_transfers
@@ -363,35 +364,35 @@ export function useCreateEnclosure() {
 			species_id: UUID
 			location: UUID
 			current_count: number
-			life_stage: 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'
+			life_stage?: 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'
+			quantity?: number
 			institutional_specimen_id?: string
 			institutional_external_source?: string
 			source_enclosure_transfers?: { id: UUID; count: number }[]
 		}) => {
 			const supabase = createClient()
-			const { data: enclosure, error: enclosureError } = await supabase
-				.from('enclosures')
-				.insert({
-					org_id: orgId,
-					species_id: species_id,
-					location: location,
-					current_count: current_count,
-					life_stage,
-					...(institutional_specimen_id ? { institutional_specimen_id } : {}),
-					...(institutional_external_source ? { institutional_external_source } : {})
-				})
-				.select()
-				.single()
 
+			const rows = Array.from({ length: Math.max(1, quantity) }, () => ({
+				org_id: orgId,
+				species_id,
+				location,
+				current_count,
+				life_stage,
+				...(institutional_specimen_id ? { institutional_specimen_id } : {}),
+				...(institutional_external_source ? { institutional_external_source } : {})
+			}))
+
+			const { data: enclosures, error: enclosureError } = await supabase.from('enclosures').insert(rows).select()
 			if (enclosureError) throw enclosureError
 
 			if (source_enclosure_transfers && source_enclosure_transfers.length > 0) {
-				const { error: lineageError } = await supabase.from('enclosure_lineage').insert(
+				const lineageRows = enclosures.flatMap((enclosure) =>
 					source_enclosure_transfers.map((t) => ({
 						enclosure_id: enclosure.id,
 						source_enclosure_id: t.id
 					}))
 				)
+				const { error: lineageError } = await supabase.from('enclosure_lineage').insert(lineageRows)
 				if (lineageError) throw lineageError
 
 				const sourceIds = source_enclosure_transfers.map((t) => t.id)
@@ -414,17 +415,19 @@ export function useCreateEnclosure() {
 				}
 			}
 
-			return enclosure
+			return enclosures
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosureCount', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Enclosure created!')
+			const count = data?.length ?? 1
+			toast.success(`${count} enclosure${count === 1 ? '' : 's'} created!`)
 		},
-		onError: (error) => {
-			toast.error(error instanceof Error ? error.message : 'Failed to create enclosure')
+		onError: (error, variables) => {
+			const count = variables.quantity ?? 1
+			toast.error(error instanceof Error ? error.message : `Failed to create enclosure${count === 1 ? '' : 's'}`)
 		}
 	})
 }
