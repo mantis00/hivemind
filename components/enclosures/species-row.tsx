@@ -199,6 +199,7 @@ export default function SpeciesRow({
 				open={detailsOpen}
 				onOpenChange={setDetailsOpen}
 				trigger={<span className='hidden' />}
+				className='sm:max-w-2xl'
 			>
 				<div className='flex flex-col gap-4'>
 					{species.species?.picture_url ? (
