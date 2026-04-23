@@ -14,7 +14,7 @@ export function BackToOrgs() {
 	return (
 		<Link
 			href='/protected/orgs'
-			className='flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors'
+			className='flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 ml-4'
 		>
 			<ArrowLeft className='size-4' />
 			Back to Orgs

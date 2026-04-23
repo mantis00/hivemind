@@ -11,8 +11,9 @@ import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import { toast } from 'sonner'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-export function ChangeOrgNameButton() {
+export function ChangeOrgNameButton({ disabled }: { disabled?: boolean }) {
 	const [open, setOpen] = useState(false)
 	const [newName, setNewName] = useState('')
 	const changeOrgName = useChangeOrgName()
@@ -30,50 +31,64 @@ export function ChangeOrgNameButton() {
 	}
 
 	return (
-		<ResponsiveDialogDrawer
-			title='Change Organization Name'
-			description='Enter a new organization name.'
-			open={open}
-			onOpenChange={handleOpenChange}
-			trigger={
-				<Button variant='outline' size='sm' className='shrink-0'>
-					<span className='hidden sm:inline'>Change Name</span> <Edit className='w-4 h-4' />
-				</Button>
-			}
-		>
-			<form
-				onSubmit={(e) => {
-					e.preventDefault()
-					if (orgDetails?.name === newName) {
-						toast.info('No changes to save.')
-						return
-					}
-					changeOrgName.mutate(
-						{ org_id: orgId as UUID, new_name: newName },
-						{
-							onSuccess: () => {
-								setOpen(false)
-							}
-						}
-					)
-				}}
-				className='grid gap-4 py-4'
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<span className={disabled ? 'cursor-not-allowed' : undefined}>
+						<Button
+							variant='outline'
+							size='sm'
+							className='shrink-0'
+							disabled={disabled}
+							onClick={() => !disabled && handleOpenChange(true)}
+						>
+							<span className='hidden sm:inline'>Change Name</span> <Edit className='w-4 h-4' />
+						</Button>
+					</span>
+				</TooltipTrigger>
+				{disabled && <TooltipContent>You don&apos;t have permission to perform this action</TooltipContent>}
+			</Tooltip>
+			<ResponsiveDialogDrawer
+				title='Change Organization Name'
+				description='Enter a new organization name.'
+				open={open}
+				onOpenChange={handleOpenChange}
+				trigger={null}
 			>
-				<div className='grid gap-2'>
-					<Label htmlFor='new-orgname'>New Name</Label>
-					<Input
-						id='new-orgname'
-						value={newName}
-						onChange={(e) => setNewName(e.target.value)}
-						placeholder='New name'
-						required
-						disabled={changeOrgName.isPending}
-					/>
-				</div>
-				<Button type='submit' disabled={changeOrgName.isPending || !newName}>
-					{changeOrgName.isPending ? <LoaderCircle className='animate-spin' /> : 'Update name'}
-				</Button>
-			</form>
-		</ResponsiveDialogDrawer>
+				<form
+					onSubmit={(e) => {
+						e.preventDefault()
+						if (orgDetails?.name === newName) {
+							toast.info('No changes to save.')
+							return
+						}
+						changeOrgName.mutate(
+							{ org_id: orgId as UUID, new_name: newName },
+							{
+								onSuccess: () => {
+									setOpen(false)
+								}
+							}
+						)
+					}}
+					className='grid gap-4 py-4'
+				>
+					<div className='grid gap-2'>
+						<Label htmlFor='new-orgname'>New Name</Label>
+						<Input
+							id='new-orgname'
+							value={newName}
+							onChange={(e) => setNewName(e.target.value)}
+							placeholder='New name'
+							required
+							disabled={changeOrgName.isPending}
+						/>
+					</div>
+					<Button type='submit' disabled={changeOrgName.isPending || !newName}>
+						{changeOrgName.isPending ? <LoaderCircle className='animate-spin' /> : 'Update name'}
+					</Button>
+				</form>
+			</ResponsiveDialogDrawer>
+		</TooltipProvider>
 	)
 }

@@ -1,0 +1,23 @@
+'use client'
+
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import { getOrgIdFromPathname } from '@/context/verify-org-path'
+
+export function BackToEnclosures() {
+	const pathname = usePathname()
+	const orgId = getOrgIdFromPathname(pathname)
+
+	if (!orgId) return null
+
+	return (
+		<Link
+			href={`/protected/orgs/${orgId}/enclosures`}
+			className='flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 ml-4'
+		>
+			<ArrowLeft className='size-4' />
+			Back to Enclosures
+		</Link>
+	)
+}

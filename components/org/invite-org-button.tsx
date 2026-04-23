@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Label } from '@/components/ui/label'
-import { UserPlusIcon, LoaderCircle } from 'lucide-react'
+import { UserPlusIcon, LoaderCircle, ChevronDown } from 'lucide-react'
 import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from 'react'
 import { useInviteMember } from '@/lib/react-query/mutations'
 import { useCurrentClientUser } from '@/lib/react-query/auth'
@@ -11,9 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useParams } from 'next/navigation'
 import { UUID } from 'crypto'
 import { useAllProfiles, useIsOwnerOrSuperadmin, useOrgMembers } from '@/lib/react-query/queries'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { VirtualizedCommand, type VirtualizedOption } from '@/components/ui/virtualized-combobox'
-import { useMediaQuery } from '@/hooks/use-media-query'
 
 export function InviteMemberButton() {
 	const params = useParams()
@@ -32,16 +30,15 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 	const [accessLvl, setAccessLvl] = useState('1')
 	const [keyboardOffset, setKeyboardOffset] = useState(0)
 	const { data: user } = useCurrentClientUser()
-	const isDesktop = useMediaQuery('(min-width: 768px)')
 	const inviteMutation = useInviteMember()
 	const { data: profiles, isLoading: isLoadingProfiles } = useAllProfiles()
 	const { data: orgMembers, isLoading: isLoadingOrgMembers } = useOrgMembers(orgId)
 
-	// Filter out users who are already members of the organization
+	// Filter out users who are already members or are superadmins (superadmins can access all orgs)
 	const inviteCandidates = useMemo(() => {
 		const memberIds = new Set((orgMembers ?? []).map((member) => member.user_id))
 		return (profiles ?? []).filter((profile) => {
-			return !memberIds.has(String(profile.id))
+			return !memberIds.has(String(profile.id)) && !profile.is_superadmin
 		})
 	}, [orgMembers, profiles])
 	const inviteOptions = useMemo<VirtualizedOption[]>(
@@ -57,7 +54,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 	const selectedInvitee = inviteCandidates.find((candidate) => String(candidate.id) === selectedInviteeId)
 	const isLoadingInviteCandidates = isLoadingProfiles || isLoadingOrgMembers
 	const commandHeight = '320px'
-	const shouldLiftForKeyboard = !isDesktop && keyboardOffset > 80
+	const shouldLiftForKeyboard = keyboardOffset > 80
 	const liftAmount = shouldLiftForKeyboard ? Math.min(keyboardOffset - 16, 260) : 0
 	const mobileLiftStyle: CSSProperties | undefined = shouldLiftForKeyboard
 		? {
@@ -75,7 +72,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 	}
 
 	useEffect(() => {
-		if (!open || isDesktop || typeof window === 'undefined' || !window.visualViewport) {
+		if (!open || typeof window === 'undefined' || !window.visualViewport) {
 			return
 		}
 
@@ -93,7 +90,7 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 			viewport.removeEventListener('resize', updateOffset)
 			viewport.removeEventListener('scroll', updateOffset)
 		}
-	}, [open, isDesktop])
+	}, [open])
 
 	const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault()
@@ -134,102 +131,52 @@ function InviteMemberButtonContent({ orgId }: { orgId: UUID }) {
 				<div className='grid gap-4 pt-2 pb-4'>
 					<div className='grid gap-2'>
 						<Label htmlFor='invitee-search'>Select User</Label>
-						{isDesktop ? (
-							<Popover open={userDropdownOpen} onOpenChange={setUserDropdownOpen}>
-								<PopoverTrigger asChild>
-									<Button
-										id='invitee-search'
-										type='button'
-										variant='outline'
-										className='w-full justify-start text-left font-normal'
-										disabled={inviteMutation.isPending}
-									>
-										{selectedInvitee ? (
-											<span className='truncate'>
-												{selectedInvitee.full_name}
-												<span className='text-muted-foreground'> - {selectedInvitee.email}</span>
-											</span>
-										) : (
-											<span className='text-muted-foreground'>Choose a user</span>
-										)}
-									</Button>
-								</PopoverTrigger>
-								<PopoverContent
-									className='w-(--radix-popover-trigger-width) p-0'
-									data-vaul-no-drag
-									align='start'
-									side='bottom'
-								>
-									{isLoadingInviteCandidates ? (
-										<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
-											<LoaderCircle className='h-4 w-4 animate-spin' />
-											Loading users...
-										</div>
-									) : inviteOptions.length === 0 ? (
-										<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
-									) : (
-										<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
-											<VirtualizedCommand
-												height={commandHeight}
-												options={inviteOptions}
-												placeholder='Search users...'
-												selectedOption={selectedInviteeId}
-												emptyMessage='No eligible users found.'
-												onSelectOption={(currentValue) => {
-													setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
-													setUserDropdownOpen(false)
-												}}
-											/>
-										</div>
-									)}
-								</PopoverContent>
-							</Popover>
-						) : (
-							<>
-								<Button
-									id='invitee-search'
-									type='button'
-									variant='outline'
-									className='w-full justify-start text-left font-normal'
-									disabled={inviteMutation.isPending}
-									onClick={() => setUserDropdownOpen((prev) => !prev)}
-								>
-									{selectedInvitee ? (
-										<span className='truncate'>
-											{selectedInvitee.full_name}
-											<span className='text-muted-foreground'> - {selectedInvitee.email}</span>
-										</span>
-									) : (
-										<span className='text-muted-foreground'>Choose a user</span>
-									)}
-								</Button>
-								{userDropdownOpen ? (
-									<div className='rounded-md border p-0 **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm'>
-										{isLoadingInviteCandidates ? (
-											<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
-												<LoaderCircle className='h-4 w-4 animate-spin' />
-												Loading users...
-											</div>
-										) : inviteOptions.length === 0 ? (
-											<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
-										) : (
-											<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-1 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer'>
-												<VirtualizedCommand
-													height={commandHeight}
-													options={inviteOptions}
-													placeholder='Search users...'
-													selectedOption={selectedInviteeId}
-													emptyMessage='No eligible users found.'
-													onSelectOption={(currentValue) => {
-														setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
-														setUserDropdownOpen(false)
-													}}
-												/>
-											</div>
-										)}
+						<Button
+							id='invitee-search'
+							type='button'
+							variant='outline'
+							className='w-full justify-start text-left font-normal gap-2'
+							disabled={inviteMutation.isPending}
+							onClick={() => setUserDropdownOpen((prev) => !prev)}
+						>
+							{selectedInvitee ? (
+								<span className='truncate'>
+									{selectedInvitee.full_name}
+									<span className='text-muted-foreground'> - {selectedInvitee.email}</span>
+								</span>
+							) : (
+								<span className='text-muted-foreground'>Choose a user</span>
+							)}
+							<ChevronDown
+								className={`ml-auto h-4 w-4 shrink-0 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`}
+							/>
+						</Button>
+						{userDropdownOpen && (
+							<div className='rounded-md border p-0 **:data-[slot=command-input]:text-base **:data-[slot=command-input]:md:text-sm'>
+								{isLoadingInviteCandidates ? (
+									<div className='flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground'>
+										<LoaderCircle className='h-4 w-4 animate-spin' />
+										Loading users...
 									</div>
-								) : null}
-							</>
+								) : inviteOptions.length === 0 ? (
+									<div className='py-6 text-center text-sm text-muted-foreground'>No eligible users found.</div>
+								) : (
+									<div className='**:data-[slot=command-group]:p-0 **:data-[slot=command-item]:pl-3 **:data-[slot=command-item]:pr-2 **:data-[slot=command-item]:cursor-pointer **:data-[slot=command-item]:items-center'>
+										<VirtualizedCommand
+											height={commandHeight}
+											options={inviteOptions}
+											placeholder='Search users...'
+											selectedOption={selectedInviteeId}
+											emptyMessage='No eligible users found.'
+											rowHeight={56}
+											onSelectOption={(currentValue) => {
+												setSelectedInviteeId(currentValue === selectedInviteeId ? '' : currentValue)
+												setUserDropdownOpen(false)
+											}}
+										/>
+									</div>
+								)}
+							</div>
 						)}
 					</div>
 					<div className='grid gap-2'>

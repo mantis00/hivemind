@@ -28,7 +28,9 @@ import {
 	FolderHeart,
 	ArrowRightLeft,
 	Calendar,
-	MessageSquare
+	MessageSquare,
+	History,
+	SquareStack
 } from 'lucide-react'
 import {
 	DropdownMenu,
@@ -77,6 +79,7 @@ export function AppSidebar() {
 
 	const [orgMenuOpen, setOrgMenuOpen] = useState(true)
 	const [caretakingMenuOpen, setCaretakingMenuOpen] = useState(true)
+	const [historyMenuOpen, setHistoryMenuOpen] = useState(true)
 	const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false)
 
 	const handleOrgClick = () => {
@@ -93,6 +96,14 @@ export function AppSidebar() {
 			return
 		}
 		setCaretakingMenuOpen((open) => !open)
+	}
+
+	const handleHistoryClick = () => {
+		if (state === 'collapsed') {
+			toggleSidebar()
+			return
+		}
+		setHistoryMenuOpen((open) => !open)
 	}
 
 	const logoutMutation = useLogout()
@@ -228,6 +239,45 @@ export function AppSidebar() {
 												>
 													<Calendar className='size-4' />
 													<span>Task Schedules</span>
+												</Link>
+											</SidebarMenuSubButton>
+										</SidebarMenuSubItem>{' '}
+									</SidebarMenuSub>
+								)}
+							</SidebarMenuItem>
+							<SidebarMenuItem>
+								<SidebarMenuButton
+									className='text-xl my-1 justify-between w-full'
+									tooltip='History'
+									onClick={handleHistoryClick}
+								>
+									<div className='flex items-center gap-2 text-lg font-bold'>
+										<History className='size-4' />
+										<span>History</span>
+									</div>
+									<ChevronDown className={cn('size-4 ml-2 transition-transform', historyMenuOpen && 'rotate-180')} />
+								</SidebarMenuButton>
+								{historyMenuOpen && (
+									<SidebarMenuSub>
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild>
+												<Link
+													href={orgId ? `/protected/orgs/${orgId}/enclosure-history` : '/protected/orgs'}
+													onClick={closeMobileOnNav}
+												>
+													<SquareStack className='size-4' />
+													<span>Enclosure History</span>
+												</Link>
+											</SidebarMenuSubButton>
+										</SidebarMenuSubItem>{' '}
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild>
+												<Link
+													href={orgId ? `/protected/orgs/${orgId}/user-history` : '/protected/orgs'}
+													onClick={closeMobileOnNav}
+												>
+													<SquareStack className='size-4' />
+													<span>User History</span>
 												</Link>
 											</SidebarMenuSubButton>
 										</SidebarMenuSubItem>{' '}

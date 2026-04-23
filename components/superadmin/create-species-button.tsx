@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useCreateSpecies } from '@/lib/react-query/mutations'
+import { useCallback, useState } from 'react'
+import { useAddCareInstruction, useCreateSpecies } from '@/lib/react-query/mutations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { LoaderCircle, PlusIcon } from 'lucide-react'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { SpeciesImageDropzone } from './species-image-dropzone'
+import { CareInstructionsDropzone, type PendingDoc } from './care-instructions-dropzone'
 import { createClient } from '@/lib/supabase/client'
 
 export function CreateSpeciesButton() {
@@ -20,8 +21,10 @@ export function CreateSpeciesButton() {
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 	const [uploading, setUploading] = useState(false)
 	const [uploadProgress, setUploadProgress] = useState(0)
+	const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([])
 
 	const createSpecies = useCreateSpecies()
+	const addCareInstruction = useAddCareInstruction()
 
 	const resetForm = () => {
 		setScientificName('')
@@ -31,7 +34,16 @@ export function CreateSpeciesButton() {
 		setSelectedImage(null)
 		setPreviewUrl(null)
 		setUploadProgress(0)
+		setPendingDocs([])
 	}
+
+	const handleDocAdd = useCallback((doc: PendingDoc) => {
+		setPendingDocs((prev) => [...prev, doc])
+	}, [])
+
+	const handlePendingRemove = useCallback((idx: number) => {
+		setPendingDocs((prev) => prev.filter((_, i) => i !== idx))
+	}, [])
 
 	const handleOpenChange = (isOpen: boolean) => {
 		if (!isOpen) resetForm()
@@ -48,23 +60,27 @@ export function CreateSpeciesButton() {
 
 		let pictureUrl: string | undefined
 
-		if (selectedImage) {
-			setUploading(true)
-			setUploadProgress(0)
-			try {
-				const supabase = createClient()
+		setUploading(true)
+		try {
+			const supabase = createClient()
+
+			if (selectedImage) {
+				setUploadProgress(0)
 				const fileName = `${Date.now()}-${selectedImage.name}`
 				const { data, error } = await supabase.storage.from('species_images').upload(fileName, selectedImage)
 				if (error) throw error
-				setUploadProgress(60)
+				setUploadProgress(50)
 				const { data: publicData } = supabase.storage.from('species_images').getPublicUrl(data.path)
 				pictureUrl = publicData.publicUrl
-				setUploadProgress(100)
-			} catch (err) {
-				console.error('Image upload failed:', err)
-			} finally {
-				setUploading(false)
 			}
+
+			setUploadProgress(100)
+		} catch (err) {
+			console.error('Upload failed:', err)
+			setUploading(false)
+			return
+		} finally {
+			setUploading(false)
 		}
 
 		createSpecies.mutate(
@@ -74,11 +90,22 @@ export function CreateSpeciesButton() {
 				care_instructions: careInstructions,
 				picture_url: pictureUrl
 			},
-			{ onSuccess: () => handleOpenChange(false) }
+			{
+				onSuccess: async (data) => {
+					for (const doc of pendingDocs) {
+						await addCareInstruction.mutateAsync({
+							speciesId: data.id,
+							file: doc.file,
+							label: doc.label
+						})
+					}
+					handleOpenChange(false)
+				}
+			}
 		)
 	}
 
-	const isPending = createSpecies.isPending || uploading
+	const isPending = createSpecies.isPending || addCareInstruction.isPending || uploading
 
 	return (
 		<ResponsiveDialogDrawer
@@ -137,7 +164,14 @@ export function CreateSpeciesButton() {
 						/>
 					</div>
 				</div>
-
+				<CareInstructionsDropzone
+					existingDocs={[]}
+					pendingDocs={pendingDocs}
+					uploading={uploading}
+					onExistingRemove={() => {}}
+					onDocAdd={handleDocAdd}
+					onPendingRemove={handlePendingRemove}
+				/>
 				<div className='flex flex-col gap-2 justify-end'>
 					<Button type='submit' disabled={isPending}>
 						{isPending ? <LoaderCircle className='h-4 w-4 animate-spin' /> : 'Create Species'}

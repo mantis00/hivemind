@@ -43,6 +43,7 @@ interface TasksFiltersProps {
 	includeEnclosureAndAssigneeSearch?: boolean
 	columnsToggle?: ReactNode
 	selectButton?: ReactNode
+	selectMode?: boolean
 }
 
 export function TasksFilters({
@@ -53,7 +54,8 @@ export function TasksFilters({
 	hasActiveFilters,
 	onReset,
 	columnsToggle,
-	selectButton
+	selectButton,
+	selectMode
 }: TasksFiltersProps) {
 	const isMobile = useIsMobile()
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
@@ -107,7 +109,7 @@ export function TasksFilters({
 						trigger={filterTrigger}
 					/>
 					{columnsToggle}
-					{selectButton}
+					{!selectMode && selectButton}
 					<Button
 						variant='ghost'
 						size='sm'
@@ -119,6 +121,8 @@ export function TasksFilters({
 					</Button>
 				</div>
 
+				{/* Row 3: Select action bar (Cancel + Complete/Delete) */}
+				{selectMode && <div className='flex items-center gap-2 w-full [&>button]:flex-1'>{selectButton}</div>}
 				{/* Create Task for single-enclosure mode */}
 				{enclosureId && (
 					<div className='w-full [&_button]:w-full'>

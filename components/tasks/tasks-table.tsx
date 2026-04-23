@@ -10,11 +10,11 @@ import {
 	useReactTable
 } from '@tanstack/react-table'
 import { TableVirtuoso } from 'react-virtuoso'
-import { CheckSquare, ListChecks, LoaderCircle, X } from 'lucide-react'
+import { LoaderCircle } from 'lucide-react'
 import { UUID } from 'crypto'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
+import { format, subDays } from 'date-fns'
 
 import {
 	useTasksForEnclosures,
@@ -29,22 +29,23 @@ import { toLocalDate } from '@/context/to-local-date'
 import { formatDate } from '@/context/format-date'
 import {
 	getEffectiveStatus,
+	getTimeWindowOrder,
 	MOBILE_COL_WIDTHS,
 	OPTIONAL_COLUMNS,
 	ORG_OPTIONAL_COLUMNS,
 	DEFAULT_COLUMN_LABELS
 } from '@/context/task-config'
-import { Button } from '@/components/ui/button'
 import { getColumns } from './tasks-columns'
 import { DayNavigator } from './day-navigator'
 import { TasksFilters, type TaskFilters } from './tasks-filters'
 import { ColumnsToggle } from './columns-toggle'
+import { TasksSelectButton, type SelectModeType } from './tasks-select-button'
 import { startNavProgress } from '@/components/navigation/nav-progress-bar'
 
 const MAX_TABLE_HEIGHT_DESKTOP = 680
-const MAX_TABLE_HEIGHT_MOBILE = 560
+const MAX_TABLE_HEIGHT_MOBILE = 640
 const TARGET_VISIBLE_ROWS_DESKTOP = 8
-const TARGET_VISIBLE_ROWS_MOBILE = 7
+const TARGET_VISIBLE_ROWS_MOBILE = 8
 
 export function TasksDataTable({
 	enclosureId,
@@ -72,10 +73,7 @@ export function TasksDataTable({
 	)
 
 	const [dayOffset, setDayOffset] = React.useState(0)
-	const [sorting, setSorting] = React.useState<SortingState>([
-		{ id: 'status', desc: false },
-		{ id: 'due_date', desc: false }
-	])
+	const [sorting, setSorting] = React.useState<SortingState>([])
 	const [filters, setFilters] = React.useState<TaskFilters>({
 		globalFilter: '',
 		globalSearch: false,
@@ -88,12 +86,21 @@ export function TasksDataTable({
 	const [isMounted, setIsMounted] = React.useState(false)
 	const [extraColumns, setExtraColumns] = React.useState<string[]>([])
 	const [selectMode, setSelectMode] = React.useState(false)
+	const [selectModeType, setSelectModeType] = React.useState<SelectModeType | null>(null)
 	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
-	// lockedKey = "templateId::speciesId" of the first selected task; null when nothing selected
+	// lockedKey = "templateId::speciesId" of the first selected task; null when nothing selected (complete mode only)
 	const [lockedKey, setLockedKey] = React.useState<string | null>(null)
 
 	const { globalFilter, globalSearch, priorityFilter, statusFilter, dateRange } = filters
 	const isRangeMode = !!(dateRange?.from && dateRange?.to)
+
+	// Date bounds for the default day-navigation view.
+	// dayOffset=0: look back 90 days to capture overdue tasks; other days: just that day.
+	const dayRangeStart = React.useMemo(
+		() => (dayOffset === 0 ? format(subDays(new Date(), 90), 'yyyy-MM-dd') : getDateStr(dayOffset)),
+		[dayOffset]
+	)
+	const dayRangeEnd = React.useMemo(() => getDateStr(dayOffset), [dayOffset])
 
 	const hasExtraColumns = extraColumns.length > 0
 
@@ -163,7 +170,17 @@ export function TasksDataTable({
 		setExtraColumns([])
 	}
 
-	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(isRangeMode ? [] : enclosureIds)
+	// Default day view — bounded to current day (90-day lookback for today to capture overdue)
+	const { data: dayTasks, isFetching: dayFetching } = useTasksForEnclosuresInRange(
+		!globalSearch && !isRangeMode ? enclosureIds : [],
+		dayRangeStart,
+		dayRangeEnd
+	)
+	// All-dates view — only fires when globalSearch is enabled
+	const { data: enclosureTasks, isFetching: tasksFetching } = useTasksForEnclosures(
+		globalSearch && !isRangeMode ? enclosureIds : []
+	)
+	// Custom date range
 	const { data: rangeTasks, isFetching: rangeFetching } = useTasksForEnclosuresInRange(
 		isRangeMode ? enclosureIds : [],
 		dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
@@ -171,22 +188,23 @@ export function TasksDataTable({
 	)
 
 	const todayCounts = React.useMemo(() => {
-		if (isRangeMode) return null
-		const source = enclosureTasks ?? []
+		if (isRangeMode || globalSearch) return null
+		const source = dayTasks ?? []
 		const todayDate = getDateStr(0)
 		const dueToday = source.filter(
 			(t) => t.due_date && toLocalDate(t.due_date) === todayDate && t.status !== 'completed'
 		).length
 		const late = source.filter((t) => getEffectiveStatus(t) === 'late').length
 		return { dueToday, late }
-	}, [enclosureTasks, isRangeMode])
+	}, [dayTasks, isRangeMode, globalSearch])
 
-	const activeLoading = pendingGlobalSearch || (isRangeMode ? rangeFetching : tasksFetching)
+	const activeLoading =
+		pendingGlobalSearch || (isRangeMode ? rangeFetching : globalSearch ? tasksFetching : dayFetching)
 
 	const handleView = React.useCallback(
 		(taskId: UUID) => {
 			if (isOrgMode) {
-				const task = (enclosureTasks ?? rangeTasks ?? []).find((t) => t.id === taskId)
+				const task = (enclosureTasks ?? dayTasks ?? rangeTasks ?? []).find((t) => t.id === taskId)
 				if (!task) return
 				startNavProgress()
 				router.push(`/protected/orgs/${orgId}/enclosures/${task.enclosure_id}/${taskId}`)
@@ -195,7 +213,7 @@ export function TasksDataTable({
 				router.push(`/protected/orgs/${orgId}/enclosures/${enclosureId}/${taskId}`)
 			}
 		},
-		[router, orgId, enclosureId, isOrgMode, enclosureTasks, rangeTasks]
+		[router, orgId, enclosureId, isOrgMode, enclosureTasks, dayTasks, rangeTasks]
 	)
 
 	const handleViewEnclosure = React.useCallback(
@@ -210,17 +228,22 @@ export function TasksDataTable({
 		if (selectedIds.size === 0) return
 		// In org-mode, derive enclosureId from the first selected task
 		const firstTaskId = [...selectedIds][0]
-		const firstTask = (enclosureTasks ?? rangeTasks ?? []).find((t) => (t.id as string) === firstTaskId)
+		const firstTask = (enclosureTasks ?? dayTasks ?? rangeTasks ?? []).find((t) => (t.id as string) === firstTaskId)
 		const targetEnclosureId = isOrgMode ? (firstTask?.enclosure_id as UUID) : enclosureId
 		const taskParam = [...selectedIds].join(',')
 		startNavProgress()
 		router.push(`/protected/orgs/${orgId}/enclosures/${targetEnclosureId}/batch-complete?tasks=${taskParam}`)
-	}, [selectedIds, enclosureTasks, rangeTasks, isOrgMode, enclosureId, orgId, router])
+	}, [selectedIds, enclosureTasks, dayTasks, rangeTasks, isOrgMode, enclosureId, orgId, router])
 
-	const getTaskLockKey = React.useCallback((task: { template_id: string | null; enclosure_id: string }) => {
-		const templateId = task.template_id ?? '__adhoc__'
-		return `${templateId}::${task.enclosure_id}`
-	}, [])
+	const getTaskLockKey = React.useCallback(
+		(task: { template_id: string | null; enclosure_id: string }) => {
+			const templateId = task.template_id ?? '__adhoc__'
+			const enc = allOrgEnclosures.find((e) => (e.id as string) === task.enclosure_id)
+			const speciesId = enc?.species_id ?? '__unknown__'
+			return `${templateId}::${speciesId}`
+		},
+		[allOrgEnclosures]
+	)
 
 	const handleToggleSelect = React.useCallback(
 		(taskId: string, task: { template_id: string | null; enclosure_id: string }) => {
@@ -231,12 +254,13 @@ export function TasksDataTable({
 					if (next.size === 0) setLockedKey(null)
 				} else {
 					next.add(taskId)
-					if (prev.size === 0) setLockedKey(getTaskLockKey(task))
+					// Only lock to template+enclosure in complete mode
+					if (prev.size === 0 && selectModeType === 'complete') setLockedKey(getTaskLockKey(task))
 				}
 				return next
 			})
 		},
-		[getTaskLockKey]
+		[getTaskLockKey, selectModeType]
 	)
 
 	const columns = React.useMemo(
@@ -279,6 +303,7 @@ export function TasksDataTable({
 
 	const exitSelectMode = React.useCallback(() => {
 		setSelectMode(false)
+		setSelectModeType(null)
 		setSelectedIds(new Set())
 		setLockedKey(null)
 	}, [])
@@ -314,7 +339,7 @@ export function TasksDataTable({
 	const filteredData = React.useMemo(() => {
 		const targetDate = getDateStr(dayOffset)
 		const todayDate = getDateStr(0)
-		const source = isRangeMode ? (rangeTasks ?? []) : (enclosureTasks ?? [])
+		const source = isRangeMode ? (rangeTasks ?? []) : globalSearch ? (enclosureTasks ?? []) : (dayTasks ?? [])
 		const normalizedFilter = globalFilter.trim().toLowerCase()
 
 		const tasks = source.filter((task) => {
@@ -371,25 +396,32 @@ export function TasksDataTable({
 			}
 		})
 
-		if (!isRangeMode && dayOffset === 0) {
-			const statusOrder: Record<string, number> = { late: 0, pending: 1, completed: 2 }
-			return [...tasks].sort((a, b) => {
-				const aOrder = statusOrder[getEffectiveStatus(a)] ?? 1
-				const bOrder = statusOrder[getEffectiveStatus(b)] ?? 1
-				if (aOrder !== bOrder) return aOrder - bOrder
-				// Stable secondary: due_date ascending, then insertion order
-				const aDate = a.due_date ?? ''
-				const bDate = b.due_date ?? ''
-				if (aDate !== bDate) return aDate < bDate ? -1 : 1
-				const aPos = stableOrderRef.current.get(a.id as string) ?? 999
-				const bPos = stableOrderRef.current.get(b.id as string) ?? 999
-				return aPos - bPos
-			})
-		}
-
-		return tasks
+		const statusOrder: Record<string, number> = { late: 0, pending: 1, completed: 2 }
+		return [...tasks].sort((a, b) => {
+			const aStatus = getEffectiveStatus(a)
+			const bStatus = getEffectiveStatus(b)
+			const aOrder = statusOrder[aStatus] ?? 1
+			const bOrder = statusOrder[bStatus] ?? 1
+			if (aOrder !== bOrder) return aOrder - bOrder
+			// Due date ascending (primary within status group) — normalize via toLocalDate
+			// so timestamps on the same calendar day are treated as equal
+			const aDate = a.due_date ? toLocalDate(a.due_date) : ''
+			const bDate = b.due_date ? toLocalDate(b.due_date) : ''
+			if (aDate !== bDate) return aDate < bDate ? -1 : 1
+			// Time window: Morning → Any → Afternoon (tiebreaker for non-completed)
+			if (aStatus !== 'completed' && bStatus !== 'completed') {
+				const aTW = getTimeWindowOrder(a.time_window)
+				const bTW = getTimeWindowOrder(b.time_window)
+				if (aTW !== bTW) return aTW - bTW
+			}
+			// Stable final tiebreak
+			const aPos = stableOrderRef.current.get(a.id as string) ?? 999
+			const bPos = stableOrderRef.current.get(b.id as string) ?? 999
+			return aPos - bPos
+		})
 	}, [
 		enclosureTasks,
+		dayTasks,
 		rangeTasks,
 		globalFilter,
 		priorityFilter,
@@ -493,6 +525,7 @@ export function TasksDataTable({
 				}}
 				hasActiveFilters={hasActiveFilters}
 				onReset={resetFilters}
+				selectMode={selectMode}
 				includeSpeciesSearch={isOrgMode}
 				includeEnclosureAndAssigneeSearch={isOrgMode}
 				columnsToggle={
@@ -504,36 +537,18 @@ export function TasksDataTable({
 					/>
 				}
 				selectButton={
-					selectMode ? (
-						<>
-							<Button
-								variant='outline'
-								{...(isMobile ? { size: 'sm' as const, className: 'h-8 gap-1.5' } : { className: 'gap-2' })}
-								onClick={exitSelectMode}
-							>
-								{isMobile ? <X className='h-3.5 w-3.5' /> : <X className='h-4 w-4' />}
-								{isMobile ? 'Cancel' : 'Cancel Selection'}
-							</Button>
-							{selectedIds.size > 0 && (
-								<Button
-									{...(isMobile ? { size: 'sm' as const, className: 'h-8 gap-1.5' } : { className: 'gap-2' })}
-									onClick={handleBatchComplete}
-								>
-									{isMobile ? <CheckSquare className='h-3.5 w-3.5' /> : <CheckSquare className='h-4 w-4' />}
-									{isMobile ? `Complete (${selectedIds.size})` : `Batch Complete (${selectedIds.size})`}
-								</Button>
-							)}
-						</>
-					) : (
-						<Button
-							variant='outline'
-							{...(isMobile ? { size: 'sm' as const, className: 'h-8 gap-1.5' } : { className: 'gap-2' })}
-							onClick={() => setSelectMode(true)}
-						>
-							{isMobile ? <ListChecks className='h-3.5 w-3.5' /> : <ListChecks className='h-4 w-4' />}
-							{isMobile ? 'Select' : 'Select Tasks'}
-						</Button>
-					)
+					<TasksSelectButton
+						isOrgMode={isOrgMode}
+						selectMode={selectMode}
+						selectModeType={selectModeType}
+						selectedIds={[...selectedIds]}
+						onStartSelectMode={(mode) => {
+							setSelectModeType(mode)
+							setSelectMode(true)
+						}}
+						onCancelSelect={exitSelectMode}
+						onBatchComplete={handleBatchComplete}
+					/>
 				}
 			/>
 
@@ -572,7 +587,7 @@ export function TasksDataTable({
 										<th
 											key={header.id}
 											style={getColWidthStyle(header.id)}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>
@@ -708,7 +723,7 @@ export function TasksDataTable({
 										<th
 											key={header.id}
 											style={getColWidthStyle(header.id)}
-											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
+											className={`h-12 ${isMobile ? 'px-2' : 'px-4'} text-left align-middle font-bold text-muted-foreground [&:has([role=checkbox])]:pr-0${hasExtraColumns && !isMobile ? ' overflow-hidden whitespace-nowrap' : ''}`}
 										>
 											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 										</th>

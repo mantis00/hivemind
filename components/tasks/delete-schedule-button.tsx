@@ -39,7 +39,7 @@ export function DeleteScheduleButton({ scheduleId, taskName }: { scheduleId: UUI
 
 			<ResponsiveDialogDrawer
 				title='Delete Schedule'
-				description='This action cannot be undone. Existing tasks already generated will remain, but no new tasks will be created.'
+				description='This action cannot be undone.'
 				trigger={null}
 				open={open}
 				onOpenChange={setOpen}
@@ -56,7 +56,10 @@ export function DeleteScheduleButton({ scheduleId, taskName }: { scheduleId: UUI
 					</div>
 				}
 			>
-				<p className='text-sm text-muted-foreground'>Delete the schedule{taskName ? ` for "${taskName}"` : ''}?</p>
+				<p className='text-sm text-muted-foreground'>
+					Delete the schedule{taskName ? ` for "${taskName}"` : ''}? All pending tasks linked to this schedule will also
+					be deleted. Completed tasks will not be affected.
+				</p>
 			</ResponsiveDialogDrawer>
 		</>
 	)
