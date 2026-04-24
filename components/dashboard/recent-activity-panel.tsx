@@ -5,12 +5,14 @@ import type { RecentActivityItem } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { timeWindowConfig } from '@/context/task-config'
 import { formatDate } from '@/context/format-date'
 
 type RecentActivityPanelProps = {
 	orgId: string
 	items: RecentActivityItem[]
+	loading?: boolean
 }
 
 function getDueDateLabel(item: RecentActivityItem) {
@@ -45,7 +47,7 @@ function getActivityBadgeLabel(item: RecentActivityItem) {
 	return 'Activity'
 }
 
-export function RecentActivityPanel({ orgId, items }: RecentActivityPanelProps) {
+export function RecentActivityPanel({ orgId, items, loading = false }: RecentActivityPanelProps) {
 	const visibleItems = items.slice(0, 6)
 
 	return (
@@ -63,7 +65,22 @@ export function RecentActivityPanel({ orgId, items }: RecentActivityPanelProps) 
 				<CardDescription>Tasks completed today, including overdue/high-priority completion context.</CardDescription>
 			</CardHeader>
 			<CardContent className='space-y-2'>
-				{items.length === 0 ? (
+				{loading ? (
+					<div className='space-y-3'>
+						{Array.from({ length: 4 }).map((_, index) => (
+							<div key={index} className='flex flex-col gap-2 rounded-lg border p-3'>
+								<div className='flex items-center justify-between gap-3'>
+									<div className='flex items-center gap-2 min-w-0'>
+										<Skeleton className='h-4 w-40' />
+										<Skeleton className='h-4 w-20 rounded-full' />
+									</div>
+									<Skeleton className='h-5 w-24 rounded-full' />
+								</div>
+								<Skeleton className='h-3 w-28' />
+							</div>
+						))}
+					</div>
+				) : items.length === 0 ? (
 					<p className='text-sm text-muted-foreground'>No tasks have been completed yet today.</p>
 				) : (
 					<div className='space-y-3'>

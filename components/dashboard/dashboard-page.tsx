@@ -5,10 +5,19 @@ import { UpcomingSchedulePanel } from '@/components/dashboard/upcoming-schedule-
 import { RecentActivityPanel } from '@/components/dashboard/recent-activity-panel'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
+export type DashboardLoadingState = {
+	kpis: boolean
+	atRisk: boolean
+	upcoming: boolean
+	recentActivity: boolean
+	any: boolean
+}
+
 type DashboardPageProps = {
 	orgId: string
 	data: DashboardData
 	loadError?: string | null
+	loading: DashboardLoadingState
 }
 
 function isDashboardEmpty(data: DashboardData) {
@@ -23,8 +32,8 @@ function isDashboardEmpty(data: DashboardData) {
 	)
 }
 
-export function DashboardPage({ orgId, data, loadError = null }: DashboardPageProps) {
-	const dashboardIsEmpty = isDashboardEmpty(data)
+export function DashboardPage({ orgId, data, loadError = null, loading }: DashboardPageProps) {
+	const dashboardIsEmpty = !loading.any && isDashboardEmpty(data)
 	const completedTodayCount = data.completedTodayCount
 	const atRiskEnclosureCount = data.atRiskEnclosures.length
 
@@ -63,7 +72,12 @@ export function DashboardPage({ orgId, data, loadError = null }: DashboardPagePr
 					</Card>
 				) : null}
 
-				<KpiStrip kpis={data.kpis} completedToday={completedTodayCount} atRiskEnclosures={atRiskEnclosureCount} />
+				<KpiStrip
+					kpis={data.kpis}
+					completedToday={completedTodayCount}
+					atRiskEnclosures={atRiskEnclosureCount}
+					loading={loading.kpis}
+				/>
 
 				{dashboardIsEmpty ? (
 					<Card>
@@ -78,11 +92,11 @@ export function DashboardPage({ orgId, data, loadError = null }: DashboardPagePr
 				) : null}
 
 				<section className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
-					<AtRiskPanel orgId={orgId} items={data.atRiskEnclosures} />
-					<UpcomingSchedulePanel orgId={orgId} items={data.upcomingSchedule} kpis={data.kpis} />
+					<AtRiskPanel orgId={orgId} items={data.atRiskEnclosures} loading={loading.atRisk} />
+					<UpcomingSchedulePanel orgId={orgId} items={data.upcomingSchedule} kpis={data.kpis} loading={loading.upcoming} />
 				</section>
 
-				<RecentActivityPanel orgId={orgId} items={data.recentActivity} />
+				<RecentActivityPanel orgId={orgId} items={data.recentActivity} loading={loading.recentActivity} />
 			</div>
 		</>
 	)

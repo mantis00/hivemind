@@ -116,16 +116,6 @@ export function DashboardShell() {
 		isCompletedTodayLoading
 	const loadError = activeEnclosuresError ? getErrorMessage(activeEnclosuresError) : null
 
-	if (isLoading) {
-		return (
-			<div className='grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
-				{['Active Enclosures', 'Tasks Due Today', 'Upcoming Tasks', 'Alerts'].map((title) => (
-					<section key={title} className='min-h-[136px] animate-pulse rounded-xl border bg-muted/20' />
-				))}
-			</div>
-		)
-	}
-
 	if (!orgId) {
 		return (
 			<Card className='w-full border-destructive/30'>
@@ -138,5 +128,18 @@ export function DashboardShell() {
 		)
 	}
 
-	return <DashboardPage orgId={String(orgId)} data={data} loadError={loadError} />
+	const loading = {
+		kpis:
+			isActiveEnclosuresLoading ||
+			isAtRiskLoading ||
+			isDueTodayLoading ||
+			isUpcomingTasksLoading ||
+			isCompletedTodayLoading,
+		atRisk: isAtRiskLoading,
+		upcoming: isDueTodayLoading || isUpcomingTasksLoading || isAtRiskLoading,
+		recentActivity: isRecentActivityLoading,
+		any: isLoading
+	}
+
+	return <DashboardPage orgId={String(orgId)} data={data} loadError={loadError} loading={loading} />
 }

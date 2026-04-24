@@ -5,11 +5,13 @@ import type { AtRiskEnclosureSummary } from '@/lib/react-query/queries'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/context/format-date'
 
 type AtRiskPanelProps = {
 	orgId: string
 	items: AtRiskEnclosureSummary[]
+	loading?: boolean
 }
 
 function formatDueDate(value: string | null) {
@@ -25,7 +27,7 @@ function formatDueDate(value: string | null) {
 	return formatDate(value)
 }
 
-export function AtRiskPanel({ orgId, items }: AtRiskPanelProps) {
+export function AtRiskPanel({ orgId, items, loading = false }: AtRiskPanelProps) {
 	return (
 		<Card>
 			<CardHeader>
@@ -41,7 +43,24 @@ export function AtRiskPanel({ orgId, items }: AtRiskPanelProps) {
 				<CardDescription>Highest-risk enclosures based on overdue and high-priority open tasks.</CardDescription>
 			</CardHeader>
 			<CardContent>
-				{items.length === 0 ? (
+				{loading ? (
+					<div className='space-y-3'>
+						{Array.from({ length: 3 }).map((_, index) => (
+							<div key={index} className='rounded-lg border p-3'>
+								<div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+									<div className='space-y-2'>
+										<Skeleton className='h-4 w-36' />
+										<Skeleton className='h-3 w-28' />
+									</div>
+									<div className='flex flex-col gap-2 sm:items-end'>
+										<Skeleton className='h-5 w-20 rounded-full' />
+										<Skeleton className='h-5 w-24 rounded-full' />
+									</div>
+								</div>
+							</div>
+						))}
+					</div>
+				) : items.length === 0 ? (
 					<p className='text-sm text-muted-foreground'>No at-risk enclosures right now.</p>
 				) : (
 					<div className='space-y-3'>
