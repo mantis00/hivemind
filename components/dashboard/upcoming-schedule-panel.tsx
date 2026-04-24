@@ -168,9 +168,7 @@ export function UpcomingSchedulePanel({ orgId, items, kpis, loading = false }: U
 											</div>
 											<div className='flex shrink-0 flex-col items-end gap-1'>
 												<Badge variant={item.priority?.toLowerCase() === 'high' ? 'destructive' : 'outline'}>
-													{item.priority?.toLowerCase() === 'high'
-														? 'High Priority'
-														: (item.priority ?? 'Unspecified')}
+													{item.priority?.toLowerCase() === 'high' ? 'High Priority' : (item.priority ?? 'Unspecified')}
 												</Badge>
 												<p className='text-xs text-muted-foreground'>Due {formatDueDate(item.dueAt)}</p>
 											</div>

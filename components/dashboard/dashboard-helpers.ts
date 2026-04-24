@@ -1,4 +1,4 @@
-export const DASHBOARD_MAX_AT_RISK_ITEMS = 5
+export const DASHBOARD_MAX_AT_RISK_ITEMS = 6
 export const DASHBOARD_MAX_RECENT_ACTIVITY_ITEMS = 10
 
 type DashboardEnclosureRelation =

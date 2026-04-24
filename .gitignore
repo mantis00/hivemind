@@ -55,4 +55,4 @@ public/swe-worker*
 
 .vscode.vercel/
 .idea/
-/.codex/
+/.codex

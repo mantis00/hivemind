@@ -93,7 +93,12 @@ export function DashboardPage({ orgId, data, loadError = null, loading }: Dashbo
 
 				<section className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
 					<AtRiskPanel orgId={orgId} items={data.atRiskEnclosures} loading={loading.atRisk} />
-					<UpcomingSchedulePanel orgId={orgId} items={data.upcomingSchedule} kpis={data.kpis} loading={loading.upcoming} />
+					<UpcomingSchedulePanel
+						orgId={orgId}
+						items={data.upcomingSchedule}
+						kpis={data.kpis}
+						loading={loading.upcoming}
+					/>
 				</section>
 
 				<RecentActivityPanel orgId={orgId} items={data.recentActivity} loading={loading.recentActivity} />

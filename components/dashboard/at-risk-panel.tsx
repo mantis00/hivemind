@@ -29,7 +29,7 @@ function formatDueDate(value: string | null) {
 
 export function AtRiskPanel({ orgId, items, loading = false }: AtRiskPanelProps) {
 	return (
-		<Card>
+		<Card className='gap-3'>
 			<CardHeader>
 				<div className='flex items-center justify-between gap-3'>
 					<CardTitle>At-Risk Enclosures</CardTitle>
@@ -42,20 +42,18 @@ export function AtRiskPanel({ orgId, items, loading = false }: AtRiskPanelProps)
 				</div>
 				<CardDescription>Highest-risk enclosures based on overdue and high-priority open tasks.</CardDescription>
 			</CardHeader>
-			<CardContent>
+			<CardContent className='pt-0'>
 				{loading ? (
 					<div className='space-y-3'>
 						{Array.from({ length: 3 }).map((_, index) => (
-							<div key={index} className='rounded-lg border p-3'>
-								<div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-									<div className='space-y-2'>
-										<Skeleton className='h-4 w-36' />
-										<Skeleton className='h-3 w-28' />
-									</div>
-									<div className='flex flex-col gap-2 sm:items-end'>
-										<Skeleton className='h-5 w-20 rounded-full' />
-										<Skeleton className='h-5 w-24 rounded-full' />
-									</div>
+							<div key={index} className='flex min-h-20 items-start justify-between gap-3 rounded-lg border p-3'>
+								<div className='min-w-0 flex-1 space-y-2'>
+									<Skeleton className='h-4 w-32' />
+									<Skeleton className='h-3 w-24' />
+								</div>
+								<div className='flex shrink-0 flex-wrap justify-end gap-1'>
+									<Skeleton className='h-5 w-20 rounded-full' />
+									<Skeleton className='h-5 w-24 rounded-full' />
 								</div>
 							</div>
 						))}
@@ -63,25 +61,25 @@ export function AtRiskPanel({ orgId, items, loading = false }: AtRiskPanelProps)
 				) : items.length === 0 ? (
 					<p className='text-sm text-muted-foreground'>No at-risk enclosures right now.</p>
 				) : (
-					<div className='space-y-3'>
+					<div className='space-y-2'>
 						{items.map((item) => (
 							<Link
 								key={item.enclosureId}
 								href={`/protected/orgs/${orgId}/enclosures/${item.enclosureId}`}
-								className='flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/30'
+								className='flex min-h-20 items-start justify-between gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30'
 							>
-								<div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-									<p className='min-w-0 break-words font-medium'>{item.enclosureName}</p>
-									<div className='flex shrink-0 flex-col items-start gap-1 sm:items-end'>
-										<Badge variant='destructive' className='whitespace-nowrap'>
-											{item.overdueCount} overdue
-										</Badge>
-										<Badge variant='secondary' className='whitespace-nowrap'>
-											{item.highPriorityCount} high priority
-										</Badge>
-									</div>
+								<div className='min-w-0 flex-1'>
+									<p className='truncate text-sm font-medium'>{item.enclosureName}</p>
+									<p className='text-xs text-muted-foreground'>Next due: {formatDueDate(item.nextDueAt)}</p>
 								</div>
-								<p className='text-sm text-muted-foreground'>Next due: {formatDueDate(item.nextDueAt)}</p>
+								<div className='flex shrink-0 flex-wrap justify-end gap-1'>
+									<Badge variant='destructive' className='whitespace-nowrap'>
+										{item.overdueCount} overdue
+									</Badge>
+									<Badge variant='secondary' className='whitespace-nowrap'>
+										{item.highPriorityCount} high priority
+									</Badge>
+								</div>
 							</Link>
 						))}
 					</div>
