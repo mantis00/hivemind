@@ -596,7 +596,7 @@ export default function HelpPage() {
 	if (isMobile) {
 		return (
 			<div className='space-y-4 w-full justify-center items-center'>
-				<div className='flex-col mx-auto max-w-4xl flex space-y-4'>
+				<div className='flex-col mx-auto max-w-5xl flex space-y-4'>
 					<div className='pb-1'>
 						<h1 className='text-2xl font-semibold'>Help</h1>
 						<p className='text-sm text-muted-foreground'>{helpIntro}</p>
@@ -640,7 +640,7 @@ export default function HelpPage() {
 
 	return (
 		<div className='space-y-4 w-full justify-center items-center'>
-			<div className='flex-col mx-auto max-w-4xl flex space-y-4'>
+			<div className='flex-col mx-auto max-w-5xl flex space-y-4'>
 				<div className='pb-1'>
 					<h1 className='text-2xl font-semibold'>Help</h1>
 					<p className='text-sm text-muted-foreground'>{helpIntro}</p>
