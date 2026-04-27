@@ -18,18 +18,13 @@ type PageHelpSection = {
 	title: string
 	purpose: string
 	functions: HelpFunction[]
+	commonActionsTitle: string
 	commonActions: string[]
 	relatedPages: string[]
 }
 
-const quickStartSteps = [
-	'Open your organization from the Organizations page, then use the left sidebar to move between pages.',
-	'Start on Dashboard to see what needs attention first.',
-	'Open Enclosures and confirm active status and species before starting task work.',
-	'Use Tasks to create work, complete work, and submit form answers.',
-	'Use Inbox and the bell icon for updates and shortcuts into active work.',
-	'Use History to verify what changed and who made the change.'
-]
+const helpIntro =
+	'Use this page as a practical reference for workflow rules, user choices, restrictions, and side effects across Hivemind.'
 
 const pageSections: PageHelpSection[] = [
 	{
@@ -68,6 +63,7 @@ const pageSections: PageHelpSection[] = [
 					'Schedule edits and similar changes do not rewrite old completed work. Users should expect some actions to change future generation behavior without changing historical records.'
 			}
 		],
+		commonActionsTitle: 'How to Apply This Model',
 		commonActions: [
 			'Use this model first: species group enclosures, enclosures hold operational data, tasks represent work, and schedules generate recurring future tasks.',
 			'If you are deciding whether to edit a task or a schedule, ask whether you are changing one work item or the recurring rule behind future work.',
@@ -117,6 +113,7 @@ const pageSections: PageHelpSection[] = [
 					'Time windows are Morning, Afternoon, or Any. They help communicate when the work should be completed, especially in recurring care routines.'
 			}
 		],
+		commonActionsTitle: 'Before Creating Work',
 		commonActions: [
 			'Use single creation when only one enclosure needs the work, and batch create when the same work should be applied to multiple enclosures of the same species.',
 			'If you choose a template task, make sure a template is actually selected before submitting.',
@@ -178,6 +175,7 @@ const pageSections: PageHelpSection[] = [
 					'Deleting a schedule removes the recurring rule and also deletes pending generated tasks linked to it, while completed tasks remain preserved.'
 			}
 		],
+		commonActionsTitle: 'Schedule Checks',
 		commonActions: [
 			'Use One-time for work that should happen once, Flexible recurring when the next run depends on completion timing, and Fixed recurring when the work belongs on specific weekdays.',
 			'If a fixed schedule will not save, confirm that at least one weekday and a valid advance task count have been selected.',
@@ -234,6 +232,7 @@ const pageSections: PageHelpSection[] = [
 					'Tasks in inactive enclosures cannot be completed or reassigned, even if the task record itself is still visible for review.'
 			}
 		],
+		commonActionsTitle: 'Completion Checks',
 		commonActions: [
 			'If submit is unavailable, check for required visible questions that still need answers.',
 			'If batch completion does not work, re-check that the selected tasks are actually compatible for one shared answer set.',
@@ -295,6 +294,7 @@ const pageSections: PageHelpSection[] = [
 					'Exported enclosure data supports downstream operational workflows such as QR label generation because the export includes each enclosure URL.'
 			}
 		],
+		commonActionsTitle: 'Record Quality Checks',
 		commonActions: [
 			'Reuse existing locations and specimen tracking IDs when continuity matters, and create new values only when the record should represent something distinct.',
 			'Add source institution or source enclosure details when origin and lineage need to be preserved for later review.',
@@ -339,6 +339,7 @@ const pageSections: PageHelpSection[] = [
 					'The standard flow is to export enclosure data, use the enclosure URL column in Avery or another QR workflow, print the labels, attach them to enclosures, and scan them in Hivemind.'
 			}
 		],
+		commonActionsTitle: 'Label Workflow Checks',
 		commonActions: [
 			'Use Avery when you want the simplest label-printing path, but choose any other workflow that reliably encodes the exported enclosure URL if it better fits your operation.',
 			'Always start from the Enclosures export so each label is generated from the correct enclosure URL.',
@@ -389,6 +390,7 @@ const pageSections: PageHelpSection[] = [
 					'Reactivating an enclosure returns it to active workflows so it can participate in normal work again without creating a brand-new enclosure record.'
 			}
 		],
+		commonActionsTitle: 'Status Change Checks',
 		commonActions: [
 			'Set an enclosure inactive when the data should be preserved but normal operational actions should stop.',
 			'If users cannot create tasks, add notes, or complete work, check whether the enclosure was moved to inactive status.',
@@ -432,6 +434,7 @@ const pageSections: PageHelpSection[] = [
 					'Open enclosure detail when users need one enclosure’s full operational context, including notes, lineage, current count, and direct access to enclosure-linked work.'
 			}
 		],
+		commonActionsTitle: 'Verification Checks',
 		commonActions: [
 			'Use task and schedule filters before broad review when the result set is too large to work with directly.',
 			'Use History when you need a trustworthy answer about whether a change actually happened and who performed it.',
@@ -463,6 +466,7 @@ const pageSections: PageHelpSection[] = [
 					'Once a priority is identified, users should move into Tasks, Task Schedules, or Enclosures for the actual creation, review, or editing work.'
 			}
 		],
+		commonActionsTitle: 'Dashboard Boundaries',
 		commonActions: [
 			'Use Dashboard to decide where to go next, not to understand the full rules behind task, schedule, enclosure, or QR workflows.',
 			'If a dashboard panel raises a question, open the linked operational page and use this Help page for deeper process guidance.',
@@ -478,28 +482,8 @@ function getFunctionAnchor(sectionId: string, functionId: string) {
 
 export default function HelpPage() {
 	const isMobile = useIsMobile()
-	const [openMobileSection, setOpenMobileSection] = useState('quick-start')
+	const [openMobileSection, setOpenMobileSection] = useState(pageSections[0]?.id ?? '')
 	const [openDesktopTocSection, setOpenDesktopTocSection] = useState(pageSections[0]?.id ?? '')
-
-	const renderQuickStartBody = () => (
-		<ol className='list-decimal space-y-2 pl-5 text-sm'>
-			{quickStartSteps.map((step) => (
-				<li key={step}>{step}</li>
-			))}
-		</ol>
-	)
-
-	const renderQuickStartCard = () => (
-		<section id='quick-start' className='scroll-mt-24'>
-			<Card className='gap-3 border-l-4 border-l-primary/25 py-4'>
-				<CardHeader>
-					<CardTitle>Quick Start</CardTitle>
-					<CardDescription>Use this sequence when onboarding or restarting a workflow.</CardDescription>
-				</CardHeader>
-				<CardContent>{renderQuickStartBody()}</CardContent>
-			</Card>
-		</section>
-	)
 
 	const renderSectionBody = (section: PageHelpSection, showPurpose = true) => (
 		<div className='space-y-4'>
@@ -509,9 +493,7 @@ export default function HelpPage() {
 				</div>
 			) : null}
 			<div>
-				<p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
-					What You&apos;ll Do Most Days
-				</p>
+				<p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>Key Rules and Choices</p>
 				<div className='mt-2 space-y-2'>
 					{section.functions.map((feature) => (
 						<div
@@ -527,7 +509,9 @@ export default function HelpPage() {
 			</div>
 
 			<div>
-				<p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>If Something Looks Wrong</p>
+				<p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+					{section.commonActionsTitle}
+				</p>
 				<div className='mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3'>
 					<ol className='list-decimal space-y-1 pl-5 text-sm'>
 						{section.commonActions.map((action) => (
@@ -568,12 +552,6 @@ export default function HelpPage() {
 					<CardDescription>Open a page entry to jump directly to a function.</CardDescription>
 				</CardHeader>
 				<CardContent className='space-y-2 px-4 lg:overflow-y-auto'>
-					<div className='text-sm'>
-						<a href='#quick-start' className='text-primary hover:underline'>
-							Quick Start
-						</a>
-					</div>
-
 					{pageSections.map((section) => (
 						<Collapsible
 							key={section.id}
@@ -621,9 +599,7 @@ export default function HelpPage() {
 				<div className='flex-col mx-auto max-w-4xl flex space-y-4'>
 					<div className='pb-1'>
 						<h1 className='text-2xl font-semibold'>Help</h1>
-						<p className='text-sm text-muted-foreground'>
-							This page is a page-by-page user reference sheet for how to use Hivemind.
-						</p>
+						<p className='text-sm text-muted-foreground'>{helpIntro}</p>
 					</div>
 
 					<Card className='gap-3 py-4'>
@@ -632,27 +608,6 @@ export default function HelpPage() {
 							<CardDescription>Tap a topic to expand one section at a time.</CardDescription>
 						</CardHeader>
 						<CardContent className='space-y-2'>
-							<Collapsible
-								open={openMobileSection === 'quick-start'}
-								onOpenChange={(open) => setOpenMobileSection(open ? 'quick-start' : '')}
-							>
-								<CollapsibleTrigger asChild>
-									<button
-										type='button'
-										className='w-full rounded-md border px-3 py-2 flex items-center justify-between text-left text-sm font-medium'
-									>
-										<span>Quick Start</span>
-										<ChevronDown
-											className={cn(
-												'h-4 w-4 text-muted-foreground transition-transform',
-												openMobileSection === 'quick-start' && 'rotate-180'
-											)}
-										/>
-									</button>
-								</CollapsibleTrigger>
-								<CollapsibleContent className='pt-3'>{renderQuickStartBody()}</CollapsibleContent>
-							</Collapsible>
-
 							{pageSections.map((section) => (
 								<Collapsible
 									key={section.id}
@@ -688,18 +643,13 @@ export default function HelpPage() {
 			<div className='flex-col mx-auto max-w-4xl flex space-y-4'>
 				<div className='pb-1'>
 					<h1 className='text-2xl font-semibold'>Help</h1>
-					<p className='text-sm text-muted-foreground'>
-						This page is a page-by-page user reference sheet for how to use Hivemind.
-					</p>
+					<p className='text-sm text-muted-foreground'>{helpIntro}</p>
 				</div>
 
 				<div className='grid items-start gap-4 lg:grid-cols-[18rem_1fr]'>
 					<aside className='lg:sticky lg:top-20'>{renderContentsCard()}</aside>
 
-					<div className='space-y-4'>
-						{renderQuickStartCard()}
-						{pageSections.map((section) => renderSectionCard(section))}
-					</div>
+					<div className='space-y-4'>{pageSections.map((section) => renderSectionCard(section))}</div>
 				</div>
 			</div>
 		</div>
