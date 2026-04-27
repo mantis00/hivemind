@@ -40,7 +40,7 @@ export function AtRiskPanel({ orgId, items, loading = false }: AtRiskPanelProps)
 						</Link>
 					</Button>
 				</div>
-				<CardDescription>Highest-risk enclosures based on overdue and high-priority open tasks.</CardDescription>
+				<CardDescription>Highest-risk enclosures based on overdue and high-priority tasks.</CardDescription>
 			</CardHeader>
 			<CardContent className='pt-0'>
 				{loading ? (
