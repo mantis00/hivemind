@@ -33,709 +33,442 @@ const quickStartSteps = [
 
 const pageSections: PageHelpSection[] = [
 	{
-		id: 'organizations',
-		title: 'Organizations',
-		purpose: 'Use this page to get into the correct organization workspace.',
+		id: 'data-model',
+		title: 'How Hivemind Data Is Organized',
+		purpose: 'Use this section to understand how records relate to each other before you create or edit data.',
 		functions: [
 			{
-				id: 'enter-org',
-				name: 'Enter Organization',
-				description: 'Click Enter on an organization card to open that workspace.'
+				id: 'org-structure',
+				name: 'Organizations, Species, and Enclosures',
+				description:
+					'Organizations contain members, species, enclosures, tasks, schedules, notifications, and history. Species group enclosure records, and enclosures are the main operational record for population, lineage, notes, and work.'
 			},
 			{
-				id: 'pending-invites',
-				name: 'Pending Invites',
-				description: 'Accept or decline invites to join organizations.'
+				id: 'tasks-vs-schedules',
+				name: 'Tasks and Schedules Are Different',
+				description:
+					'Tasks are individual work items. Schedules are recurring rules that generate future work. One-time tasks and recurring schedules should be treated as different record types.'
 			},
 			{
-				id: 'sent-org-requests',
-				name: 'Org Request Tracking',
-				description: 'Track requests you submitted and cancel them while they are still pending.'
+				id: 'history-purpose',
+				name: 'History Verifies What Changed',
+				description:
+					'Use History to confirm who changed a record, what changed, and when it happened after work is created, edited, completed, or deactivated.'
 			},
 			{
-				id: 'create-or-request-org',
-				name: 'Create or Request Organization',
-				description: 'Create an organization directly (superadmin) or submit a request for review.'
+				id: 'inactive-records',
+				name: 'Inactive Records Are Preserved',
+				description:
+					'Inactive enclosure records remain in the system instead of being erased. The record and its history stay available, but some actions become restricted.'
 			},
 			{
-				id: 'request-visibility-window',
-				name: 'Recent Decision Visibility',
-				description: 'Recently approved or rejected requests stay visible briefly so you can confirm outcomes.'
-			},
-			{
-				id: 'leave-org',
-				name: 'Leave Organization',
-				description: 'Use Leave Organization on a card when your role allows it.'
-			},
-			{
-				id: 'superadmin-shortcut',
-				name: 'Superadmin Shortcut',
-				description: 'Superadmins can jump to Superadmin Tools directly from this page.'
+				id: 'future-vs-current-effects',
+				name: 'Some Changes Affect Future Work Only',
+				description:
+					'Schedule edits and similar changes do not rewrite old completed work. Users should expect some actions to change future generation behavior without changing historical records.'
 			}
 		],
 		commonActions: [
-			'If you do not see an expected org, check Pending Invites and Sent Requests first.',
-			'If Enter fails, your access may have changed or the request may still be pending.',
-			'Use Switch Organization in the sidebar footer whenever you need to move quickly between orgs.'
+			'Use this model first: species group enclosures, enclosures hold operational data, tasks represent work, and schedules generate recurring future tasks.',
+			'If you are deciding whether to edit a task or a schedule, ask whether you are changing one work item or the recurring rule behind future work.',
+			'If you need proof that a change happened, check History instead of relying on current page state alone.'
 		],
-		relatedPages: ['Dashboard', 'Members', 'Organization Settings', 'Superadmin Tools']
+		relatedPages: ['Enclosures', 'Tasks', 'Task Schedules', 'History']
 	},
 	{
-		id: 'global-navigation',
-		title: 'Global Navigation and Sidebar',
-		purpose: 'Use these tools from the top bar and sidebar on most protected pages.',
+		id: 'creating-tasks',
+		title: 'Creating Tasks',
+		purpose: 'Use this section to choose the right task setup before work is created.',
 		functions: [
 			{
-				id: 'qr-scanner',
-				name: 'QR Scanner',
-				description: 'Use the top-bar scanner to open an enclosure by live camera or by scanning a photo.'
+				id: 'single-vs-batch',
+				name: 'Single Enclosure vs Batch Create',
+				description:
+					'Single-enclosure creation is for one specific enclosure. Batch create applies the same task setup across multiple enclosures and is species-scoped in the current workflow.'
 			},
 			{
-				id: 'notification-dropdown',
-				name: 'Notification Bell Dropdown',
-				description: 'Open unread notifications, mark all read, and jump to Inbox.'
+				id: 'template-vs-custom',
+				name: 'Template Task vs Custom Task',
+				description:
+					'Template tasks inherit the template-defined name and description. Custom tasks let users define their own details, but a custom task name is required.'
 			},
 			{
-				id: 'sidebar-navigation',
-				name: 'Sidebar Navigation',
-				description: 'Use the sidebar to open Dashboard, Caretaking pages, History pages, and Help.'
+				id: 'task-assignment',
+				name: 'Assigning an Owner',
+				description:
+					'Tasks can be assigned during creation or left unassigned. Assignment affects who appears responsible, but it is optional when users want open ownership.'
 			},
 			{
-				id: 'account-and-session-menu',
-				name: 'Account and Session Menu',
-				description: 'Open Account/Preferences and log out from account menus on desktop or mobile.'
+				id: 'task-priority',
+				name: 'Setting Priority',
+				description:
+					'Priority should reflect how urgently a task needs attention and will influence filtering, review order, and how users interpret urgency across the organization.'
 			},
 			{
-				id: 'install-app',
-				name: 'Install App',
-				description: 'Install the app from prompts or account menus for faster launch and better notification support.'
+				id: 'due-date-or-recurrence',
+				name: 'Choosing Due Date or Recurrence',
+				description:
+					'Users choose whether work should exist once on a selected date or repeat through a schedule. This decision controls whether the result is a one-time task or a recurring schedule.'
 			},
 			{
-				id: 'push-prompt-shortcut',
-				name: 'Push Prompt Shortcut',
-				description: 'When push is not enabled, notification flows can prompt you to enable it.'
-			},
-			{
-				id: 'feedback-bugs',
-				name: 'Share Feedback/Bugs',
-				description: 'Send feedback or report bugs from the sidebar footer.'
+				id: 'time-window',
+				name: 'Choosing a Time Window',
+				description:
+					'Time windows are Morning, Afternoon, or Any. They help communicate when the work should be completed, especially in recurring care routines.'
 			}
 		],
 		commonActions: [
-			'If a QR code does not open a page, retry scan and confirm it belongs to your organization.',
-			'If unread counts look wrong, open Inbox and check filters and read state.',
-			'If push is unavailable on iPhone or iPad, install the app to Home Screen first.'
+			'Use single creation when only one enclosure needs the work, and batch create when the same work should be applied to multiple enclosures of the same species.',
+			'If you choose a template task, make sure a template is actually selected before submitting.',
+			'If task creation is blocked, confirm the target enclosure is active and that a required custom name or template selection is present.'
 		],
-		relatedPages: ['Inbox and Notifications', 'Enclosures', 'Help', 'Account and Preferences']
+		relatedPages: ['Tasks', 'Task Schedules', 'Enclosures']
 	},
 	{
-		id: 'dashboard',
-		title: 'Dashboard',
-		purpose: 'Start here each day to see workload, risk, and quick navigation shortcuts.',
+		id: 'scheduling-work',
+		title: 'Scheduling Work',
+		purpose: 'Use this section to understand how one-time and recurring work behave before you save a schedule.',
 		functions: [
 			{
-				id: 'kpis',
-				name: 'KPI Overview',
-				description: 'Review key counts like active enclosures, completed work, and attention-needed items.'
+				id: 'one-time',
+				name: 'One-Time Tasks',
+				description:
+					'One-time setup creates a single task due on one selected date. Use it for one-off care, temporary follow-up, or non-recurring work.'
 			},
 			{
-				id: 'at-risk-panel',
-				name: 'At-Risk Enclosures Panel',
-				description: 'Open enclosures with overdue or high-priority work first.'
+				id: 'flexible-recurring',
+				name: 'Flexible Recurring Schedules',
+				description:
+					'Flexible recurring schedules repeat relative to completion and are best when the next due point depends on when the last task was actually finished.'
 			},
 			{
-				id: 'today-action-center',
-				name: 'Today Action Center and Next Up',
-				description: 'Use quick buttons and Next Up links to move directly into task work.'
+				id: 'fixed-recurring',
+				name: 'Fixed Recurring Schedules',
+				description:
+					'Fixed recurring schedules repeat on selected weekdays and are best for calendar-based routines that should happen on a steady weekly pattern.'
 			},
 			{
-				id: 'recent-activity',
-				name: 'Recent Activity',
-				description: 'Review recent activity and open linked records when you need details.'
+				id: 'end-conditions',
+				name: 'End Conditions',
+				description:
+					'Recurring work can end Never, On date, or After X occurrences. This controls when schedule generation should stop without deleting the schedule history that already exists.'
 			},
 			{
-				id: 'dashboard-warnings',
-				name: 'Dashboard Warnings',
-				description: 'Watch for warnings that tell you dashboard data is partially loaded.'
+				id: 'advance-count',
+				name: 'Advance Task Count',
+				description:
+					'Advance task count controls how many future fixed-schedule task instances stay generated ahead of time so users can see upcoming work before its due date.'
+			},
+			{
+				id: 'editing-schedules',
+				name: 'Editing Schedules',
+				description:
+					'Editing a schedule changes future behavior. Users should not expect those edits to rewrite completed task records that already exist.'
+			},
+			{
+				id: 'pausing-schedules',
+				name: 'Pausing Schedules',
+				description:
+					'Pausing keeps the schedule record visible for review while stopping active generation until the schedule is reactivated.'
+			},
+			{
+				id: 'deleting-schedules',
+				name: 'Deleting Schedules',
+				description:
+					'Deleting a schedule removes the recurring rule and also deletes pending generated tasks linked to it, while completed tasks remain preserved.'
 			}
 		],
 		commonActions: [
-			'If numbers look low or missing, refresh and check for warning messages.',
-			'If you are not sure where to start, open At-Risk Enclosures first.',
-			'If you need detail, open Tasks or Enclosures from the dashboard shortcuts.'
+			'Use One-time for work that should happen once, Flexible recurring when the next run depends on completion timing, and Fixed recurring when the work belongs on specific weekdays.',
+			'If a fixed schedule will not save, confirm that at least one weekday and a valid advance task count have been selected.',
+			'If you are not sure whether to pause or delete, pause when the work may return later and delete only when the schedule should no longer exist.'
 		],
-		relatedPages: ['Tasks', 'Task Schedules', 'Enclosures', 'Inbox and Notifications']
-	},
-	{
-		id: 'enclosures',
-		title: 'Enclosures',
-		purpose: 'Create and manage enclosure records, species grouping, and enclosure details.',
-		functions: [
-			{
-				id: 'create-edit-status',
-				name: 'Create, Edit, and Active Status',
-				description: 'Add new enclosures, edit details, and set active or inactive status.'
-			},
-			{
-				id: 'search-sort-filter',
-				name: 'Search, Sort, and Status Filters',
-				description: 'Use search, sort, and active or inactive filters to find enclosure groups quickly.'
-			},
-			{
-				id: 'selection-batch-status',
-				name: 'Selection Mode and Batch Status Updates',
-				description: 'Turn on Select mode to update status on multiple enclosures at once.'
-			},
-			{
-				id: 'export-csv-qr',
-				name: 'Export Enclosures CSV for QR Labels',
-				description:
-					'Export selected or all active enclosures to CSV. This file is often used to generate QR labels because it includes enclosure URLs.'
-			},
-			{
-				id: 'enclosure-detail-tools',
-				name: 'Enclosure Detail Tools',
-				description: 'Open enclosure details to view notes, lineage, population history, and task links.'
-			},
-			{
-				id: 'notes-and-flags',
-				name: 'Notes and Flags',
-				description: 'Add notes and flagged notes to track issues and important context.'
-			},
-			{
-				id: 'source-tracking',
-				name: 'Source Tracking and Lineage Inputs',
-				description: 'Record source details and specimen IDs during create or edit to keep lineage accurate.'
-			},
-			{
-				id: 'specimen-id-suggestions',
-				name: 'Use Specimen Tracking ID Suggestions',
-				description:
-					'When creating or editing an enclosure, reuse existing specimen tracking IDs. Suggestions show how many enclosures already use each ID.'
-			},
-			{
-				id: 'create-new-specimen-id',
-				name: 'Create a New Specimen Tracking ID',
-				description: 'If no suggestion matches, type a new specimen tracking ID and save.'
-			},
-			{
-				id: 'sources-optional',
-				name: 'Add Sources (Optional)',
-				description: 'Sources are optional. Add institution or enclosure sources when lineage context is needed.'
-			},
-			{
-				id: 'empty-enclosures-start',
-				name: 'Start from Empty Enclosure State',
-				description:
-					'If your organization has species but no enclosures yet, use Add Enclosure to create the first record.'
-			},
-			{
-				id: 'species-management',
-				name: 'Species Management',
-				description: 'Manage org species, switch common or scientific view, and request new species when needed.'
-			},
-			{
-				id: 'inactive-rules',
-				name: 'Inactive Enclosure Rules',
-				description: 'Inactive enclosures remain visible but restrict some actions like task work and note entry.'
-			}
-		],
-		commonActions: [
-			'If you cannot create tasks or notes, check whether the enclosure is inactive.',
-			'If export is empty, switch to active enclosures or select active rows.',
-			'If species are missing in create flows, add them in Manage Species first.',
-			'If you see No enclosures yet, click Add Enclosure above the list.',
-			'If you cannot find a specimen tracking ID, type a new one and continue.',
-			'If specimen suggestions look incomplete, confirm the selected species.'
-		],
-		relatedPages: ['Tasks', 'Global Navigation and Sidebar', 'History', 'Task Schedules']
-	},
-	{
-		id: 'tasks',
-		title: 'Tasks',
-		purpose: 'Review daily work and complete tasks across the organization or inside one enclosure.',
-		functions: [
-			{
-				id: 'task-board-filters',
-				name: 'Task Board Date Modes',
-				description: 'Start on Today, then use date range or all dates when you need broader results.'
-			},
-			{
-				id: 'day-navigator-behavior',
-				name: 'Day Navigator Behavior',
-				description: 'Use left and right day navigation to move through task workload by date.'
-			},
-			{
-				id: 'all-dates-confirmation',
-				name: 'All-Dates Confirmation',
-				description: 'All dates mode shows a warning because large datasets can load more slowly.'
-			},
-			{
-				id: 'search-and-filters',
-				name: 'Search and Filters',
-				description: 'Filter tasks by search, status, priority, and date range.'
-			},
-			{
-				id: 'org-mode-search-fields',
-				name: 'Organization Task Search Fields',
-				description: 'In organization task view, search can match task name, species, enclosure, and assignee.'
-			},
-			{
-				id: 'columns-toggle',
-				name: 'Columns Toggle',
-				description: 'Show or hide optional columns so the table matches your workflow.'
-			},
-			{
-				id: 'create-single-batch',
-				name: 'Create Tasks (Single or Batch)',
-				description: 'Create one-time or recurring tasks for one enclosure or batch-create across many enclosures.'
-			},
-			{
-				id: 'selection-mode',
-				name: 'Selection Mode Rules',
-				description:
-					'Use Select mode for batch actions. Batch complete requires compatible tasks (same template and species).'
-			},
-			{
-				id: 'open-task-or-enclosure',
-				name: 'Open Task or Enclosure Context',
-				description: 'Open a task for completion or jump to the enclosure page when you need more context.'
-			},
-			{
-				id: 'reassign-owner',
-				name: 'Reassign Task Owner',
-				description: 'Change task assignees from table controls when allowed.'
-			}
-		],
-		commonActions: [
-			'If batch complete is unavailable, reselect tasks that match template and species.',
-			'If you see too many rows, apply status and date range filters before all dates.',
-			'If reassign is disabled, the task may be completed or in an inactive enclosure.'
-		],
-		relatedPages: ['Task Completion and Forms', 'Task Schedules', 'Enclosures']
+		relatedPages: ['Task Schedules', 'Tasks', 'History']
 	},
 	{
 		id: 'task-completion',
-		title: 'Task Completion and Forms',
-		purpose: 'Submit task results for one task or for a compatible batch of tasks.',
+		title: 'Completing Tasks and Forms',
+		purpose:
+			'Use this section to understand what is submitted when work is completed and how form behavior changes by task.',
 		functions: [
 			{
 				id: 'single-completion',
-				name: 'Single Task Completion',
-				description: 'Open a task and submit answers to mark it complete.'
+				name: 'Single-Task Completion',
+				description:
+					'Single-task completion is for one task record and may require either a simple confirmation or a full set of form answers depending on the task template.'
 			},
 			{
 				id: 'batch-completion',
-				name: 'Batch Task Completion',
-				description: 'Submit one set of answers for selected tasks that are compatible.'
-			},
-			{
-				id: 'dynamic-fields',
-				name: 'Dynamic Form Fields',
+				name: 'Batch Completion',
 				description:
-					'Fill required and optional fields, including conditional questions that appear from prior answers.'
+					'Batch completion submits one answer set across compatible tasks. It is intended for groups of tasks that can be completed together under the same response pattern.'
 			},
 			{
-				id: 'no-form-completion',
-				name: 'No-Form Completion',
-				description: 'Complete tasks that have no form fields with one click.'
+				id: 'required-optional-fields',
+				name: 'Required and Optional Fields',
+				description:
+					'Required visible questions must be answered before submission. Optional questions can be left blank when the data is not needed.'
+			},
+			{
+				id: 'conditional-questions',
+				name: 'Conditional Questions',
+				description:
+					'Some questions appear only after earlier answers trigger them. Users should expect visible form fields to change as they work through a task.'
+			},
+			{
+				id: 'no-form-tasks',
+				name: 'No-Form Tasks',
+				description:
+					'Some tasks do not require answer fields at all and only need a completion action to mark the work done.'
 			},
 			{
 				id: 'edit-resubmit',
 				name: 'Edit and Resubmit',
-				description: 'Edit a completed submission and resubmit when correction is needed.'
+				description:
+					'Completed submissions can be edited and resubmitted when a correction is needed. This updates the recorded answers without creating a separate replacement task.'
 			},
 			{
-				id: 'completion-state-and-followup',
-				name: 'Completion State and Follow-Up',
-				description: 'Review completed status, completion time, and follow-up actions after submission.'
-			},
-			{
-				id: 'inactive-enclosure-restrictions',
+				id: 'inactive-restrictions',
 				name: 'Inactive Enclosure Restrictions',
-				description: 'Completion and reassignment are disabled when the enclosure is inactive.'
-			},
-			{
-				id: 'task-level-controls',
-				name: 'Task-Level Controls',
-				description: 'Use task controls to delete open tasks, reassign owners, or open enclosure details.'
+				description:
+					'Tasks in inactive enclosures cannot be completed or reassigned, even if the task record itself is still visible for review.'
 			}
 		],
 		commonActions: [
-			'If submit is disabled, check for required fields that are still empty.',
-			'If completion is blocked, confirm the enclosure is active.',
-			'If data was entered incorrectly, use Edit Submission and resubmit.'
+			'If submit is unavailable, check for required visible questions that still need answers.',
+			'If batch completion does not work, re-check that the selected tasks are actually compatible for one shared answer set.',
+			'If completion or reassignment is blocked, confirm the enclosure is still active.'
 		],
 		relatedPages: ['Tasks', 'Enclosures', 'History']
 	},
 	{
-		id: 'task-schedules',
-		title: 'Task Schedules',
-		purpose: 'Manage recurring schedule behavior, ownership, and generation settings.',
+		id: 'managing-enclosures',
+		title: 'Managing Enclosure Records',
+		purpose: 'Use this section to understand how enclosure records are created, edited, sourced, and exported.',
 		functions: [
+			{
+				id: 'creating-enclosure',
+				name: 'Creating an Enclosure',
+				description:
+					'Species, location, and count are the core inputs when creating a new enclosure. These choices define the record that later holds work, notes, and lineage context.'
+			},
+			{
+				id: 'choosing-species',
+				name: 'Choosing Species',
+				description:
+					'Species selection controls which species group the enclosure belongs to and influences suggested specimen tracking IDs and compatible source enclosure options.'
+			},
+			{
+				id: 'location-choice',
+				name: 'Choosing or Creating a Location',
+				description:
+					'Users can reuse an existing location or create a new one during enclosure creation or editing. Reusing the correct existing location helps keep reporting and search cleaner.'
+			},
+			{
+				id: 'count-entry',
+				name: 'Entering Count',
+				description:
+					'Current count should reflect the enclosure population represented by the record. Later count changes become part of the enclosure population history.'
+			},
+			{
+				id: 'specimen-tracking',
+				name: 'Using Specimen Tracking IDs',
+				description:
+					'Specimen tracking IDs can be reused from suggestions or entered manually. Reuse them when the enclosure belongs to the same tracked lineage, and create a new one when it should stand alone.'
+			},
+			{
+				id: 'source-information',
+				name: 'Recording Source Information',
+				description:
+					'Source data can come from outside institutions or other enclosures. Source enclosure links support lineage tracking inside the organization and should be used when provenance matters.'
+			},
+			{
+				id: 'notes-lineage-history',
+				name: 'Notes, Lineage, and Population History',
+				description:
+					'Enclosure detail tools let users review notes, lineage, and count-change history so operational context stays attached to the enclosure record itself.'
+			},
+			{
+				id: 'exporting-data',
+				name: 'Exporting Enclosure Data',
+				description:
+					'Exported enclosure data supports downstream operational workflows such as QR label generation because the export includes each enclosure URL.'
+			}
+		],
+		commonActions: [
+			'Reuse existing locations and specimen tracking IDs when continuity matters, and create new values only when the record should represent something distinct.',
+			'Add source institution or source enclosure details when origin and lineage need to be preserved for later review.',
+			'If export output is missing expected rows, check whether the selected enclosures are active and included in the export mode you are using.'
+		],
+		relatedPages: ['Enclosures', 'Tasks', 'History']
+	},
+	{
+		id: 'qr-codes',
+		title: 'QR Codes and Enclosure Labels',
+		purpose:
+			'Use this section to understand how enclosure QR labels are generated and what workflow Hivemind recommends.',
+		functions: [
+			{
+				id: 'recommended-workflow',
+				name: 'Recommended Label Workflow',
+				description:
+					'Hivemind recommends Avery as the intended label-printing workflow because it makes it easy to turn enclosure URLs into printable stickers that can be attached directly to enclosures.'
+			},
+			{
+				id: 'avery-not-required',
+				name: 'Avery Is Recommended, Not Required',
+				description:
+					'Users do not need to use Avery. Any tool or service that correctly generates QR codes from enclosure URLs will work with the app.'
+			},
+			{
+				id: 'getting-urls',
+				name: 'Getting Enclosure URLs',
+				description:
+					'The URLs used for QR generation come from the Enclosures page export. That export includes the enclosure URL needed for each label.'
+			},
+			{
+				id: 'other-workflows',
+				name: 'Other Supported Workflows',
+				description:
+					'Alternative workflows are acceptable as long as the QR code encodes the exported enclosure URL correctly. This can include external QR services or Microsoft Excel for the web with Microsoft 365 and a script-based generation workflow.'
+			},
+			{
+				id: 'typical-process',
+				name: 'Typical Process',
+				description:
+					'The standard flow is to export enclosure data, use the enclosure URL column in Avery or another QR workflow, print the labels, attach them to enclosures, and scan them in Hivemind.'
+			}
+		],
+		commonActions: [
+			'Use Avery when you want the simplest label-printing path, but choose any other workflow that reliably encodes the exported enclosure URL if it better fits your operation.',
+			'Always start from the Enclosures export so each label is generated from the correct enclosure URL.',
+			'If a QR workflow produces working enclosure URLs, it is compatible even if it is not Avery.'
+		],
+		relatedPages: ['Enclosures', 'Help']
+	},
+	{
+		id: 'lifecycle-rules',
+		title: 'Active, Inactive, and Lifecycle Rules',
+		purpose:
+			'Use this section to understand what changes when enclosure records are activated, inactivated, or restored.',
+		functions: [
+			{
+				id: 'active-meaning',
+				name: 'What Active Means',
+				description:
+					'Active enclosures participate in normal operational workflows and can be used for task creation, note entry, and other day-to-day activity.'
+			},
+			{
+				id: 'inactive-meaning',
+				name: 'What Inactive Means',
+				description:
+					'Inactive enclosures remain in the system but are removed from active-focused workflows. Inactivity is a preservation state, not an erase action.'
+			},
+			{
+				id: 'preserved-data',
+				name: 'What Stays Preserved',
+				description:
+					'The enclosure record, its history, and related context stay preserved when an enclosure becomes inactive, allowing later review or reactivation.'
+			},
+			{
+				id: 'restricted-actions',
+				name: 'What Becomes Restricted',
+				description:
+					'Inactive enclosures restrict task creation, note entry, task completion, reassignment, and some edit actions even though the record itself still exists.'
+			},
+			{
+				id: 'batch-status',
+				name: 'Batch Status Changes',
+				description:
+					'Users can activate or inactivate multiple enclosure records at once through batch actions, which is useful when a large group of records changes operational state together.'
+			},
+			{
+				id: 'reactivation',
+				name: 'Reactivation Behavior',
+				description:
+					'Reactivating an enclosure returns it to active workflows so it can participate in normal work again without creating a brand-new enclosure record.'
+			}
+		],
+		commonActions: [
+			'Set an enclosure inactive when the data should be preserved but normal operational actions should stop.',
+			'If users cannot create tasks, add notes, or complete work, check whether the enclosure was moved to inactive status.',
+			'Reactivation is the right choice when the same record should return to active use rather than be recreated.'
+		],
+		relatedPages: ['Enclosures', 'Tasks', 'Task Schedules', 'History']
+	},
+	{
+		id: 'verifying-changes',
+		title: 'Finding, Filtering, and Verifying Changes',
+		purpose: 'Use this section to confirm results after tasks, schedules, enclosures, or notifications have changed.',
+		functions: [
+			{
+				id: 'task-filters',
+				name: 'When to Use Task Filters',
+				description:
+					'Task filters narrow work by search, status, priority, and date behavior so users can focus on the right operational slice before acting.'
+			},
 			{
 				id: 'schedule-filters',
-				name: 'Schedule Filters',
-				description: 'Find schedules quickly with search, status, priority, and type filters.'
+				name: 'When to Use Schedule Filters',
+				description:
+					'Schedule filters help isolate active, paused, priority-based, or type-based recurring work when a schedule list is too broad to review effectively.'
 			},
 			{
-				id: 'pause-activate',
-				name: 'Pause or Activate',
-				description: 'Pause schedules during workflow changes, then reactivate when ready.'
+				id: 'history-usage',
+				name: 'When to Use History',
+				description:
+					'History is the primary source for confirming who changed a record, what action occurred, and when the action happened.'
 			},
 			{
-				id: 'edit-reassign',
-				name: 'Edit and Reassign',
-				description: 'Edit schedule settings and reassign ownership when responsibilities change.'
+				id: 'inbox-usage',
+				name: 'When to Use Inbox and Notifications',
+				description:
+					'Inbox and notifications support follow-up work, unread review, and quick navigation into records that need attention.'
 			},
 			{
-				id: 'recurrence-controls',
-				name: 'Recurrence Controls',
-				description: 'Set recurrence pattern, end rules, advance count, and time window.'
-			},
-			{
-				id: 'occurrence-progress',
-				name: 'Occurrence Progress',
-				description: 'Schedules with occurrence limits show progress so you can track remaining runs.'
-			},
-			{
-				id: 'delete-schedule',
-				name: 'Delete Schedule',
-				description: 'Delete a schedule with confirmation when it is no longer needed.'
-			},
-			{
-				id: 'view-template',
-				name: 'View Template',
-				description: 'Open the linked template to review included fields.'
-			},
-			{
-				id: 'template-locked-fields',
-				name: 'Template-Locked Fields',
-				description: 'Some fields are locked when the schedule was created from a template.'
-			},
-			{
-				id: 'paused-readonly-behavior',
-				name: 'Paused Schedule Behavior',
-				description: 'Paused schedules stay visible for review and can be reactivated anytime.'
+				id: 'enclosure-detail',
+				name: 'When to Open Enclosure Detail',
+				description:
+					'Open enclosure detail when users need one enclosure’s full operational context, including notes, lineage, current count, and direct access to enclosure-linked work.'
 			}
 		],
 		commonActions: [
-			'If new tasks are not generating, check whether the schedule is paused or ended.',
-			'If a field cannot be edited, the linked template may control that field.',
-			'If you delete a schedule, pending generated tasks are removed by design.'
+			'Use task and schedule filters before broad review when the result set is too large to work with directly.',
+			'Use History when you need a trustworthy answer about whether a change actually happened and who performed it.',
+			'Use enclosure detail when one record needs closer review instead of a whole-table workflow.'
 		],
-		relatedPages: ['Tasks', 'Task Completion and Forms', 'History']
+		relatedPages: ['Tasks', 'Task Schedules', 'History', 'Inbox and Notifications', 'Enclosures']
 	},
 	{
-		id: 'history',
-		title: 'History (Enclosure History and User History)',
-		purpose: 'Use History to verify what changed, when it changed, and who did it.',
+		id: 'dashboard',
+		title: 'Dashboard',
+		purpose: 'Use Dashboard as a summary and launch point, not as the primary place for deep workflow explanations.',
 		functions: [
 			{
-				id: 'default-window',
-				name: 'Default 14-Day Window',
-				description: 'History loads the most recent 14 days by default.'
+				id: 'summary-view',
+				name: 'Summary and Launch Point',
+				description:
+					'Dashboard is best for spotting what needs attention first and moving into operational pages such as Tasks, Task Schedules, or Enclosures.'
 			},
 			{
-				id: 'enclosure-history-filters',
-				name: 'Enclosure History Filters',
-				description: 'Filter enclosure history by activity type, species, enclosure, user, task type, and date.'
+				id: 'attention-first',
+				name: 'Use It to Prioritize',
+				description:
+					'Panels on Dashboard help users identify workload, at-risk records, and recent activity so the next action can be chosen quickly.'
 			},
 			{
-				id: 'user-history-filters',
-				name: 'User History Filters',
-				description: 'Filter user history by action type, entity type, user, and date.'
-			},
-			{
-				id: 'all-dates-mode',
-				name: 'All-Dates Mode',
-				description: 'Enable all dates when you need records older than the default range.'
-			},
-			{
-				id: 'date-range-mode',
-				name: 'Date Range Mode',
-				description: 'Set a specific date range to narrow results before review or export.'
-			},
-			{
-				id: 'export-csv',
-				name: 'Export Filtered CSV',
-				description: 'Export the filtered history result set to CSV.'
+				id: 'leave-dashboard',
+				name: 'Move to Operational Pages for Detail',
+				description:
+					'Once a priority is identified, users should move into Tasks, Task Schedules, or Enclosures for the actual creation, review, or editing work.'
 			}
 		],
 		commonActions: [
-			'If a record is missing, expand the date range or turn on all dates.',
-			'If there are too many rows, filter by type, user, species, or enclosure first.',
-			'If export output is too broad, apply filters before exporting.'
+			'Use Dashboard to decide where to go next, not to understand the full rules behind task, schedule, enclosure, or QR workflows.',
+			'If a dashboard panel raises a question, open the linked operational page and use this Help page for deeper process guidance.',
+			'When in doubt about what needs action first, start with the most urgent task or enclosure surfaced by Dashboard.'
 		],
-		relatedPages: ['Enclosures', 'Tasks', 'Members', 'Inbox and Notifications']
-	},
-	{
-		id: 'members',
-		title: 'Members',
-		purpose: 'Manage organization membership, invites, and role-based access.',
-		functions: [
-			{
-				id: 'invite-members',
-				name: 'Invite Members',
-				description: 'Invite eligible users and assign the correct role level.'
-			},
-			{
-				id: 'invite-eligibility',
-				name: 'Invite Eligibility Rules',
-				description: 'Invite lists exclude users who already have access.'
-			},
-			{
-				id: 'sent-invites',
-				name: 'Sent Invites and Expiration',
-				description: 'Track invite status, check expiration timing, and cancel pending invites.'
-			},
-			{
-				id: 'member-list',
-				name: 'Member List and Roles',
-				description: 'Review members, role badges, and join information.'
-			},
-			{
-				id: 'kick-member',
-				name: 'Remove Members',
-				description: 'Remove members when your role allows it, including mobile overflow controls.'
-			},
-			{
-				id: 'permission-gated-controls',
-				name: 'Permission-Gated Controls',
-				description: 'Invite and remove actions are shown or disabled based on your role.'
-			}
-		],
-		commonActions: [
-			'If a user is missing from invite search, they may already be a member or already have global access.',
-			'If remove is disabled, your role likely does not allow that action.',
-			'If invite status is unclear, check Sent Invites and expiration details.'
-		],
-		relatedPages: ['Organization Settings', 'History', 'Superadmin Tools']
-	},
-	{
-		id: 'organization-settings',
-		title: 'Organization Settings',
-		purpose: 'Manage organization-level settings and high-impact actions.',
-		functions: [
-			{
-				id: 'change-org-name',
-				name: 'Change Organization Name',
-				description: 'Update the organization name shown across the workspace.'
-			},
-			{
-				id: 'delete-organization',
-				name: 'Delete Organization',
-				description: 'Permanently delete the organization when role permissions allow it.'
-			},
-			{
-				id: 'permission-protection',
-				name: 'Permission Protection',
-				description: 'Disabled actions show permission guidance when your role cannot perform them.'
-			}
-		],
-		commonActions: [
-			'If buttons are disabled, check the permission message and role restrictions.',
-			'Use rename for normal maintenance, and reserve deletion for true decommission only.',
-			'If you need admin-level changes, contact an owner or superadmin.'
-		],
-		relatedPages: ['Members', 'Organizations', 'History']
-	},
-	{
-		id: 'inbox',
-		title: 'Inbox and Notifications',
-		purpose: 'Use Inbox to track alerts and jump into follow-up work quickly.',
-		functions: [
-			{
-				id: 'inbox-filters',
-				name: 'Inbox Search, Sort, and Filters',
-				description: 'Use search, sorting, and filters for type, sender, read state, and date range.'
-			},
-			{
-				id: 'selection-controls',
-				name: 'Selection Controls',
-				description: 'Select notifications, use select all, clear selection, and batch delete.'
-			},
-			{
-				id: 'sortable-columns',
-				name: 'Sortable Inbox Columns',
-				description: 'Sort by date, sender, type, or title to prioritize review.'
-			},
-			{
-				id: 'linked-record-navigation',
-				name: 'Linked Record Navigation',
-				description: 'Open linked tasks and records directly from notification rows.'
-			},
-			{
-				id: 'mark-viewed',
-				name: 'Read-State Updates',
-				description: 'Mark individual notifications read or use Mark all read from the bell menu.'
-			},
-			{
-				id: 'bell-dropdown-shortcuts',
-				name: 'Bell Dropdown Shortcuts',
-				description: 'Use the top-bar bell for unread summaries and a quick link into Inbox.'
-			},
-			{
-				id: 'push-opt-in',
-				name: 'Push Opt-In Prompt',
-				description: 'Enable push notifications on this device from notification prompts.'
-			},
-			{
-				id: 'delete-confirmations',
-				name: 'Delete Confirmations',
-				description: 'Single and bulk delete actions both require confirmation.'
-			}
-		],
-		commonActions: [
-			'If expected notifications are missing, clear filters and date range first.',
-			'If unread count looks high, use Mark all read after review.',
-			'If push does not work on iPhone or iPad, install to Home Screen and retry enable.'
-		],
-		relatedPages: ['Global Navigation and Sidebar', 'History', 'Tasks']
-	},
-	{
-		id: 'account',
-		title: 'Account and Preferences',
-		purpose: 'Manage your profile, theme, device notifications, and login credentials.',
-		functions: [
-			{
-				id: 'profile-info',
-				name: 'Personal Information',
-				description: 'Update first and last name so records and history stay readable.'
-			},
-			{
-				id: 'theme-preferences',
-				name: 'Theme Preferences',
-				description: 'Choose light, dark, or system theme.'
-			},
-			{
-				id: 'push-preferences',
-				name: 'Push Notification Preferences',
-				description: 'Enable or disable push notifications for the current device.'
-			},
-			{
-				id: 'profile-save-controls',
-				name: 'Profile Save Controls',
-				description: 'Save is enabled only after profile values are changed.'
-			},
-			{
-				id: 'email-change-verification',
-				name: 'Email Change Verification',
-				description: 'Changing email requires confirmation links from both current and new addresses.'
-			},
-			{
-				id: 'password-change',
-				name: 'Password Change Workflow',
-				description: 'Change password with current password and matching new password confirmation.'
-			}
-		],
-		commonActions: [
-			'If save is disabled on profile details, make sure a value has actually changed.',
-			'If email change seems incomplete, confirm both email links.',
-			'If password update fails, verify current password and matching new password fields.'
-		],
-		relatedPages: ['Inbox and Notifications', 'Global Navigation and Sidebar', 'Authentication and Access']
-	},
-	{
-		id: 'superadmin',
-		title: 'Superadmin Tools',
-		purpose: 'For superadmins: moderate requests and maintain shared app standards.',
-		functions: [
-			{
-				id: 'org-request-moderation',
-				name: 'Organization Request Moderation',
-				description: 'Approve or reject org creation requests and review recently resolved items.'
-			},
-			{
-				id: 'species-request-moderation',
-				name: 'Species Request Moderation',
-				description: 'Approve or reject species requests and review recently resolved items.'
-			},
-			{
-				id: 'species-management',
-				name: 'Species Management',
-				description: 'Create and edit species metadata and images in the shared species library.'
-			},
-			{
-				id: 'template-management',
-				name: 'Task Template Management',
-				description: 'Create and edit task templates, including question fields, options, and template state.'
-			},
-			{
-				id: 'member-review',
-				name: 'All Members and Org Roles',
-				description: 'Review global member lists and open per-user org role breakdowns.'
-			},
-			{
-				id: 'feedback-review',
-				name: 'Feedback and Bug Review',
-				description: 'Search and review submitted feedback and bug reports across organizations.'
-			},
-			{
-				id: 'request-queue-timing',
-				name: 'Moderation Queue Timing',
-				description: 'Recently reviewed requests stay visible for a short period for follow-up checks.'
-			}
-		],
-		commonActions: [
-			'If a request is not in pending, check the recently resolved list before searching elsewhere.',
-			'If species delete is disabled, the species is still in use by one or more organizations.',
-			'If template updates do not affect old records, that is expected; changes apply to future task creation.'
-		],
-		relatedPages: ['Organizations', 'Members', 'Enclosures', 'Tasks']
-	},
-	{
-		id: 'authentication-access',
-		title: 'Authentication and Access',
-		purpose: 'Sign in, recover credentials, and understand access and error states.',
-		functions: [
-			{
-				id: 'login-signup',
-				name: 'Login and Sign Up',
-				description: 'Create an account or sign in, then move into protected app pages.'
-			},
-			{
-				id: 'email-confirmation',
-				name: 'Email Confirmation',
-				description: 'Use email confirmation links for signup and email-change flows.'
-			},
-			{
-				id: 'signup-success-flow',
-				name: 'Sign-Up Success Flow',
-				description: 'After signup, users are prompted to check email before first full access.'
-			},
-			{
-				id: 'password-recovery',
-				name: 'Forgot and Reset Password',
-				description: 'Request a reset link, then set a new password from the reset page.'
-			},
-			{
-				id: 'auth-error-page',
-				name: 'Auth Error Handling',
-				description: 'Use auth error pages to diagnose expired, invalid, or already-used links.'
-			},
-			{
-				id: 'org-access-guardrails',
-				name: 'Organization Access Guardrails',
-				description: 'Organization routes check membership or superadmin access before allowing entry.'
-			},
-			{
-				id: 'offline-and-protected-errors',
-				name: 'Offline and Protected Error Screens',
-				description: 'Use offline and protected error screens to retry or return home when a page fails.'
-			},
-			{
-				id: 'default-auth-redirects',
-				name: 'Default Auth Redirects',
-				description: 'App entry routes send users to login or protected pages based on session state.'
-			}
-		],
-		commonActions: [
-			'If a login or email link fails, request a new link and try again from a fresh email.',
-			'If you are redirected to login unexpectedly, your session may have expired.',
-			'If you see the offline page, reconnect and reload.'
-		],
-		relatedPages: ['Organizations', 'Account and Preferences', 'Global Navigation and Sidebar']
+		relatedPages: ['Tasks', 'Task Schedules', 'Enclosures', 'History']
 	}
 ]
 
