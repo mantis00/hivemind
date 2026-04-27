@@ -1,6 +1,13 @@
 'use client'
 
-import { type OrgSpecies, useOrgEnclosures, useOrgSpecies } from '@/lib/react-query/queries'
+import {
+	type OrgSpecies,
+	useOrgEnclosures,
+	useOrgSpecies,
+	useSpeciesCareInstructions,
+	useOrgSpeciesCareInstructions,
+	useOneSpecies
+} from '@/lib/react-query/queries'
 import type { Enclosure } from '@/lib/react-query/queries'
 import {
 	ArrowDownIcon,
@@ -19,6 +26,7 @@ import {
 } from 'lucide-react'
 
 import { useCallback, useMemo, useState } from 'react'
+import { useIsMounted } from '@/hooks/use-is-mounted'
 import Image from 'next/image'
 import { Virtuoso } from 'react-virtuoso'
 import { useParams } from 'next/navigation'
@@ -42,6 +50,7 @@ import {
 	DropdownMenuTrigger
 } from '../ui/dropdown-menu'
 import { EditSpeciesOrgForm } from './edit-species-org'
+import { CareInstructionDocs } from './care-instruction-docs'
 import { EnclosureCounts } from './enclosure-counts'
 import { useBatchActivateEnclosures, useBatchDeleteEnclosures } from '@/lib/react-query/mutations'
 import { toast } from 'sonner'
@@ -52,6 +61,8 @@ export default function EnclosureGrid() {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 	const { data: orgSpecies, isLoading } = useOrgSpecies(orgId as UUID)
+	const isMounted = useIsMounted()
+	const effectiveLoading = isMounted && isLoading
 	const orgSpeciesById = useMemo(() => new Map((orgSpecies ?? []).map((s) => [s.id, s])), [orgSpecies])
 	const activeOrgSpecies = useMemo(() => (orgSpecies ?? []).filter((s) => s.is_active), [orgSpecies])
 
@@ -122,6 +133,13 @@ export default function EnclosureGrid() {
 	const TARGET_ROWS = 8
 	const [openSpeciesId, setOpenSpeciesId] = useState<UUID | null>(null)
 	const [detailsView, setDetailsView] = useState<'details' | 'edit'>('details')
+
+	const openSpeciesMasterSpeciesId = openSpeciesId
+		? (orgSpeciesById.get(openSpeciesId)?.master_species_id ?? null)
+		: null
+	const { data: defaultDocs } = useSpeciesCareInstructions(openSpeciesMasterSpeciesId as UUID)
+	const { data: orgDocs } = useOrgSpeciesCareInstructions(openSpeciesId as UUID)
+	const { data: masterSpecies } = useOneSpecies(openSpeciesMasterSpeciesId as UUID)
 
 	const [selectMode, setSelectMode] = useState(false)
 	const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
@@ -298,6 +316,7 @@ export default function EnclosureGrid() {
 		() => displayedSpecies.find((s) => s.id === openSpeciesId) ?? null,
 		[displayedSpecies, openSpeciesId]
 	)
+	const openSpeciesCareInstructions = openSpecies?.custom_care_instructions || masterSpecies?.care_instructions || null
 
 	const handleSortChange = (sortOn: string) => {
 		if (!displayedSpecies?.length) return
@@ -321,13 +340,9 @@ export default function EnclosureGrid() {
 		<>
 			<div className='mx-auto items-center w-full'>
 				{!isMobile && <EnclosureCounts />}
-				<div className='mb-2 flex items-center flex-row gap-2 justify-end'>
+				<div className='mb-2 flex items-center flex-row gap-2 justify-end pt-2'>
 					{selectMode && (
 						<div className='flex items-center gap-2 mr-auto'>
-							<Button variant='ghost' size='sm' className='gap-1.5 text-xs' onClick={toggleSelectMode}>
-								<XIcon className='h-3.5 w-3.5' />
-								Cancel
-							</Button>
 							{selectedIds.size === 0 ? (
 								<Button
 									size='sm'
@@ -341,7 +356,6 @@ export default function EnclosureGrid() {
 								</Button>
 							) : (
 								<>
-									<span className='text-xs text-muted-foreground'>{selectedIds.size} selected</span>
 									<Button
 										size='sm'
 										variant='outline'
@@ -375,6 +389,7 @@ export default function EnclosureGrid() {
 											Set Inactive
 										</Button>
 									)}
+									<span className='text-xs text-muted-foreground'>{selectedIds.size} selected</span>
 								</>
 							)}
 						</div>
@@ -410,7 +425,7 @@ export default function EnclosureGrid() {
 									<DropdownMenuLabel className='text-muted-foreground'>Selection</DropdownMenuLabel>
 									<DropdownMenuItem onSelect={toggleSelectMode}>
 										<ListChecks className='h-4 w-4' />
-										Select
+										{selectMode ? 'Cancel' : 'Select'}
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
@@ -421,13 +436,12 @@ export default function EnclosureGrid() {
 						<>
 							<Button
 								variant='outline'
-								size='sm'
 								onClick={toggleSelectMode}
 								className='gap-1.5'
 								disabled={enclosureStatusFilter === 'all'}
 							>
 								<ListChecks className='h-4 w-4' />
-								Select
+								{selectMode ? 'Cancel' : 'Select'}
 							</Button>
 							<ManageSpeciesButton />
 							<CreateEnclosureButton />
@@ -441,7 +455,7 @@ export default function EnclosureGrid() {
 						<Select
 							onValueChange={(value) => handleFilterChange(value as EnclosureStatusFilter)}
 							value={enclosureStatusFilter}
-							disabled={isLoading}
+							disabled={effectiveLoading}
 						>
 							<SelectTrigger className='w-46'>
 								<SelectValue placeholder='Enclosures' className='flex-1 min-w-0 truncate' />
@@ -459,7 +473,7 @@ export default function EnclosureGrid() {
 							</SelectContent>
 						</Select>
 					)}
-					<Select onValueChange={handleSortChange} value={sortKey} disabled={isLoading}>
+					<Select onValueChange={handleSortChange} value={sortKey} disabled={effectiveLoading}>
 						<SelectTrigger className='w-45'>
 							<SelectValue placeholder='Sort' className='flex-1 min-w-0 truncate' />
 							{isSorted && (
@@ -496,7 +510,7 @@ export default function EnclosureGrid() {
 							const newSortUp = !sortUp
 							setSortUp(newSortUp)
 						}}
-						disabled={isLoading || !isSorted}
+						disabled={effectiveLoading || !isSorted}
 					>
 						{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
 					</Button>
@@ -666,10 +680,11 @@ export default function EnclosureGrid() {
 									No image available
 								</div>
 							)}
-							<div className='rounded-md bg-muted p-3'>
-								<p className='text-xs font-medium text-muted-foreground mb-1'>Care Instructions</p>
-								<p className='text-sm leading-relaxed'>{openSpecies.custom_care_instructions}</p>
-							</div>
+							<CareInstructionDocs
+								defaultDocs={defaultDocs ?? []}
+								orgDocs={orgDocs ?? []}
+								careInstructions={openSpeciesCareInstructions}
+							/>
 						</div>
 					)}
 				</ResponsiveDialogDrawer>

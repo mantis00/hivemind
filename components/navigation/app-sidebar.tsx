@@ -263,7 +263,7 @@ export function AppSidebar() {
 										<SidebarMenuSubItem>
 											<SidebarMenuSubButton asChild>
 												<Link
-													href={orgId ? `/protected/orgs/${orgId}/history` : '/protected/orgs'}
+													href={orgId ? `/protected/orgs/${orgId}/enclosure-history` : '/protected/orgs'}
 													onClick={closeMobileOnNav}
 												>
 													<SquareStack className='size-4' />
@@ -274,7 +274,7 @@ export function AppSidebar() {
 										<SidebarMenuSubItem>
 											<SidebarMenuSubButton asChild>
 												<Link
-													href={orgId ? `/protected/orgs/${orgId}/history/user-history` : '/protected/orgs'}
+													href={orgId ? `/protected/orgs/${orgId}/user-history` : '/protected/orgs'}
 													onClick={closeMobileOnNav}
 												>
 													<SquareStack className='size-4' />

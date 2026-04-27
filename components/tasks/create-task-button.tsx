@@ -250,6 +250,10 @@ export function CreateTaskButton({
 				toast.error('Advance task count must be at least 1.')
 				return
 			}
+			if (parsedAdvanceCount > 1000) {
+				toast.error('Advance task count cannot exceed 1000.')
+				return
+			}
 			if (fixedEnds === 'on-date' && !fixedEndDate) {
 				toast.error('Please pick an end date.')
 				return

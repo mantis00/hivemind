@@ -354,6 +354,8 @@ export function useCreateEnclosure() {
 			species_id,
 			location,
 			current_count,
+			life_stage,
+			quantity = 1,
 			institutional_specimen_id,
 			institutional_external_source,
 			source_enclosure_transfers
@@ -362,33 +364,35 @@ export function useCreateEnclosure() {
 			species_id: UUID
 			location: UUID
 			current_count: number
+			life_stage?: 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'
+			quantity?: number
 			institutional_specimen_id?: string
 			institutional_external_source?: string
 			source_enclosure_transfers?: { id: UUID; count: number }[]
 		}) => {
 			const supabase = createClient()
-			const { data: enclosure, error: enclosureError } = await supabase
-				.from('enclosures')
-				.insert({
-					org_id: orgId,
-					species_id: species_id,
-					location: location,
-					current_count: current_count,
-					...(institutional_specimen_id ? { institutional_specimen_id } : {}),
-					...(institutional_external_source ? { institutional_external_source } : {})
-				})
-				.select()
-				.single()
 
+			const rows = Array.from({ length: Math.max(1, quantity) }, () => ({
+				org_id: orgId,
+				species_id,
+				location,
+				current_count,
+				life_stage,
+				...(institutional_specimen_id ? { institutional_specimen_id } : {}),
+				...(institutional_external_source ? { institutional_external_source } : {})
+			}))
+
+			const { data: enclosures, error: enclosureError } = await supabase.from('enclosures').insert(rows).select()
 			if (enclosureError) throw enclosureError
 
 			if (source_enclosure_transfers && source_enclosure_transfers.length > 0) {
-				const { error: lineageError } = await supabase.from('enclosure_lineage').insert(
+				const lineageRows = enclosures.flatMap((enclosure) =>
 					source_enclosure_transfers.map((t) => ({
 						enclosure_id: enclosure.id,
 						source_enclosure_id: t.id
 					}))
 				)
+				const { error: lineageError } = await supabase.from('enclosure_lineage').insert(lineageRows)
 				if (lineageError) throw lineageError
 
 				const sourceIds = source_enclosure_transfers.map((t) => t.id)
@@ -411,14 +415,19 @@ export function useCreateEnclosure() {
 				}
 			}
 
-			return enclosure
+			return enclosures
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosureCount', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-			toast.success('Enclosure created!')
+			const count = data?.length ?? 1
+			toast.success(`${count} enclosure${count === 1 ? '' : 's'} created!`)
+		},
+		onError: (error, variables) => {
+			const count = variables.quantity ?? 1
+			toast.error(error instanceof Error ? error.message : `Failed to create enclosure${count === 1 ? '' : 's'}`)
 		}
 	})
 }
@@ -522,6 +531,7 @@ export function useUpdateEnclosure() {
 			location_id,
 			count,
 			is_active,
+			life_stage,
 			institutional_specimen_id,
 			institutional_external_source,
 			source_enclosure_ids
@@ -531,6 +541,7 @@ export function useUpdateEnclosure() {
 			location_id: UUID
 			count: number
 			is_active: boolean
+			life_stage: 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'
 			institutional_specimen_id?: string
 			institutional_external_source?: string
 			source_enclosure_ids?: UUID[]
@@ -543,6 +554,7 @@ export function useUpdateEnclosure() {
 					location: location_id,
 					current_count: count,
 					is_active,
+					life_stage,
 					institutional_specimen_id: institutional_specimen_id ?? '',
 					institutional_external_source: institutional_external_source ?? ''
 				})
@@ -571,6 +583,9 @@ export function useUpdateEnclosure() {
 			queryClient.invalidateQueries({ queryKey: ['enclosureCountHistory', variables.enclosure_id] })
 			queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 			toast.success('Enclosure updated!')
+		},
+		onError: (error) => {
+			toast.error(error instanceof Error ? error.message : 'Failed to update enclosure')
 		}
 	})
 }
@@ -770,14 +785,19 @@ export function useCreateSpecies() {
 				throw new Error('Scientific name and common name are required')
 			}
 
-			const { error } = await supabase.from('species').insert({
-				scientific_name: scientific_name.trim(),
-				common_name: common_name.trim(),
-				care_instructions: care_instructions.trim(),
-				...(picture_url ? { picture_url } : {})
-			})
+			const { data, error } = await supabase
+				.from('species')
+				.insert({
+					scientific_name: scientific_name.trim(),
+					common_name: common_name.trim(),
+					care_instructions: care_instructions.trim(),
+					...(picture_url ? { picture_url } : {})
+				})
+				.select('id')
+				.single()
 
 			if (error) throw error
+			return data
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['allSpecies'] })
@@ -2104,6 +2124,134 @@ export function useCreateFeedback() {
 		},
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['feedback', variables.orgId] })
+		}
+	})
+}
+
+export function useAddCareInstruction() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ speciesId, file, label }: { speciesId: UUID; file: File; label: string }) => {
+			const supabase = createClient()
+
+			const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+			const storageName = `defaults/${Date.now()}-${safeName}`
+
+			const { data: uploadData, error: uploadError } = await supabase.storage
+				.from('care_instructions')
+				.upload(storageName, file)
+
+			if (uploadError) throw uploadError
+
+			const { data: publicData } = supabase.storage.from('care_instructions').getPublicUrl(uploadData.path)
+
+			const { error: insertError } = await supabase.from('species_care_instructions').insert({
+				species_id: speciesId,
+				file_name: label,
+				file_url: publicData.publicUrl
+			})
+
+			if (insertError) throw insertError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['speciesCareInstructions', variables.speciesId] })
+		}
+	})
+}
+
+export function useDeleteCareInstruction() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ docId }: { docId: string; speciesId: UUID }) => {
+			const supabase = createClient()
+
+			const { data: doc, error: fetchError } = await supabase
+				.from('species_care_instructions')
+				.select('file_url')
+				.eq('id', docId)
+				.single()
+			if (fetchError) throw fetchError
+
+			const url = new URL(doc.file_url)
+			const storagePath = url.pathname.split('/storage/v1/object/public/care_instructions/')[1]
+			if (storagePath) await supabase.storage.from('care_instructions').remove([storagePath])
+
+			const { error } = await supabase.from('species_care_instructions').delete().eq('id', docId)
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['speciesCareInstructions', variables.speciesId] })
+		}
+	})
+}
+
+export function useAddOrgCareInstruction() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({
+			orgSpeciesId,
+			orgId,
+			file,
+			label
+		}: {
+			orgSpeciesId: UUID
+			orgId: string
+			file: File
+			label: string
+		}) => {
+			const supabase = createClient()
+
+			const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+			const storageName = `orgs/${orgId}/${Date.now()}-${safeName}`
+
+			const { data: uploadData, error: uploadError } = await supabase.storage
+				.from('care_instructions')
+				.upload(storageName, file)
+
+			if (uploadError) throw uploadError
+
+			const { data: publicData } = supabase.storage.from('care_instructions').getPublicUrl(uploadData.path)
+
+			const { error: insertError } = await supabase.from('species_care_instructions').insert({
+				org_species_id: orgSpeciesId,
+				file_name: label,
+				file_url: publicData.publicUrl
+			})
+
+			if (insertError) throw insertError
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgSpeciesCareInstructions', variables.orgSpeciesId] })
+		}
+	})
+}
+
+export function useDeleteOrgCareInstruction() {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: async ({ docId }: { docId: string; orgSpeciesId: UUID }) => {
+			const supabase = createClient()
+
+			const { data: doc, error: fetchError } = await supabase
+				.from('species_care_instructions')
+				.select('file_url')
+				.eq('id', docId)
+				.single()
+			if (fetchError) throw fetchError
+
+			const url = new URL(doc.file_url)
+			const storagePath = url.pathname.split('/storage/v1/object/public/care_instructions/')[1]
+			if (storagePath) await supabase.storage.from('care_instructions').remove([storagePath])
+
+			const { error } = await supabase.from('species_care_instructions').delete().eq('id', docId)
+			if (error) throw error
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: ['orgSpeciesCareInstructions', variables.orgSpeciesId] })
 		}
 	})
 }

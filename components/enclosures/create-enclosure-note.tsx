@@ -36,7 +36,7 @@ export default function CreateEnclosureNote({ enclosureId, is_active }: { enclos
 
 	return (
 		<>
-			<form onSubmit={handleSubmit} className='grid w-full gap-6 pt-1 mx-auto focus'>
+			<form onSubmit={handleSubmit} className='grid w-full gap-6 pt-1 pb-1 mx-auto focus'>
 				<InputGroup>
 					<TooltipProvider>
 						<Tooltip>

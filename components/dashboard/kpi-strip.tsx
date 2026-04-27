@@ -1,13 +1,15 @@
 import type { DashboardKpis } from '@/lib/react-query/queries'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type KpiStripProps = {
 	kpis: DashboardKpis
 	completedToday: number
 	atRiskEnclosures: number
+	loading?: boolean
 }
 
-export function KpiStrip({ kpis, completedToday, atRiskEnclosures }: KpiStripProps) {
+export function KpiStrip({ kpis, completedToday, atRiskEnclosures, loading = false }: KpiStripProps) {
 	const kpiItems = [
 		{
 			key: 'active-enclosures',
@@ -40,10 +42,21 @@ export function KpiStrip({ kpis, completedToday, atRiskEnclosures }: KpiStripPro
 			{kpiItems.map((item) => (
 				<Card key={item.key} className='py-3 sm:py-4'>
 					<CardHeader className='pb-0'>
-						<CardDescription>{item.label}</CardDescription>
-						<CardTitle className='text-2xl tabular-nums sm:text-3xl'>{item.value}</CardTitle>
+						{loading ? (
+							<div className='space-y-2'>
+								<Skeleton className='h-4 w-28' />
+								<Skeleton className='h-8 w-20 sm:h-9' />
+							</div>
+						) : (
+							<>
+								<CardDescription>{item.label}</CardDescription>
+								<CardTitle className='text-2xl tabular-nums sm:text-3xl'>{item.value}</CardTitle>
+							</>
+						)}
 					</CardHeader>
-					<CardContent className='text-sm text-muted-foreground'>{item.helperText}</CardContent>
+					<CardContent className='text-sm text-muted-foreground'>
+						{loading ? <Skeleton className='h-4 w-40 max-w-full' /> : item.helperText}
+					</CardContent>
 				</Card>
 			))}
 		</section>
