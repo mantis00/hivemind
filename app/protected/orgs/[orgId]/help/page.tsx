@@ -333,6 +333,12 @@ const pageSections: PageHelpSection[] = [
 					'Alternative workflows are acceptable as long as the QR code encodes the exported enclosure URL correctly. This can include external QR services or Microsoft Excel for the web with Microsoft 365 and a script-based generation workflow.'
 			},
 			{
+				id: 'excel-script-workflow',
+				name: 'Excel Script Label Workflow',
+				description:
+					'For an Excel workflow, export enclosure data from Hivemind, open the CSV in Excel, and confirm the sheet includes Enclosure Name and URL columns. An Office Script can read those columns, create a separate label sheet, place each enclosure name in a label cell, and insert a QR image beneath it using the exported URL.'
+			},
+			{
 				id: 'typical-process',
 				name: 'Typical Process',
 				description:
@@ -343,6 +349,7 @@ const pageSections: PageHelpSection[] = [
 		commonActions: [
 			'Use Avery when you want the simplest label-printing path, but choose any other workflow that reliably encodes the exported enclosure URL if it better fits your operation.',
 			'Always start from the Enclosures export so each label is generated from the correct enclosure URL.',
+			'If using Excel, use an approved QR image provider or script workflow, because any external QR service receives the enclosure URL it is asked to encode.',
 			'If a QR workflow produces working enclosure URLs, it is compatible even if it is not Avery.'
 		],
 		relatedPages: ['Enclosures', 'Help']
@@ -441,38 +448,6 @@ const pageSections: PageHelpSection[] = [
 			'Use enclosure detail when one record needs closer review instead of a whole-table workflow.'
 		],
 		relatedPages: ['Tasks', 'Task Schedules', 'History', 'Inbox and Notifications', 'Enclosures']
-	},
-	{
-		id: 'dashboard',
-		title: 'Dashboard',
-		purpose: 'Use Dashboard as a summary and launch point, not as the primary place for deep workflow explanations.',
-		functions: [
-			{
-				id: 'summary-view',
-				name: 'Summary and Launch Point',
-				description:
-					'Dashboard is best for spotting what needs attention first and moving into operational pages such as Tasks, Task Schedules, or Enclosures.'
-			},
-			{
-				id: 'attention-first',
-				name: 'Use It to Prioritize',
-				description:
-					'Panels on Dashboard help users identify workload, at-risk records, and recent activity so the next action can be chosen quickly.'
-			},
-			{
-				id: 'leave-dashboard',
-				name: 'Move to Operational Pages for Detail',
-				description:
-					'Once a priority is identified, users should move into Tasks, Task Schedules, or Enclosures for the actual creation, review, or editing work.'
-			}
-		],
-		commonActionsTitle: 'Dashboard Boundaries',
-		commonActions: [
-			'Use Dashboard to decide where to go next, not to understand the full rules behind task, schedule, enclosure, or QR workflows.',
-			'If a dashboard panel raises a question, open the linked operational page and use this Help page for deeper process guidance.',
-			'When in doubt about what needs action first, start with the most urgent task or enclosure surfaced by Dashboard.'
-		],
-		relatedPages: ['Tasks', 'Task Schedules', 'Enclosures', 'History']
 	}
 ]
 

@@ -285,20 +285,24 @@ export function AppSidebar() {
 									</SidebarMenuSub>
 								)}
 							</SidebarMenuItem>
-							<SidebarMenuItem>
-								<SidebarMenuButton className='text-xl my-1 font-bold' asChild tooltip='Help'>
-									<Link href={orgId ? `/protected/orgs/${orgId}/help` : '/protected/orgs'} onClick={closeMobileOnNav}>
-										<CircleHelp className='size-4' />
-										<span>Help</span>
-									</Link>
-								</SidebarMenuButton>
-							</SidebarMenuItem>
 						</SidebarMenu>
 					</SidebarGroupContent>
 				</SidebarGroup>
 			</SidebarContent>
 			<SidebarFooter>
 				<SidebarMenu className='gap-2'>
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							className='text-xl my-1 font-bold justify-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0'
+							asChild
+							tooltip='Help'
+						>
+							<Link href={orgId ? `/protected/orgs/${orgId}/help` : '/protected/orgs'} onClick={closeMobileOnNav}>
+								<CircleHelp className='size-4' />
+								<span className='group-data-[collapsible=icon]:hidden'>Help</span>
+							</Link>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							asChild
