@@ -9,7 +9,9 @@ import {
 	compareIsoDatesDesc,
 	compareNullableIsoDatesAsc,
 	getCompletionStateLabels,
+	getDashboardStatusOrder,
 	getDashboardTaskEnclosure,
+	getDashboardTimeWindowOrder,
 	getTaskTitle,
 	isHighPriority,
 	isValidDate
@@ -320,19 +322,6 @@ type DashboardTaskRow = {
 
 function getLocalDayStart(reference: Date = new Date(), dayOffset = 0) {
 	return new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() + dayOffset, 0, 0, 0, 0)
-}
-
-function getDashboardStatusOrder(status: string | null) {
-	if (status === 'late') return 0
-	if (status === 'completed') return 2
-	return 1 // pending/null/unknown
-}
-
-function getDashboardTimeWindowOrder(timeWindow: string | null | undefined) {
-	if (timeWindow === 'Morning') return 0
-	if (timeWindow === 'Any') return 1
-	if (timeWindow === 'Afternoon') return 2
-	return 1
 }
 
 export type PushSubscription = {
