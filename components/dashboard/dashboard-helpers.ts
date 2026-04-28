@@ -47,6 +47,19 @@ export function compareIsoDatesDesc(a: string, b: string) {
 	return new Date(b).getTime() - new Date(a).getTime()
 }
 
+export function getDashboardStatusOrder(status: string | null) {
+	if (status === 'late') return 0
+	if (status === 'completed') return 2
+	return 1 // pending/null/unknown
+}
+
+export function getDashboardTimeWindowOrder(timeWindow: string | null | undefined) {
+	if (timeWindow === 'Morning') return 0
+	if (timeWindow === 'Any') return 1
+	if (timeWindow === 'Afternoon') return 2
+	return 1
+}
+
 export function isValidDate(value: string | null) {
 	if (!value) {
 		return false
