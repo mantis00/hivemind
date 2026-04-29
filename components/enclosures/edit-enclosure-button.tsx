@@ -229,6 +229,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			description='All fields are required. Leave value to keep current.'
 			open={open}
 			onOpenChange={handleOpenChange}
+			className='sm:max-w-2xl'
 			trigger={
 				<TooltipProvider>
 					<Tooltip>

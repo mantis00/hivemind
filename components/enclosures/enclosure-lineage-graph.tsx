@@ -33,6 +33,7 @@ type EnclosureNode = {
 	location?: string
 	isFocus: boolean
 	isInactive: boolean
+	childrenCount?: number
 }
 
 type ExternalSourceNode = {
@@ -58,7 +59,7 @@ function computeLayout(
 		parents.get(target)!.push(source)
 	}
 
-	// BFS to collect all connected nodes from focusId (ancestors + descendants)
+	// BFS upward only — collect focus node and all ancestors
 	const visited = new Set<string>()
 	const queue: string[] = [focusId]
 	while (queue.length > 0) {
@@ -66,7 +67,6 @@ function computeLayout(
 		if (visited.has(id) || !nodeMap.has(id)) continue
 		visited.add(id)
 		for (const p of parents.get(id) ?? []) queue.push(p)
-		for (const c of children.get(id) ?? []) queue.push(c)
 	}
 
 	// Assign layers via longest-path BFS from roots so oldest ancestors are at top
@@ -182,6 +182,11 @@ function EnclosureNodeCard({ data }: { data: { label: EnclosureNode } }) {
 			>
 				{enc.location ?? 'Unknown location'} · {enc.currentCount} specimen
 			</span>
+			{enc.isFocus && (enc.childrenCount ?? 0) > 0 && (
+				<span className='text-xs'>
+					{enc.childrenCount} derived {enc.childrenCount === 1 ? 'enclosure' : 'enclosures'}
+				</span>
+			)}
 			<Handle type='source' position={Position.Bottom} className='bg-border! border-border!' />
 		</div>
 	)
@@ -222,8 +227,19 @@ function ReadyFlow({ nodes: initialNodes, edges: initialEdges }: { nodes: Node[]
 }
 
 function LineageFlow({ enclosureId, orgId }: { enclosureId: string; orgId: UUID }) {
-	const { data: orgEnclosures, isLoading: encsLoading } = useOrgEnclosures(orgId, 'all')
-	const { data: lineageEdges, isLoading: edgesLoading } = useOrgEnclosureLineage(orgId)
+	const { data: orgEnclosures, isLoading: encsLoading, error: encsError } = useOrgEnclosures(orgId, 'all')
+	const { data: lineageEdges, isLoading: edgesLoading, error: edgesError } = useOrgEnclosureLineage(orgId)
+
+	console.log('[LineageFlow]', {
+		enclosureId,
+		orgId,
+		encsLoading,
+		edgesLoading,
+		encsError: encsError ? JSON.stringify(encsError, Object.getOwnPropertyNames(encsError)) : null,
+		edgesError: edgesError ? JSON.stringify(edgesError, Object.getOwnPropertyNames(edgesError)) : null,
+		orgEnclosuresCount: orgEnclosures?.length,
+		lineageEdgesCount: lineageEdges?.length
+	})
 
 	const { nodes, edges } = useMemo(() => {
 		if (!orgEnclosures || !lineageEdges) return { nodes: [], edges: [] }
@@ -264,9 +280,22 @@ function LineageFlow({ enclosureId, orgId }: { enclosureId: string; orgId: UUID 
 			}
 		}
 
-		if (!nodeMap.has(enclosureId)) return { nodes: [], edges: [] }
+		if (!nodeMap.has(enclosureId)) {
+			console.log('[LineageFlow] focusId not in nodeMap', {
+				enclosureId,
+				nodeMapKeys: [...nodeMap.keys()].slice(0, 10)
+			})
+			return { nodes: [], edges: [] }
+		}
 
-		return computeLayout(nodeMap, edgeList, enclosureId)
+		// Count direct children of the focus enclosure and store on its node
+		const childrenCount = edgeList.filter((e) => e.source === enclosureId).length
+		const focusNode = nodeMap.get(enclosureId) as EnclosureNode
+		nodeMap.set(enclosureId, { ...focusNode, childrenCount })
+
+		const result = computeLayout(nodeMap, edgeList, enclosureId)
+		console.log('[LineageFlow] computed', { nodesCount: result.nodes.length, edgesCount: result.edges.length })
+		return result
 	}, [orgEnclosures, lineageEdges, enclosureId])
 
 	if (encsLoading || edgesLoading) {
@@ -277,10 +306,27 @@ function LineageFlow({ enclosureId, orgId }: { enclosureId: string; orgId: UUID 
 		)
 	}
 
+	if (encsError || edgesError) {
+		return (
+			<div className='flex items-center justify-center h-full text-sm text-destructive'>
+				<pre className='whitespace-pre-wrap max-w-md'>
+					{encsError ? `enclosures error: ${JSON.stringify(encsError, null, 2)}` : 'enclosures: OK'}
+					{'\n'}
+					{edgesError ? `lineage error: ${JSON.stringify(edgesError, null, 2)}` : 'lineage: OK'}
+					{'\n'}
+					orgId: {orgId}
+					{'\n'}
+					enclosureId: {enclosureId}
+				</pre>
+			</div>
+		)
+	}
+
 	if (nodes.length === 0) {
 		return (
 			<div className='flex items-center justify-center h-full text-sm text-muted-foreground'>
-				No lineage data available.
+				No lineage data available. (enc={orgEnclosures?.length}, edges={lineageEdges?.length}, focusInMap=
+				{orgEnclosures?.some((e) => e.id === enclosureId) ? 'yes' : 'no'})
 			</div>
 		)
 	}

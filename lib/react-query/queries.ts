@@ -428,16 +428,38 @@ export function useOrgEnclosureLineage(orgId: UUID) {
 		queryKey: ['orgEnclosureLineage', orgId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data: orgEncs, error: encError } = await supabase.from('enclosures').select('id').eq('org_id', orgId)
-			if (encError) throw encError
-			const ids = (orgEncs ?? []).map((e) => e.id)
+
+			// Paginate enclosure ID fetch — default Supabase limit is 1000
+			const PAGE_SIZE = 1000
+			const ids: string[] = []
+			let from = 0
+			while (true) {
+				const { data: page, error } = await supabase
+					.from('enclosures')
+					.select('id')
+					.eq('org_id', orgId)
+					.order('id')
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				ids.push(...(page ?? []).map((e) => e.id))
+				if ((page?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
 			if (ids.length === 0) return []
-			const { data, error } = await supabase
-				.from('enclosure_lineage')
-				.select('id, enclosure_id, source_enclosure_id, created_at')
-				.in('enclosure_id', ids)
-			if (error) throw error
-			return data as EnclosureLineage[]
+
+			// Batch .in() calls to avoid exceeding PostgREST URL length limit
+			const BATCH_SIZE = 150
+			const allLineage: EnclosureLineage[] = []
+			for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+				const batch = ids.slice(i, i + BATCH_SIZE)
+				const { data, error } = await supabase
+					.from('enclosure_lineage')
+					.select('id, enclosure_id, source_enclosure_id, created_at')
+					.in('enclosure_id', batch)
+				if (error) throw error
+				allLineage.push(...(data as EnclosureLineage[]))
+			}
+			return allLineage
 		},
 		enabled: !!orgId
 	})
@@ -658,6 +680,7 @@ export function useOrgEnclosures(orgId: UUID, enclosureStatus: 'active' | 'inact
 
 				const { data, error } = (await enclosureQuery
 					.order('current_count', { ascending: true })
+					.order('id', { ascending: true })
 					.range(from, from + PAGE_SIZE - 1)) as { data: Enclosure[] | null; error: PostgrestError | null }
 
 				if (error) throw error
@@ -907,10 +930,21 @@ export function useOrgEnclosuresForSpecies(
 				enclosureQuery = enclosureQuery.eq('is_active', enclosureStatus === 'active')
 			}
 
-			const { data, error } = (await enclosureQuery) as { data: Enclosure[] | null; error: PostgrestError | null }
-			if (error) throw error
+			const PAGE_SIZE = 1000
+			const allEnclosures: Enclosure[] = []
+			let from = 0
+			while (true) {
+				const { data, error } = (await enclosureQuery
+					.order('current_count', { ascending: true })
+					.order('id', { ascending: true })
+					.range(from, from + PAGE_SIZE - 1)) as { data: Enclosure[] | null; error: PostgrestError | null }
+				if (error) throw error
+				allEnclosures.push(...(data ?? []))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
 
-			return data
+			return allEnclosures
 		},
 		enabled: !!orgId && !!speciesId
 	})

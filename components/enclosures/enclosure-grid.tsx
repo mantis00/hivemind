@@ -546,7 +546,7 @@ export default function EnclosureGrid() {
 				</div>
 
 				{/* Species Virtuoso Table */}
-				{isLoading ? (
+				{!isMounted || orgSpecies === undefined || filteredEnclosures === undefined ? (
 					<div className='rounded-lg border bg-card p-2 space-y-2'>
 						{[...Array(8)].map((_, i) => (
 							<div key={i} className='rounded-lg border bg-card p-4'>
@@ -700,6 +700,7 @@ export default function EnclosureGrid() {
 				trigger={null}
 				open={deleteConfirmOpen}
 				onOpenChange={setDeleteConfirmOpen}
+				className='sm:max-w-2xl'
 			>
 				<div className='flex flex-col gap-3'>
 					{enclosureStatusFilter === 'inactive' ? (
