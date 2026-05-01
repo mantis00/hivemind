@@ -340,7 +340,7 @@ export default function EnclosureGrid() {
 		<>
 			<div className='mx-auto items-center w-full'>
 				{!isMobile && <EnclosureCounts />}
-				<div className='mb-2 flex items-center flex-row gap-2 justify-end pt-2'>
+				<div className='mb-2 flex items-center flex-wrap gap-2 justify-end pt-2'>
 					{selectMode && (
 						<div className='flex items-center gap-2 mr-auto'>
 							{selectedIds.size === 0 ? (
@@ -450,7 +450,7 @@ export default function EnclosureGrid() {
 				</div>
 
 				{/* Sort and Search */}
-				<div className='w-full py-2 flex flex-row gap-3'>
+				<div className='w-full py-2 flex flex-row flex-wrap gap-3'>
 					{!isMobile && (
 						<Select
 							onValueChange={(value) => handleFilterChange(value as EnclosureStatusFilter)}
