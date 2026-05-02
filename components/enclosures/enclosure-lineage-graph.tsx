@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState } from 'react'
 import {
 	ReactFlow,
 	Background,
@@ -18,12 +18,14 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useOrgEnclosures, useOrgEnclosureLineage } from '@/lib/react-query/queries'
 import { UUID } from 'crypto'
-import { Loader2, Building2 } from 'lucide-react'
+import { Loader2, Building2, ChevronDown } from 'lucide-react'
 
 const NODE_W = 176
+const STACK_NODE_W = 216
 const NODE_H = 68
 const H_GAP = 48
 const V_GAP = 64
+const COLLAPSE_THRESHOLD = 5
 
 type EnclosureNode = {
 	kind: 'enclosure'
@@ -33,7 +35,6 @@ type EnclosureNode = {
 	location?: string
 	isFocus: boolean
 	isInactive: boolean
-	childrenCount?: number
 }
 
 type ExternalSourceNode = {
@@ -42,7 +43,20 @@ type ExternalSourceNode = {
 	sourceName: string
 }
 
-type GraphNode = EnclosureNode | ExternalSourceNode
+type GroupOverflowNode = {
+	kind: 'group'
+	id: string
+	count: number
+	names: string[]
+}
+
+type StackOverflowNode = {
+	kind: 'stack'
+	id: string
+	items: Array<{ id: string; name: string; location?: string; currentCount: number; isInactive: boolean }>
+}
+
+type GraphNode = EnclosureNode | ExternalSourceNode | GroupOverflowNode | StackOverflowNode
 
 function computeLayout(
 	nodeMap: Map<string, GraphNode>,
@@ -59,7 +73,7 @@ function computeLayout(
 		parents.get(target)!.push(source)
 	}
 
-	// BFS upward only — collect focus node and all ancestors
+	// BFS to collect all connected nodes from focusId (ancestors + descendants)
 	const visited = new Set<string>()
 	const queue: string[] = [focusId]
 	while (queue.length > 0) {
@@ -67,6 +81,7 @@ function computeLayout(
 		if (visited.has(id) || !nodeMap.has(id)) continue
 		visited.add(id)
 		for (const p of parents.get(id) ?? []) queue.push(p)
+		for (const c of children.get(id) ?? []) queue.push(c)
 	}
 
 	// Assign layers via longest-path BFS from roots so oldest ancestors are at top
@@ -95,13 +110,55 @@ function computeLayout(
 	}
 
 	// Sort within each layer: focus node centered, others by name
+	const nodeName = (n: GraphNode | undefined): string => {
+		if (!n) return ''
+		if (n.kind === 'external') return n.sourceName
+		if (n.kind === 'enclosure') return n.name
+		return ''
+	}
 	for (const [, ids] of byLayer) {
 		ids.sort((a, b) => {
 			if (a === focusId) return 0
 			if (b === focusId) return 0
-			const nameA = (n: GraphNode | undefined) => (n ? (n.kind === 'external' ? n.sourceName : n.name) : '')
-			return nameA(nodeMap.get(a)).localeCompare(nameA(nodeMap.get(b)))
+			return nodeName(nodeMap.get(a)).localeCompare(nodeName(nodeMap.get(b)))
 		})
+	}
+
+	// Collapse overflow: group or stack nodes for layers with more than COLLAPSE_THRESHOLD non-focus nodes
+	const focusLayer = layers.get(focusId) ?? 0
+	const collapsedToOverflow = new Map<string, string>()
+
+	for (const [layer, ids] of byLayer) {
+		const focusInLayer = ids.includes(focusId)
+		const nonFocusIds = ids.filter((id) => id !== focusId)
+
+		if (nonFocusIds.length <= COLLAPSE_THRESHOLD) continue
+
+		const visibleIds = nonFocusIds.slice(0, COLLAPSE_THRESHOLD - 1)
+		const overflowIds = nonFocusIds.slice(COLLAPSE_THRESHOLD - 1)
+		const overflowId = `overflow::${layer}`
+		const isDirectLayer = layer === focusLayer - 1 || layer === focusLayer + 1
+
+		const enclosureItems = overflowIds
+			.map((id) => nodeMap.get(id))
+			.filter((n): n is EnclosureNode => n?.kind === 'enclosure')
+			.map((n) => ({
+				id: n.id,
+				name: n.name,
+				location: n.location,
+				currentCount: n.currentCount,
+				isInactive: n.isInactive
+			}))
+
+		if (isDirectLayer && enclosureItems.length > 0) {
+			nodeMap.set(overflowId, { kind: 'stack', id: overflowId, items: enclosureItems })
+		} else {
+			const names = overflowIds.map((id) => nodeName(nodeMap.get(id))).filter(Boolean)
+			nodeMap.set(overflowId, { kind: 'group', id: overflowId, count: overflowIds.length, names })
+		}
+
+		for (const id of overflowIds) collapsedToOverflow.set(id, overflowId)
+		byLayer.set(layer, focusInLayer ? [focusId, ...visibleIds, overflowId] : [...visibleIds, overflowId])
 	}
 
 	// Compute canvas width for centering
@@ -124,27 +181,50 @@ function computeLayout(
 	}
 
 	const rfNodes: Node[] = []
-	for (const id of visited) {
-		const node = nodeMap.get(id)
-		if (!node) continue
-		const pos = positions.get(id) ?? { x: 0, y: 0 }
-		const sharedStyle = { width: NODE_W, padding: 0, border: 'none', background: 'transparent' }
-		if (node.kind === 'external') {
-			rfNodes.push({ id, position: pos, type: 'externalSourceNode', data: { label: node }, style: sharedStyle })
-		} else {
-			rfNodes.push({ id, position: pos, type: 'enclosureNode', data: { label: node }, style: sharedStyle })
+	for (const [, ids] of byLayer) {
+		for (const id of ids) {
+			const node = nodeMap.get(id)
+			if (!node) continue
+			const pos = positions.get(id) ?? { x: 0, y: 0 }
+			const sharedStyle = { width: NODE_W, padding: 0, border: 'none', background: 'transparent' }
+			if (node.kind === 'external') {
+				rfNodes.push({ id, position: pos, type: 'externalSourceNode', data: { label: node }, style: sharedStyle })
+			} else if (node.kind === 'group') {
+				rfNodes.push({ id, position: pos, type: 'groupNode', data: { label: node }, style: sharedStyle })
+			} else if (node.kind === 'stack') {
+				rfNodes.push({
+					id,
+					position: pos,
+					type: 'stackNode',
+					data: { label: node },
+					style: { width: STACK_NODE_W, padding: 0, border: 'none', background: 'transparent', overflow: 'visible' }
+				})
+			} else {
+				rfNodes.push({ id, position: pos, type: 'enclosureNode', data: { label: node }, style: sharedStyle })
+			}
 		}
 	}
 
-	const rfEdges: Edge[] = edges
-		.filter(({ source, target }) => visited.has(source) && visited.has(target))
-		.map(({ source, target }) => ({
-			id: `${source}->${target}`,
-			source,
-			target,
+	const renderedIds = new Set(rfNodes.map((n) => n.id))
+	const edgeKeySet = new Set<string>()
+	const rfEdges: Edge[] = []
+	for (const { source, target } of edges) {
+		if (!visited.has(source) || !visited.has(target)) continue
+		const actualSource = collapsedToOverflow.get(source) ?? source
+		const actualTarget = collapsedToOverflow.get(target) ?? target
+		if (actualSource === actualTarget) continue
+		if (!renderedIds.has(actualSource) || !renderedIds.has(actualTarget)) continue
+		const key = `${actualSource}->${actualTarget}`
+		if (edgeKeySet.has(key)) continue
+		edgeKeySet.add(key)
+		rfEdges.push({
+			id: key,
+			source: actualSource,
+			target: actualTarget,
 			markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
 			style: { strokeWidth: 1.5 }
-		}))
+		})
+	}
 
 	return { nodes: rfNodes, edges: rfEdges }
 }
@@ -182,9 +262,21 @@ function EnclosureNodeCard({ data }: { data: { label: EnclosureNode } }) {
 			>
 				{enc.location ?? 'Unknown location'} · {enc.currentCount} specimen
 			</span>
-			{enc.isFocus && (enc.childrenCount ?? 0) > 0 && (
-				<span className='text-xs'>
-					{enc.childrenCount} derived {enc.childrenCount === 1 ? 'enclosure' : 'enclosures'}
+			<Handle type='source' position={Position.Bottom} className='bg-border! border-border!' />
+		</div>
+	)
+}
+
+function GroupNodeCard({ data }: { data: { label: GroupOverflowNode } }) {
+	const { count, names } = data.label
+	return (
+		<div className='min-h-14 rounded-md border-2 border-dashed border-muted-foreground/40 bg-muted/30 text-center flex flex-col justify-center px-3 py-2 gap-1 text-sm relative'>
+			<Handle type='target' position={Position.Top} className='bg-border! border-border!' />
+			<span className='font-medium text-muted-foreground'>+{count} more</span>
+			{names.length > 0 && (
+				<span className='text-xs text-muted-foreground/70 truncate' title={names.join(', ')}>
+					{names.slice(0, 2).join(', ')}
+					{names.length > 2 ? ', …' : ''}
 				</span>
 			)}
 			<Handle type='source' position={Position.Bottom} className='bg-border! border-border!' />
@@ -192,7 +284,80 @@ function EnclosureNodeCard({ data }: { data: { label: EnclosureNode } }) {
 	)
 }
 
-const nodeTypes = { enclosureNode: EnclosureNodeCard, externalSourceNode: ExternalSourceNodeCard }
+function StackNodeCard({ data }: { data: { label: StackOverflowNode } }) {
+	const [index, setIndex] = useState(0)
+	const { items } = data.label
+	const current = items[index]
+
+	const prev = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		setIndex((index - 1 + items.length) % items.length)
+	}
+	const next = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		setIndex((index + 1) % items.length)
+	}
+
+	if (!current) return null
+
+	const btnClass =
+		'nodrag nopan flex items-center justify-center h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded cursor-pointer'
+
+	return (
+		<div className='relative' style={{ width: STACK_NODE_W }}>
+			{items.length > 2 && (
+				<div
+					className='absolute rounded-md border bg-card'
+					style={{ top: 8, left: 8, bottom: -8, right: -8, zIndex: 1 }}
+				/>
+			)}
+			{items.length > 1 && (
+				<div
+					className='absolute rounded-md border bg-card'
+					style={{ top: 4, left: 4, bottom: -4, right: -4, zIndex: 2 }}
+				/>
+			)}
+			<div
+				className={[
+					'relative rounded-md border text-left flex flex-col justify-center px-3 py-2 gap-0.5 text-sm',
+					current.isInactive
+						? 'bg-muted/50 text-muted-foreground border-border/50 opacity-70'
+						: 'bg-card text-card-foreground border-border'
+				].join(' ')}
+				style={{ zIndex: 3 }}
+			>
+				<Handle type='target' position={Position.Top} className='bg-border! border-border!' />
+				<div className='flex items-center justify-between gap-1'>
+					<span className='font-semibold leading-tight break-words flex-1'>{current.name}</span>
+					{items.length > 1 && (
+						<div className='nodrag nopan shrink-0 flex items-center gap-0.5' style={{ pointerEvents: 'all' }}>
+							<button onClick={prev} title='Previous' className={btnClass}>
+								<ChevronDown className='h-3 w-3 rotate-90' />
+							</button>
+							<span className='text-xs text-muted-foreground tabular-nums'>
+								{index + 1}/{items.length}
+							</span>
+							<button onClick={next} title='Next' className={btnClass}>
+								<ChevronDown className='h-3 w-3 -rotate-90' />
+							</button>
+						</div>
+					)}
+				</div>
+				<span className='text-xs text-muted-foreground truncate'>
+					{current.location ?? 'Unknown location'} · {current.currentCount} specimen
+				</span>
+				<Handle type='source' position={Position.Bottom} className='bg-border! border-border!' />
+			</div>
+		</div>
+	)
+}
+
+const nodeTypes = {
+	enclosureNode: EnclosureNodeCard,
+	externalSourceNode: ExternalSourceNodeCard,
+	groupNode: GroupNodeCard,
+	stackNode: StackNodeCard
+}
 
 function ReadyFlow({ nodes: initialNodes, edges: initialEdges }: { nodes: Node[]; edges: Edge[] }) {
 	const { fitView } = useReactFlow()
@@ -227,19 +392,8 @@ function ReadyFlow({ nodes: initialNodes, edges: initialEdges }: { nodes: Node[]
 }
 
 function LineageFlow({ enclosureId, orgId }: { enclosureId: string; orgId: UUID }) {
-	const { data: orgEnclosures, isLoading: encsLoading, error: encsError } = useOrgEnclosures(orgId, 'all')
-	const { data: lineageEdges, isLoading: edgesLoading, error: edgesError } = useOrgEnclosureLineage(orgId)
-
-	console.log('[LineageFlow]', {
-		enclosureId,
-		orgId,
-		encsLoading,
-		edgesLoading,
-		encsError: encsError ? JSON.stringify(encsError, Object.getOwnPropertyNames(encsError)) : null,
-		edgesError: edgesError ? JSON.stringify(edgesError, Object.getOwnPropertyNames(edgesError)) : null,
-		orgEnclosuresCount: orgEnclosures?.length,
-		lineageEdgesCount: lineageEdges?.length
-	})
+	const { data: orgEnclosures, isLoading: encsLoading } = useOrgEnclosures(orgId, 'all')
+	const { data: lineageEdges, isLoading: edgesLoading } = useOrgEnclosureLineage(orgId)
 
 	const { nodes, edges } = useMemo(() => {
 		if (!orgEnclosures || !lineageEdges) return { nodes: [], edges: [] }
@@ -280,22 +434,9 @@ function LineageFlow({ enclosureId, orgId }: { enclosureId: string; orgId: UUID 
 			}
 		}
 
-		if (!nodeMap.has(enclosureId)) {
-			console.log('[LineageFlow] focusId not in nodeMap', {
-				enclosureId,
-				nodeMapKeys: [...nodeMap.keys()].slice(0, 10)
-			})
-			return { nodes: [], edges: [] }
-		}
+		if (!nodeMap.has(enclosureId)) return { nodes: [], edges: [] }
 
-		// Count direct children of the focus enclosure and store on its node
-		const childrenCount = edgeList.filter((e) => e.source === enclosureId).length
-		const focusNode = nodeMap.get(enclosureId) as EnclosureNode
-		nodeMap.set(enclosureId, { ...focusNode, childrenCount })
-
-		const result = computeLayout(nodeMap, edgeList, enclosureId)
-		console.log('[LineageFlow] computed', { nodesCount: result.nodes.length, edgesCount: result.edges.length })
-		return result
+		return computeLayout(nodeMap, edgeList, enclosureId)
 	}, [orgEnclosures, lineageEdges, enclosureId])
 
 	if (encsLoading || edgesLoading) {
@@ -306,27 +447,10 @@ function LineageFlow({ enclosureId, orgId }: { enclosureId: string; orgId: UUID 
 		)
 	}
 
-	if (encsError || edgesError) {
-		return (
-			<div className='flex items-center justify-center h-full text-sm text-destructive'>
-				<pre className='whitespace-pre-wrap max-w-md'>
-					{encsError ? `enclosures error: ${JSON.stringify(encsError, null, 2)}` : 'enclosures: OK'}
-					{'\n'}
-					{edgesError ? `lineage error: ${JSON.stringify(edgesError, null, 2)}` : 'lineage: OK'}
-					{'\n'}
-					orgId: {orgId}
-					{'\n'}
-					enclosureId: {enclosureId}
-				</pre>
-			</div>
-		)
-	}
-
 	if (nodes.length === 0) {
 		return (
 			<div className='flex items-center justify-center h-full text-sm text-muted-foreground'>
-				No lineage data available. (enc={orgEnclosures?.length}, edges={lineageEdges?.length}, focusInMap=
-				{orgEnclosures?.some((e) => e.id === enclosureId) ? 'yes' : 'no'})
+				No lineage data available.
 			</div>
 		)
 	}

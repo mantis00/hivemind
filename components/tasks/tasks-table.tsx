@@ -189,7 +189,8 @@ export function TasksDataTable({
 
 	const todayCounts = React.useMemo(() => {
 		if (isRangeMode || globalSearch) return null
-		const source = dayTasks ?? []
+		if (dayTasks === undefined) return null
+		const source = dayTasks
 		const todayDate = getDateStr(0)
 		const dueToday = source.filter(
 			(t) => t.due_date && toLocalDate(t.due_date) === todayDate && t.status !== 'completed'
@@ -199,7 +200,12 @@ export function TasksDataTable({
 	}, [dayTasks, isRangeMode, globalSearch])
 
 	const activeLoading =
-		pendingGlobalSearch || (isRangeMode ? rangeFetching : globalSearch ? tasksFetching : dayFetching)
+		pendingGlobalSearch ||
+		(isRangeMode
+			? rangeFetching || rangeTasks === undefined
+			: globalSearch
+				? tasksFetching || enclosureTasks === undefined
+				: dayFetching || dayTasks === undefined)
 
 	const handleView = React.useCallback(
 		(taskId: UUID) => {
@@ -735,7 +741,7 @@ export function TasksDataTable({
 				)}
 			</div>
 
-			<div className='text-sm text-muted-foreground'>{rows.length} tasks</div>
+			{!activeLoading && <div className='text-sm text-muted-foreground'>{rows.length} tasks</div>}
 		</div>
 	)
 }

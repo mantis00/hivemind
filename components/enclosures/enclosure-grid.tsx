@@ -39,6 +39,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '
 import { Skeleton } from '../ui/skeleton'
 import { UUID } from 'crypto'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import ManageSpeciesButton from './manage-species-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import {
@@ -151,6 +152,7 @@ export default function EnclosureGrid() {
 	const { data: orgEnclosures } = useOrgEnclosures(orgId as UUID)
 	const batchActivateMutation = useBatchActivateEnclosures()
 	const isMobile = useIsMobile()
+	const collapseButtons = !useMediaQuery('(min-width: 1024px)')
 
 	const handleSelectChange = useCallback((enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
 		setSelectedIds((prev) => {
@@ -394,7 +396,7 @@ export default function EnclosureGrid() {
 							)}
 						</div>
 					)}
-					{isMobile ? (
+					{collapseButtons ? (
 						<>
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
@@ -451,7 +453,7 @@ export default function EnclosureGrid() {
 
 				{/* Sort and Search */}
 				<div className='w-full py-2 flex flex-row flex-wrap gap-3'>
-					{!isMobile && (
+					{!collapseButtons && (
 						<Select
 							onValueChange={(value) => handleFilterChange(value as EnclosureStatusFilter)}
 							value={enclosureStatusFilter}
