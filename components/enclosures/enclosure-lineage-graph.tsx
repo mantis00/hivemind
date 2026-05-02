@@ -127,7 +127,6 @@ function computeLayout(
 
 	// Collapse overflow: layers with more than COLLAPSE_THRESHOLD non-focus nodes get
 	// a labeled stack for direct parents/children and a group for others.
-	const focusLayer = layers.get(focusId) ?? 0
 	const collapsedToOverflow = new Map<string, string>()
 
 	// Direct parents/children of the focus node by actual edge connectivity
@@ -159,7 +158,13 @@ function computeLayout(
 			const enclosureItems = directOverflow
 				.map((id) => nodeMap.get(id))
 				.filter((n): n is EnclosureNode => n?.kind === 'enclosure')
-				.map((n) => ({ id: n.id, name: n.name, location: n.location, currentCount: n.currentCount, isInactive: n.isInactive }))
+				.map((n) => ({
+					id: n.id,
+					name: n.name,
+					location: n.location,
+					currentCount: n.currentCount,
+					isInactive: n.isInactive
+				}))
 			if (enclosureItems.length > 0) {
 				nodeMap.set(overflowId, { kind: 'stack', id: overflowId, relation, items: enclosureItems })
 				for (const id of directOverflow) collapsedToOverflow.set(id, overflowId)
@@ -181,19 +186,23 @@ function computeLayout(
 	// Compute canvas width for centering
 	let maxLayerWidth = 0
 	for (const [, ids] of byLayer) {
-		const w = ids.reduce((sum, id) => {
-			const node = nodeMap.get(id)
-			return sum + (node?.kind === 'stack' ? STACK_NODE_W : NODE_W)
-		}, 0) + (ids.length - 1) * H_GAP
+		const w =
+			ids.reduce((sum, id) => {
+				const node = nodeMap.get(id)
+				return sum + (node?.kind === 'stack' ? STACK_NODE_W : NODE_W)
+			}, 0) +
+			(ids.length - 1) * H_GAP
 		if (w > maxLayerWidth) maxLayerWidth = w
 	}
 
 	const positions = new Map<string, { x: number; y: number }>()
 	for (const [layer, ids] of byLayer) {
-		const layerW = ids.reduce((sum, id) => {
-			const node = nodeMap.get(id)
-			return sum + (node?.kind === 'stack' ? STACK_NODE_W : NODE_W)
-		}, 0) + (ids.length - 1) * H_GAP
+		const layerW =
+			ids.reduce((sum, id) => {
+				const node = nodeMap.get(id)
+				return sum + (node?.kind === 'stack' ? STACK_NODE_W : NODE_W)
+			}, 0) +
+			(ids.length - 1) * H_GAP
 		const offsetX = (maxLayerWidth - layerW) / 2
 		let curX = offsetX
 		for (const id of ids) {
@@ -351,7 +360,9 @@ function StackNodeCard({ data }: { data: { label: StackOverflowNode } }) {
 				style={{ zIndex: 3 }}
 			>
 				<Handle type='target' position={Position.Top} className='bg-border! border-border!' />
-				<span className={`text-xs font-semibold uppercase tracking-wide mb-0.5 ${relation === 'parent' ? 'text-blue-500/80' : 'text-emerald-500/80'}`}>
+				<span
+					className={`text-xs font-semibold uppercase tracking-wide mb-0.5 ${relation === 'parent' ? 'text-blue-500/80' : 'text-emerald-500/80'}`}
+				>
 					{relation === 'parent' ? 'Parents' : 'Children'}
 				</span>
 				<div className='flex items-center justify-between gap-1'>
