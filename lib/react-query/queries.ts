@@ -10,11 +10,10 @@ import {
 	compareNullableIsoDatesAsc,
 	getCompletionStateLabels,
 	getDashboardTaskEnclosure,
-	getServerDayBounds,
 	getTaskTitle,
 	isHighPriority,
 	isValidDate
-} from '@/components/features/dashboard/dashboard-helpers'
+} from '@/components/dashboard/dashboard-helpers'
 
 export type Org = {
 	org_id: UUID
@@ -26,6 +25,7 @@ export type UserOrg = {
 	org_id: UUID
 	access_lvl: number
 	orgs: Org
+	is_superadmin_view?: boolean
 }
 
 export type OrgMember = {
@@ -76,6 +76,7 @@ export type Enclosure = {
 	Species: Species
 	institutional_specimen_id: string
 	institutional_external_source: string
+	life_stage: 'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'
 }
 
 export type Species = {
@@ -271,6 +272,7 @@ export type UpcomingScheduleItem = {
 	taskTitle: string
 	dueAt: string | null
 	priority: string | null
+	timeWindow: string | null
 }
 
 export type RecentActivityItem = {
@@ -278,7 +280,9 @@ export type RecentActivityItem = {
 	type: 'task_completed' | 'task_created' | 'note_added' | 'enclosure_created' | 'invite_sent'
 	label: string
 	occurredAt: string
+	dueAt: string | null
 	href: string
+	timeWindow: string | null
 }
 
 export type DashboardWarning = {
@@ -288,8 +292,8 @@ export type DashboardWarning = {
 
 export type DashboardData = {
 	generatedAt: string
-	timeZone: string
 	kpis: DashboardKpis
+	completedTodayCount: number
 	atRiskEnclosures: AtRiskEnclosureSummary[]
 	upcomingSchedule: UpcomingScheduleItem[]
 	recentActivity: RecentActivityItem[]
@@ -307,10 +311,28 @@ type DashboardTaskRow = {
 	name: string | null
 	description: string | null
 	due_date: string | null
+	time_window?: string | null
 	priority: string | null
 	status: string | null
 	completed_time: string | null
 	enclosures: { id: UUID; name: string | null } | { id: UUID; name: string | null }[] | null
+}
+
+function getLocalDayStart(reference: Date = new Date(), dayOffset = 0) {
+	return new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() + dayOffset, 0, 0, 0, 0)
+}
+
+function getDashboardStatusOrder(status: string | null) {
+	if (status === 'late') return 0
+	if (status === 'completed') return 2
+	return 1 // pending/null/unknown
+}
+
+function getDashboardTimeWindowOrder(timeWindow: string | null | undefined) {
+	if (timeWindow === 'Morning') return 0
+	if (timeWindow === 'Any') return 1
+	if (timeWindow === 'Afternoon') return 2
+	return 1
 }
 
 export type PushSubscription = {
@@ -353,6 +375,38 @@ export type Feedback = {
 	orgs?: { name?: string }
 }
 
+export type TimelineRecordType = 'task' | 'note' | 'count_change' | 'flagged'
+
+export type ActivityLogEntry = {
+	id: string
+	created_at: string
+	org_id: string | null
+	actor_id: string | null
+	actor_name: string | null
+	actor_email: string | null
+	action: string
+	entity_type: string
+	entity_id: string | null
+	entity_name: string | null
+	summary: string | null
+	changed_fields: Record<string, unknown> | null
+}
+
+export type EnclosureTimelineRow = {
+	id: string
+	event_date: string
+	record_type: TimelineRecordType
+	enclosure_id: string | null
+	enclosure_name: string | null
+	species_name: string | null
+	summary: string | null
+	details: string | null
+	user_name: string | null
+	template_type: string | null
+	priority: string | null
+	time_window: string | null
+}
+
 export function useEnclosureLineage(enclosureId: UUID) {
 	return useQuery({
 		queryKey: ['enclosureLineage', enclosureId],
@@ -389,18 +443,54 @@ export function useOrgEnclosureLineage(orgId: UUID) {
 	})
 }
 
+export type SpeciesCareInstructions = {
+	id: UUID
+	species_id: UUID
+	org_species_id: UUID
+	file_name: string
+	file_url: string
+	created_at: string
+	is_hidden_by_org: boolean
+}
+
 export function useUserOrgs(userId: string) {
+	const { data: profile } = useCurrentUserProfile()
+	const isSuperadmin = profile?.is_superadmin === true
+
 	return useQuery({
-		queryKey: ['orgs'],
+		queryKey: ['orgs', isSuperadmin],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase
+
+			// Fetch the user's actual memberships
+			const { data: memberships, error: membershipError } = (await supabase
 				.from('user_org_role')
 				.select('org_id, access_lvl, orgs(name, org_id, created_at)')
 				.eq('user_id', userId)) as { data: UserOrg[] | null; error: PostgrestError | null }
 
-			if (error) throw error
-			return data
+			if (membershipError) throw membershipError
+
+			if (!isSuperadmin) return memberships
+
+			// Superadmin: fetch ALL orgs and merge with actual memberships
+			const { data: allOrgs, error: allOrgsError } = (await supabase
+				.from('orgs')
+				.select('org_id, name, created_at')) as { data: Org[] | null; error: PostgrestError | null }
+
+			if (allOrgsError) throw allOrgsError
+
+			const membershipMap = new Map((memberships ?? []).map((m) => [m.org_id, m]))
+
+			return (allOrgs ?? []).map((org) => {
+				const existing = membershipMap.get(org.org_id)
+				if (existing) return existing
+				return {
+					org_id: org.org_id,
+					access_lvl: 0,
+					orgs: org,
+					is_superadmin_view: true
+				} as UserOrg
+			})
 		},
 		enabled: !!userId
 	})
@@ -426,8 +516,10 @@ export function useOrgMembers(orgId: UUID) {
 
 export function useIsOwnerOrSuperadmin(orgId: UUID | undefined): boolean {
 	const { data: user } = useCurrentClientUser()
+	const { data: profile } = useCurrentUserProfile()
 	const { data: orgMembers } = useOrgMembers(orgId as UUID)
 	if (!user || !orgId) return false
+	if (profile?.is_superadmin) return true
 	const accessLevel = orgMembers?.find((m) => m.user_id === user.id)?.access_lvl ?? 0
 	return accessLevel >= 2
 }
@@ -496,6 +588,12 @@ export function useVerifyOrgMembership(userId: string, orgId: UUID) {
 		queryKey: ['verifyOrgMembership', userId, orgId],
 		queryFn: async () => {
 			const supabase = createClient()
+
+			// Check if user is a superadmin (superadmins can access any org)
+			const { data: profile } = await supabase.from('profiles').select('is_superadmin').eq('id', userId).maybeSingle()
+
+			if (profile?.is_superadmin) return true
+
 			const { data, error } = (await supabase
 				.from('user_org_role')
 				.select('user_id')
@@ -800,7 +898,7 @@ export function useOrgEnclosuresForSpecies(
 			let enclosureQuery = supabase
 				.from('enclosures')
 				.select(
-					'id, org_id, species_id, is_active, name, location, current_count, printed, locations(name, description), created_at, institutional_specimen_id, institutional_external_source'
+					'id, org_id, species_id, is_active, name, location, current_count, printed, locations(name, description), created_at, institutional_specimen_id, institutional_external_source, life_stage'
 				)
 				.eq('species_id', speciesId)
 				.eq('org_id', orgId)
@@ -941,20 +1039,19 @@ export function useTasksForEnclosuresInRange(enclosureIds: UUID[], startDate: st
 				chunks.map(async (chunk) => {
 					const tasks: Task[] = []
 					let from = 0
+					// Convert local YYYY-MM-DD strings to UTC ISO bounds so the query
+					// respects the client's timezone. new Date(y, m-1, d) uses local midnight.
+					const [sy, sm, sd] = startDate.split('-').map(Number)
+					const startISO = new Date(sy, sm - 1, sd, 0, 0, 0, 0).toISOString()
+					const [ey, em, ed] = endDate.split('-').map(Number)
+					const endISO = new Date(ey, em - 1, ed, 23, 59, 59, 999).toISOString()
 					while (true) {
-						// Compute the exclusive upper bound (day after endDate) so that all
-						// timestamps on the end date are included regardless of time component.
-						const endDateExclusive = (() => {
-							const d = new Date(endDate + 'T00:00:00Z')
-							d.setUTCDate(d.getUTCDate() + 1)
-							return d.toISOString().slice(0, 10)
-						})()
 						const { data, error } = (await supabase
 							.from('tasks')
 							.select('*, task_templates(type, description)')
 							.in('enclosure_id', chunk)
-							.gte('due_date', startDate)
-							.lt('due_date', endDateExclusive)
+							.gte('due_date', startISO)
+							.lte('due_date', endISO)
 							.order('due_date', { ascending: true })
 							.range(from, from + PAGE_SIZE - 1)) as { data: Task[] | null; error: PostgrestError | null }
 
@@ -1017,6 +1114,40 @@ export function useAllSpecies() {
 			if (error) throw error
 			return data
 		}
+	})
+}
+
+export function useSpeciesCareInstructions(speciesId: UUID) {
+	return useQuery({
+		queryKey: ['speciesCareInstructions', speciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('species_care_instructions')
+				.select('*')
+				.eq('species_id', speciesId)
+				.order('created_at', { ascending: true })
+			if (error) throw error
+			return data as SpeciesCareInstructions[]
+		},
+		enabled: !!speciesId
+	})
+}
+
+export function useOrgSpeciesCareInstructions(orgSpeciesId: UUID) {
+	return useQuery({
+		queryKey: ['orgSpeciesCareInstructions', orgSpeciesId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const { data, error } = await supabase
+				.from('species_care_instructions')
+				.select('*')
+				.eq('org_species_id', orgSpeciesId)
+				.order('created_at', { ascending: true })
+			if (error) throw error
+			return data as SpeciesCareInstructions[]
+		},
+		enabled: !!orgSpeciesId
 	})
 }
 
@@ -1119,7 +1250,7 @@ export function useTaskById(taskId: UUID) {
 		queryKey: ['taskById', taskId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { data, error } = (await supabase.from('tasks').select('*').eq('id', taskId).single()) as {
+			const { data, error } = (await supabase.from('tasks').select('*').eq('id', taskId).maybeSingle()) as {
 				data: Task | null
 				error: PostgrestError | null
 			}
@@ -1275,13 +1406,14 @@ export function useDashboardAtRiskEnclosures(orgId: UUID | undefined) {
 				.eq('enclosures.org_id', orgId as UUID)
 				.eq('enclosures.is_active', true)
 				.is('completed_time', null)
-				.or('status.is.null,status.eq.pending,status.eq.late')) as {
+				.or('status.is.null,status.eq.pending,status.eq.late,status.eq.in_progress')) as {
 				data: DashboardTaskRow[] | null
 				error: PostgrestError | null
 			}
 			if (error) throw error
 
 			const now = new Date()
+			const todayStart = getLocalDayStart(now, 0)
 			const byEnclosure = new Map<string, AtRiskEnclosureSummary>()
 			const attentionTaskIds = new Set<string>()
 
@@ -1294,7 +1426,7 @@ export function useDashboardAtRiskEnclosures(orgId: UUID | undefined) {
 
 				const hasHighPriority = isHighPriority(task.priority)
 				const hasValidDueDate = isValidDate(task.due_date)
-				const isOverdue = hasValidDueDate ? new Date(task.due_date!).getTime() < now.getTime() : false
+				const isOverdue = hasValidDueDate ? new Date(task.due_date!).getTime() < todayStart.getTime() : false
 
 				if (!isOverdue && !hasHighPriority) {
 					continue
@@ -1349,16 +1481,18 @@ export function useDashboardTasksDueToday(orgId: UUID | undefined) {
 		queryKey: ['dashboard', 'tasksDueToday', orgId],
 		queryFn: async (): Promise<UpcomingScheduleItem[]> => {
 			const supabase = createClient()
-			const { start, end } = getServerDayBounds()
+			const now = new Date()
+			const start = getLocalDayStart(now, 0)
+			const end = getLocalDayStart(now, 1)
 			const { data, error } = (await supabase
 				.from('tasks')
 				.select(
-					'id, enclosure_id, name, description, due_date, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
+					'id, enclosure_id, name, description, due_date, time_window, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
 				)
 				.eq('enclosures.org_id', orgId as UUID)
 				.eq('enclosures.is_active', true)
 				.is('completed_time', null)
-				.or('status.is.null,status.eq.pending,status.eq.late')
+				.or('status.is.null,status.eq.pending,status.eq.late,status.eq.in_progress')
 				.gte('due_date', start.toISOString())
 				.lt('due_date', end.toISOString())
 				.order('due_date', { ascending: true })) as { data: DashboardTaskRow[] | null; error: PostgrestError | null }
@@ -1366,12 +1500,21 @@ export function useDashboardTasksDueToday(orgId: UUID | undefined) {
 
 			return (data ?? [])
 				.sort((a, b) => {
-					const aPrioritySort = isHighPriority(a.priority) ? 0 : 1
-					const bPrioritySort = isHighPriority(b.priority) ? 0 : 1
-					if (aPrioritySort !== bPrioritySort) {
-						return aPrioritySort - bPrioritySort
+					const aStatusSort = getDashboardStatusOrder(a.status)
+					const bStatusSort = getDashboardStatusOrder(b.status)
+					if (aStatusSort !== bStatusSort) {
+						return aStatusSort - bStatusSort
 					}
-					return compareNullableIsoDatesAsc(a.due_date, b.due_date)
+					const dueDateSort = compareNullableIsoDatesAsc(a.due_date, b.due_date)
+					if (dueDateSort !== 0) {
+						return dueDateSort
+					}
+					const aTimeWindowSort = getDashboardTimeWindowOrder(a.time_window)
+					const bTimeWindowSort = getDashboardTimeWindowOrder(b.time_window)
+					if (aTimeWindowSort !== bTimeWindowSort) {
+						return aTimeWindowSort - bTimeWindowSort
+					}
+					return 0
 				})
 				.map((task) => {
 					const enclosure = getDashboardTaskEnclosure(task)
@@ -1382,7 +1525,8 @@ export function useDashboardTasksDueToday(orgId: UUID | undefined) {
 						enclosureName: enclosure?.name ?? enclosureId,
 						taskTitle: getTaskTitle(task),
 						dueAt: task.due_date,
-						priority: typeof task.priority === 'string' ? task.priority : null
+						priority: typeof task.priority === 'string' ? task.priority : null,
+						timeWindow: typeof task.time_window === 'string' ? task.time_window : null
 					}
 				})
 		},
@@ -1395,9 +1539,9 @@ export function useDashboardUpcomingTaskCount(orgId: UUID | undefined) {
 		queryKey: ['dashboard', 'upcomingTaskCount', orgId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { end: tomorrowStart } = getServerDayBounds()
-			const sevenDaysOut = new Date(tomorrowStart)
-			sevenDaysOut.setUTCDate(sevenDaysOut.getUTCDate() + 7)
+			const now = new Date()
+			const tomorrowStart = getLocalDayStart(now, 1)
+			const sevenDaysOut = getLocalDayStart(now, 8)
 
 			const { count, error } = await supabase
 				.from('tasks')
@@ -1405,9 +1549,33 @@ export function useDashboardUpcomingTaskCount(orgId: UUID | undefined) {
 				.eq('enclosures.org_id', orgId as UUID)
 				.eq('enclosures.is_active', true)
 				.is('completed_time', null)
-				.or('status.is.null,status.eq.pending,status.eq.late')
+				.or('status.is.null,status.eq.pending,status.eq.late,status.eq.in_progress')
 				.gte('due_date', tomorrowStart.toISOString())
 				.lt('due_date', sevenDaysOut.toISOString())
+			if (error) throw error
+			return count ?? 0
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useDashboardCompletedTodayCount(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'completedTodayCount', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const now = new Date()
+			const start = getLocalDayStart(now, 0)
+			const end = getLocalDayStart(now, 1)
+
+			const { count, error } = await supabase
+				.from('tasks')
+				.select('id, enclosures!inner(org_id, is_active)', { count: 'exact', head: true })
+				.eq('enclosures.org_id', orgId as UUID)
+				.eq('enclosures.is_active', true)
+				.eq('status', 'completed')
+				.gte('completed_time', start.toISOString())
+				.lt('completed_time', end.toISOString())
 			if (error) throw error
 			return count ?? 0
 		},
@@ -1420,11 +1588,13 @@ export function useDashboardRecentActivity(orgId: UUID | undefined) {
 		queryKey: ['dashboard', 'recentActivity', orgId],
 		queryFn: async (): Promise<RecentActivityItem[]> => {
 			const supabase = createClient()
-			const { start, end } = getServerDayBounds()
+			const now = new Date()
+			const start = getLocalDayStart(now, 0)
+			const end = getLocalDayStart(now, 1)
 			const { data, error } = (await supabase
 				.from('tasks')
 				.select(
-					'id, enclosure_id, name, description, due_date, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
+					'id, enclosure_id, name, description, due_date, time_window, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
 				)
 				.eq('enclosures.org_id', orgId as UUID)
 				.eq('enclosures.is_active', true)
@@ -1459,7 +1629,9 @@ export function useDashboardRecentActivity(orgId: UUID | undefined) {
 					type: 'task_completed',
 					label: `${getTaskTitle(task)} completed in ${enclosureName}${completionStateSuffix}`,
 					occurredAt: task.completed_time!,
-					href
+					dueAt: isValidDate(task.due_date) ? task.due_date : null,
+					href,
+					timeWindow: typeof task.time_window === 'string' ? task.time_window : null
 				})
 			}
 
@@ -1557,5 +1729,139 @@ export function useAllFeedback() {
 			if (error) throw error
 			return data || []
 		}
+	})
+}
+
+export function useOrgTaskHistory(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['orgTaskHistory', orgId],
+		queryFn: async (): Promise<EnclosureTimelineRow[]> => {
+			const supabase = createClient()
+			const PAGE_SIZE = 1000
+			const all: EnclosureTimelineRow[] = []
+			let from = 0
+			while (true) {
+				const { data, error } = await supabase
+					.from('enclosure_timeline')
+					.select('*')
+					.eq('org_id', orgId as UUID)
+					.order('event_date', { ascending: false })
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				all.push(...((data ?? []) as EnclosureTimelineRow[]))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+			return all.map((row) =>
+				(row.record_type as string) === 'flagged_note' || (row.record_type === 'note' && row.details === 'FLAGGED')
+					? { ...row, record_type: 'flagged' as TimelineRecordType }
+					: row
+			)
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useOrgTaskHistoryInRange(orgId: UUID | undefined, startDate: string, endDate: string) {
+	return useQuery({
+		queryKey: ['orgTaskHistoryInRange', orgId, startDate, endDate],
+		queryFn: async (): Promise<EnclosureTimelineRow[]> => {
+			const supabase = createClient()
+			const PAGE_SIZE = 1000
+
+			// Convert local YYYY-MM-DD strings to UTC ISO bounds so the query
+			// respects the client's timezone. new Date(y, m-1, d) uses local midnight.
+			const [sy, sm, sd] = startDate.split('-').map(Number)
+			const startISO = new Date(sy, sm - 1, sd, 0, 0, 0, 0).toISOString()
+			const [ey, em, ed] = endDate.split('-').map(Number)
+			const endISO = new Date(ey, em - 1, ed, 23, 59, 59, 999).toISOString()
+
+			const all: EnclosureTimelineRow[] = []
+			let from = 0
+			while (true) {
+				const { data, error } = await supabase
+					.from('enclosure_timeline')
+					.select('*')
+					.eq('org_id', orgId as UUID)
+					.gte('event_date', startISO)
+					.lte('event_date', endISO)
+					.order('event_date', { ascending: false })
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				all.push(...((data ?? []) as EnclosureTimelineRow[]))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+			return all.map((row) =>
+				(row.record_type as string) === 'flagged_note' || (row.record_type === 'note' && row.details === 'FLAGGED')
+					? { ...row, record_type: 'flagged' as TimelineRecordType }
+					: row
+			)
+		},
+		enabled: !!orgId && !!startDate && !!endDate
+	})
+}
+
+// ============================================================================
+// Org User Actions via activity_log_view
+// ============================================================================
+
+export function useOrgUserActions(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['orgUserActions', orgId],
+		queryFn: async (): Promise<ActivityLogEntry[]> => {
+			const supabase = createClient()
+			const PAGE_SIZE = 1000
+			const all: ActivityLogEntry[] = []
+			let from = 0
+			while (true) {
+				const { data, error } = await supabase
+					.from('activity_log_view')
+					.select('*')
+					.eq('org_id', orgId as UUID)
+					.order('created_at', { ascending: false })
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				all.push(...((data ?? []) as ActivityLogEntry[]))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+			return all
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useOrgUserActionsInRange(orgId: UUID | undefined, startDate: string, endDate: string) {
+	return useQuery({
+		queryKey: ['orgUserActionsInRange', orgId, startDate, endDate],
+		queryFn: async (): Promise<ActivityLogEntry[]> => {
+			const supabase = createClient()
+			const PAGE_SIZE = 1000
+
+			const [sy, sm, sd] = startDate.split('-').map(Number)
+			const startISO = new Date(sy, sm - 1, sd, 0, 0, 0, 0).toISOString()
+			const [ey, em, ed] = endDate.split('-').map(Number)
+			const endISO = new Date(ey, em - 1, ed, 23, 59, 59, 999).toISOString()
+
+			const all: ActivityLogEntry[] = []
+			let from = 0
+			while (true) {
+				const { data, error } = await supabase
+					.from('activity_log_view')
+					.select('*')
+					.eq('org_id', orgId as UUID)
+					.gte('created_at', startISO)
+					.lte('created_at', endISO)
+					.order('created_at', { ascending: false })
+					.range(from, from + PAGE_SIZE - 1)
+				if (error) throw error
+				all.push(...((data ?? []) as ActivityLogEntry[]))
+				if ((data?.length ?? 0) < PAGE_SIZE) break
+				from += PAGE_SIZE
+			}
+			return all
+		},
+		enabled: !!orgId && !!startDate && !!endDate
 	})
 }

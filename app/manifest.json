@@ -6,7 +6,7 @@
 	"start_url": "/",
 	"scope": "/",
 	"orientation": "natural",
-	"id": "",
+	"id": "/",
 	"lang": "en",
 	"dir": "auto",
 	"icons": [
@@ -57,7 +57,10 @@
 	"related_applications": [],
 	"display_override": [],
 	"share_target": null,
-	"launch_handler": null,
+	"launch_handler": {
+		"client_mode": "navigate-existing"
+	},
+	"handle_links": "preferred",
 	"shortcuts": [],
 	"iarc_rating_id": ""
 }

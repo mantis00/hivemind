@@ -1,0 +1,49 @@
+import { type EnclosureTimelineRow, type ActivityLogEntry } from '@/lib/react-query/queries'
+import { format } from 'date-fns'
+
+export function exportToCsv(data: EnclosureTimelineRow[]) {
+	const headers = ['Date', 'Type', 'Enclosure', 'Species', 'Summary', 'Details', 'User', 'Priority', 'Time Window']
+	const rows = data.map((row) => [
+		row.event_date,
+		row.record_type,
+		row.enclosure_name ?? '',
+		row.species_name ?? '',
+		row.summary ?? '',
+		row.details ?? '',
+		row.user_name ?? '',
+		row.priority ?? '',
+		row.time_window ?? ''
+	])
+	const csvContent = [headers, ...rows]
+		.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+		.join('\n')
+	const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+	const url = URL.createObjectURL(blob)
+	const link = document.createElement('a')
+	link.href = url
+	link.download = `hivemind-history-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`
+	link.click()
+	URL.revokeObjectURL(url)
+}
+
+export function exportActivityLogToCsv(data: ActivityLogEntry[]) {
+	const headers = ['Date', 'Action', 'Entity', 'Name', 'Summary', 'User']
+	const rows = data.map((row) => [
+		format(new Date(row.created_at), 'yyyy-MM-dd HH:mm:ss'),
+		row.action,
+		row.entity_type,
+		row.entity_name ?? '',
+		row.summary ?? '',
+		row.actor_name ?? ''
+	])
+	const csvContent = [headers, ...rows]
+		.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+		.join('\n')
+	const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+	const url = URL.createObjectURL(blob)
+	const link = document.createElement('a')
+	link.href = url
+	link.download = `hivemind-activity-log-${format(new Date(), 'yyyy-MM-dd')}.csv`
+	link.click()
+	URL.revokeObjectURL(url)
+}

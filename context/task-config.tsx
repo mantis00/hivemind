@@ -17,6 +17,28 @@ export const priorityConfig: Record<string, { color: string }> = {
 	high: { color: 'bg-red-100 text-red-800' }
 }
 
+export const timeWindowConfig: Record<string, { label: string; color: string; shortLabel: string }> = {
+	Morning: {
+		label: 'Morning',
+		shortLabel: 'AM',
+		color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+	},
+	Afternoon: {
+		label: 'Afternoon',
+		shortLabel: 'PM',
+		color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+	},
+	Any: { label: 'Any Time', shortLabel: 'Any', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' }
+}
+
+/** Returns sort order for time_window: Morning=0, Any=1, Afternoon=2, null=3 */
+export function getTimeWindowOrder(tw: string | null | undefined): number {
+	if (tw === 'Morning') return 0
+	if (tw === 'Any') return 1
+	if (tw === 'Afternoon') return 2
+	return 1 // treat null/unknown as "Any"
+}
+
 export const statusConfig: Record<string, { label: string; color: string }> = {
 	pending: { label: 'Pending', color: 'bg-gray-100 text-gray-800' },
 	late: { label: 'Late', color: 'bg-orange-100 text-orange-800' },

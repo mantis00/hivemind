@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { LoaderCircle, Edit2Icon, X, PlusIcon } from 'lucide-react'
 import { useState, useMemo, useRef } from 'react'
 import { useUpdateEnclosure, useCreateLocation } from '@/lib/react-query/mutations'
@@ -40,6 +41,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 	const [count, setCount] = useState<number | undefined>(enclosure?.current_count)
 	const [isActive, setIsActive] = useState(enclosure?.is_active ?? true)
 	const [specimenTrackingId, setSpecimenTrackingId] = useState(enclosure?.institutional_specimen_id ?? '')
+	const [lifeStage, setLifeStage] = useState<'egg' | 'larva' | 'pupa' | 'nymph' | 'adult'>(enclosure?.life_stage ?? '')
 	const [sourceType, setSourceType] = useState<'institution' | 'enclosure'>('institution')
 	const [externalSource, setExternalSource] = useState('')
 	const [sourceEnclosureQuery, setSourceEnclosureQuery] = useState('')
@@ -91,18 +93,27 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			.map(({ enc }) => enc)
 	}, [sourceEnclosureOptions, sourceEnclosureQuery])
 
-	const filteredEnclosures = useMemo(() => {
+	const specimenIdOptions = useMemo(() => {
 		const speciesFiltered = (orgEnclosures ?? []).filter(
 			(encl) => encl.institutional_specimen_id && encl.species_id === spec.id && encl.id !== enclosure.id
 		)
-		if (!specimenTrackingId.trim()) return speciesFiltered
+		const map = new Map<string, number>()
+		for (const encl of speciesFiltered) {
+			const id = encl.institutional_specimen_id!
+			map.set(id, (map.get(id) ?? 0) + 1)
+		}
+		return Array.from(map.entries()).map(([id, count]) => ({ id, count }))
+	}, [orgEnclosures, spec.id, enclosure.id])
+
+	const filteredSpecimenIds = useMemo(() => {
+		if (!specimenTrackingId.trim()) return specimenIdOptions
 		const val = specimenTrackingId.trim().toLowerCase()
-		return speciesFiltered
-			.map((encl) => ({ encl, score: scoreMatch(encl.institutional_specimen_id, val) }))
+		return specimenIdOptions
+			.map((opt) => ({ opt, score: scoreMatch(opt.id, val) }))
 			.filter(({ score }) => score >= 0)
 			.sort((a, b) => a.score - b.score)
-			.map(({ encl }) => encl)
-	}, [specimenTrackingId, orgEnclosures, spec.id, enclosure.id])
+			.map(({ opt }) => opt)
+	}, [specimenTrackingId, specimenIdOptions])
 
 	const handleOpenChange = (isOpen: boolean) => {
 		if (isOpen) {
@@ -114,6 +125,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			savedLocationRef.current = undefined
 			setCount(enclosure?.current_count)
 			setIsActive(enclosure?.is_active ?? true)
+			setLifeStage(enclosure?.life_stage ?? '')
 			setSpecimenTrackingId(enclosure?.institutional_specimen_id ?? '')
 			setSourceType('institution')
 			setExternalSource('')
@@ -150,7 +162,10 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 		e.preventDefault()
 		if (!species || !location) return
 
-		const externalSources = sources.filter((s) => s.type === 'institution').map((s) => s.value)
+		const externalSources = [
+			...sources.filter((s) => s.type === 'institution').map((s) => s.value),
+			...(externalSource.trim() ? [externalSource.trim()] : [])
+		]
 		const enclosureSourceIds = sources.filter((s) => s.type === 'enclosure').map((s) => s.value as UUID)
 		const resolvedExternalSource = externalSources.length > 0 ? externalSources.join(', ') : ''
 
@@ -164,6 +179,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 			(count ?? 0) !== (enclosure?.current_count ?? 0) ||
 			!locationUnchanged ||
 			isActive !== (enclosure?.is_active ?? true) ||
+			lifeStage !== (enclosure?.life_stage ?? '') ||
 			specimenTrackingId.trim() !== (enclosure?.institutional_specimen_id ?? '') ||
 			resolvedExternalSource !== (enclosure?.institutional_external_source ?? '') ||
 			lineageChanged
@@ -194,6 +210,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 				location_id: resolvedLocationId,
 				count: count ?? 0,
 				is_active: isActive,
+				life_stage: lifeStage,
 				institutional_specimen_id: specimenTrackingId.trim(),
 				institutional_external_source: resolvedExternalSource,
 				source_enclosure_ids: enclosureSourceIds
@@ -307,54 +324,79 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 							</ComboboxContent>
 						</Combobox>
 					)}
-					<Label>Count</Label>
-					<Input
-						className='h-9'
-						id='count'
-						placeholder='Count'
-						value={count ?? ''}
-						type='number'
-						min='0'
-						onKeyDown={(e) => {
-							if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
-						}}
-						onChange={(e) => {
-							if (e.target.value === '') {
-								setCount(undefined)
-								return
-							}
-							const num = Number(e.target.value)
-							if (num < 0) return
-							setCount(num)
-						}}
-						onFocus={(e) => e.target.select()}
-						required
-						disabled={isPending}
-					/>
-					<Label>Specimen ID (Optional)</Label>
+					<div className='grid grid-cols-2 gap-4'>
+						<div className='flex flex-col gap-2'>
+							<Label>Count</Label>
+							<Input
+								className='h-9'
+								id='count'
+								placeholder='Count'
+								value={count ?? ''}
+								type='number'
+								min='0'
+								onKeyDown={(e) => {
+									if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
+								}}
+								onChange={(e) => {
+									if (e.target.value === '') {
+										setCount(undefined)
+										return
+									}
+									const num = Number(e.target.value)
+									if (num < 0) return
+									setCount(num)
+								}}
+								onFocus={(e) => e.target.select()}
+								required
+								disabled={isPending}
+							/>
+						</div>
+						<div className='flex flex-col gap-2'>
+							<Label>Life Stage</Label>
+							<Select value={lifeStage} onValueChange={(v) => setLifeStage(v as typeof lifeStage)}>
+								<SelectTrigger className='h-9 w-full'>
+									<SelectValue placeholder='Select stage...' />
+								</SelectTrigger>
+								<SelectContent>
+									{(['egg', 'larva', 'pupa', 'nymph', 'adult'] as const).map((stage) => (
+										<SelectItem key={stage} value={stage}>
+											{stage.charAt(0).toUpperCase() + stage.slice(1)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+					<Label>Specimen Tracking ID (Optional)</Label>
 					<Combobox
-						items={filteredEnclosures}
+						items={filteredSpecimenIds}
 						filter={() => true}
 						value={specimenTrackingId}
 						onValueChange={(value) => setSpecimenTrackingId(value ?? '')}
 					>
 						<ComboboxInput
 							className='h-9'
-							placeholder='Enter internal tracking ID...'
+							placeholder='Enter specimen tracking ID...'
 							value={specimenTrackingId}
 							onChange={(event) => setSpecimenTrackingId(event.target.value)}
 							disabled={isPending}
 							showClear
 						/>
 						<ComboboxContent>
-							<ComboboxEmpty>No current IDs found. Create one now.</ComboboxEmpty>
+							<ComboboxEmpty>
+								{specimenTrackingId.trim()
+									? `"${specimenTrackingId.trim()}" will be used as a new ID`
+									: 'No existing IDs found.'}
+							</ComboboxEmpty>
 							<ComboboxList className='max-h-42 scrollbar-no-track'>
 								<ComboboxCollection>
-									{(encl: Enclosure) => (
-										<ComboboxItem key={encl.id} value={encl.institutional_specimen_id!}>
+									{(opt: { id: string; count: number }) => (
+										<ComboboxItem key={opt.id} value={opt.id}>
 											<span className='flex flex-col'>
-												<span>{encl.institutional_specimen_id}</span>
-												<small className='text-muted-foreground'>{encl.name}</small>
+												<span>{opt.id}</span>
+												<small className='text-muted-foreground'>
+													Used by {opt.count} enclosure{opt.count !== 1 ? 's' : ''}
+												</small>
 											</span>
 										</ComboboxItem>
 									)}
@@ -363,7 +405,7 @@ export function EditEnclosureButton({ enclosure, spec }: { enclosure: Enclosure;
 						</ComboboxContent>
 					</Combobox>
 					<div className='flex items-center justify-between'>
-						<Label>Source</Label>
+						<Label>Sources (Optional)</Label>
 						<div className='flex items-center rounded-md border text-xs overflow-hidden w-44'>
 							<button
 								type='button'

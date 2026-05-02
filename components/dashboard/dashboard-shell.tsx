@@ -3,13 +3,13 @@
 import { useParams } from 'next/navigation'
 import type { UUID } from 'crypto'
 
-import { DashboardPage } from '@/components/features/dashboard/dashboard-page'
-import { DASHBOARD_SERVER_TIME_ZONE } from '@/components/features/dashboard/dashboard-helpers'
+import { DashboardPage } from '@/components/dashboard/dashboard-page'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
 	type DashboardData,
 	useDashboardActiveEnclosureCount,
 	useDashboardAtRiskEnclosures,
+	useDashboardCompletedTodayCount,
 	useDashboardRecentActivity,
 	useDashboardTasksDueToday,
 	useDashboardUpcomingTaskCount
@@ -47,6 +47,11 @@ export function DashboardShell() {
 		isLoading: isRecentActivityLoading,
 		error: recentActivityError
 	} = useDashboardRecentActivity(orgId)
+	const {
+		data: completedTodayCount = 0,
+		isLoading: isCompletedTodayLoading,
+		error: completedTodayError
+	} = useDashboardCompletedTodayCount(orgId)
 
 	const warnings = [
 		activeEnclosuresError
@@ -78,18 +83,24 @@ export function DashboardShell() {
 					stage: 'dashboard.recentActivity',
 					message: `Unable to load recent activity (${getErrorMessage(recentActivityError)}).`
 				}
+			: null,
+		completedTodayError
+			? {
+					stage: 'dashboard.completedTodayCount',
+					message: `Unable to load completed today count (${getErrorMessage(completedTodayError)}).`
+				}
 			: null
 	].filter(Boolean) as DashboardData['warnings']
 
 	const data: DashboardData = {
 		generatedAt: new Date().toISOString(),
-		timeZone: DASHBOARD_SERVER_TIME_ZONE,
 		kpis: {
 			activeEnclosures,
 			tasksDueToday: dueTodayTasks.length,
 			upcomingTasks: upcomingTasksCount,
 			alerts: atRiskData?.attentionNeededCount ?? 0
 		},
+		completedTodayCount,
 		atRiskEnclosures: atRiskData?.items ?? [],
 		upcomingSchedule: dueTodayTasks,
 		recentActivity,
@@ -101,18 +112,9 @@ export function DashboardShell() {
 		isAtRiskLoading ||
 		isDueTodayLoading ||
 		isUpcomingTasksLoading ||
-		isRecentActivityLoading
+		isRecentActivityLoading ||
+		isCompletedTodayLoading
 	const loadError = activeEnclosuresError ? getErrorMessage(activeEnclosuresError) : null
-
-	if (isLoading) {
-		return (
-			<div className='grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
-				{['Active Enclosures', 'Tasks Due Today', 'Upcoming Tasks', 'Alerts'].map((title) => (
-					<section key={title} className='min-h-[136px] animate-pulse rounded-xl border bg-muted/20' />
-				))}
-			</div>
-		)
-	}
 
 	if (!orgId) {
 		return (
@@ -126,5 +128,18 @@ export function DashboardShell() {
 		)
 	}
 
-	return <DashboardPage orgId={String(orgId)} data={data} loadError={loadError} />
+	const loading = {
+		kpis:
+			isActiveEnclosuresLoading ||
+			isAtRiskLoading ||
+			isDueTodayLoading ||
+			isUpcomingTasksLoading ||
+			isCompletedTodayLoading,
+		atRisk: isAtRiskLoading,
+		upcoming: isDueTodayLoading || isUpcomingTasksLoading || isAtRiskLoading,
+		recentActivity: isRecentActivityLoading,
+		any: isLoading
+	}
+
+	return <DashboardPage orgId={String(orgId)} data={data} loadError={loadError} loading={loading} />
 }

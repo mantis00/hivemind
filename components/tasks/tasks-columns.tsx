@@ -13,6 +13,7 @@ import {
 	getEffectiveStatus,
 	priorityConfig,
 	statusConfig,
+	timeWindowConfig,
 	renderTruncatedWithTooltip,
 	truncateText
 } from '@/context/task-config'
@@ -41,6 +42,7 @@ export function getColumns(
 			id: 'select',
 			header: () => null,
 			cell: ({ row }) => {
+				if (isMobile) return null
 				const task = row.original
 				const isSelected = selectedIds.has(task.id as string)
 				const isCompleted = task.status === 'completed'
@@ -122,8 +124,22 @@ export function getColumns(
 				</button>
 			),
 			cell: ({ row }) => {
-				const name = row.getValue('name') as string
-				return renderTruncatedWithTooltip(name, 28, 'font-medium')
+				const task = row.original
+				const name = task.name ?? task.task_templates?.type ?? null
+				const tw = task.time_window
+				const twCfg = tw ? (timeWindowConfig[tw] ?? timeWindowConfig['Any']) : null
+				return (
+					<div className='flex items-center gap-1.5'>
+						{renderTruncatedWithTooltip(name, 28, 'font-medium')}
+						{twCfg && (
+							<span
+								className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold leading-none ${twCfg.color}`}
+							>
+								{twCfg.shortLabel}
+							</span>
+						)}
+					</div>
+				)
 			}
 		},
 		{

@@ -11,6 +11,7 @@ import { MobileActionsMenu } from '@/components/navigation/mobile-actions-menu'
 import { LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 import { getOrgIdFromPathname } from '@/context/verify-org-path'
+import { QrScannerButton } from '@/components/qr/qr-scanner-button'
 
 export function ProtectedNavActions() {
 	const pathname = usePathname()
@@ -32,6 +33,7 @@ export function ProtectedNavActions() {
 	if (getOrgIdFromPathname(pathname)) {
 		return (
 			<div className='flex items-center flex-row justify-end gap-2 mr-6 max-w-full'>
+				<QrScannerButton />
 				<NotificationDropdown />
 			</div>
 		)
@@ -39,7 +41,12 @@ export function ProtectedNavActions() {
 
 	return (
 		<div className='flex items-center justify-end gap-2 max-w-full'>
-			<NotificationDropdown />
+			<QrScannerButton />
+			<div className='pr-1'>
+				{' '}
+				{/* slight padding to prevent bell from being too close to buttons */}
+				<NotificationDropdown />
+			</div>
 			{/* Desktop Actions */}
 			<div className='hidden sm:flex items-center gap-2'>
 				<Button

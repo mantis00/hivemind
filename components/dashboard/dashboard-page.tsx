@@ -1,14 +1,23 @@
 import type { DashboardData } from '@/lib/react-query/queries'
-import { KpiStrip } from '@/components/features/dashboard/kpi-strip'
-import { AtRiskPanel } from '@/components/features/dashboard/at-risk-panel'
-import { UpcomingSchedulePanel } from '@/components/features/dashboard/upcoming-schedule-panel'
-import { RecentActivityPanel } from '@/components/features/dashboard/recent-activity-panel'
+import { KpiStrip } from '@/components/dashboard/kpi-strip'
+import { AtRiskPanel } from '@/components/dashboard/at-risk-panel'
+import { UpcomingSchedulePanel } from '@/components/dashboard/upcoming-schedule-panel'
+import { RecentActivityPanel } from '@/components/dashboard/recent-activity-panel'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+
+export type DashboardLoadingState = {
+	kpis: boolean
+	atRisk: boolean
+	upcoming: boolean
+	recentActivity: boolean
+	any: boolean
+}
 
 type DashboardPageProps = {
 	orgId: string
 	data: DashboardData
 	loadError?: string | null
+	loading: DashboardLoadingState
 }
 
 function isDashboardEmpty(data: DashboardData) {
@@ -23,20 +32,15 @@ function isDashboardEmpty(data: DashboardData) {
 	)
 }
 
-export function DashboardPage({ orgId, data, loadError = null }: DashboardPageProps) {
-	const generatedAt = new Date(data.generatedAt)
-	const generatedAtLabel = Number.isNaN(generatedAt.getTime()) ? data.generatedAt : generatedAt.toLocaleString()
-	const dashboardIsEmpty = isDashboardEmpty(data)
-	const completedTodayCount = data.recentActivity.length
+export function DashboardPage({ orgId, data, loadError = null, loading }: DashboardPageProps) {
+	const dashboardIsEmpty = !loading.any && isDashboardEmpty(data)
+	const completedTodayCount = data.completedTodayCount
 	const atRiskEnclosureCount = data.atRiskEnclosures.length
 
 	return (
 		<>
 			<div className='pb-5'>
 				<h1 className='text-2xl font-semibold'>Dashboard</h1>
-				<p className='text-sm text-muted-foreground'>
-					Timezone: {data.timeZone}. Updated: {generatedAtLabel}.
-				</p>
 			</div>
 
 			<div className='flex flex-col gap-6'>
@@ -68,7 +72,12 @@ export function DashboardPage({ orgId, data, loadError = null }: DashboardPagePr
 					</Card>
 				) : null}
 
-				<KpiStrip kpis={data.kpis} completedToday={completedTodayCount} atRiskEnclosures={atRiskEnclosureCount} />
+				<KpiStrip
+					kpis={data.kpis}
+					completedToday={completedTodayCount}
+					atRiskEnclosures={atRiskEnclosureCount}
+					loading={loading.kpis}
+				/>
 
 				{dashboardIsEmpty ? (
 					<Card>
@@ -83,16 +92,16 @@ export function DashboardPage({ orgId, data, loadError = null }: DashboardPagePr
 				) : null}
 
 				<section className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
-					<AtRiskPanel orgId={orgId} items={data.atRiskEnclosures} timeZone={data.timeZone} />
+					<AtRiskPanel orgId={orgId} items={data.atRiskEnclosures} loading={loading.atRisk} />
 					<UpcomingSchedulePanel
 						orgId={orgId}
 						items={data.upcomingSchedule}
 						kpis={data.kpis}
-						timeZone={data.timeZone}
+						loading={loading.upcoming}
 					/>
 				</section>
 
-				<RecentActivityPanel orgId={orgId} items={data.recentActivity} timeZone={data.timeZone} />
+				<RecentActivityPanel orgId={orgId} items={data.recentActivity} loading={loading.recentActivity} />
 			</div>
 		</>
 	)
