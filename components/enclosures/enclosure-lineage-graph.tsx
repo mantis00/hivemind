@@ -53,6 +53,7 @@ type GroupOverflowNode = {
 type StackOverflowNode = {
 	kind: 'stack'
 	id: string
+	relation: 'parent' | 'child'
 	items: Array<{ id: string; name: string; location?: string; currentCount: number; isInactive: boolean }>
 }
 
@@ -124,9 +125,14 @@ function computeLayout(
 		})
 	}
 
-	// Collapse overflow: group or stack nodes for layers with more than COLLAPSE_THRESHOLD non-focus nodes
+	// Collapse overflow: layers with more than COLLAPSE_THRESHOLD non-focus nodes get
+	// a labeled stack for direct parents/children and a group for others.
 	const focusLayer = layers.get(focusId) ?? 0
 	const collapsedToOverflow = new Map<string, string>()
+
+	// Direct parents/children of the focus node by actual edge connectivity
+	const directParentIds = new Set(edges.filter((e) => e.target === focusId).map((e) => e.source))
+	const directChildIds = new Set(edges.filter((e) => e.source === focusId).map((e) => e.target))
 
 	for (const [layer, ids] of byLayer) {
 		const focusInLayer = ids.includes(focusId)
@@ -134,50 +140,68 @@ function computeLayout(
 
 		if (nonFocusIds.length <= COLLAPSE_THRESHOLD) continue
 
-		const visibleIds = nonFocusIds.slice(0, COLLAPSE_THRESHOLD - 1)
-		const overflowIds = nonFocusIds.slice(COLLAPSE_THRESHOLD - 1)
-		const overflowId = `overflow::${layer}`
-		const isDirectLayer = layer === focusLayer - 1 || layer === focusLayer + 1
+		// Sort direct parents/children first so they get individual cards before overflow
+		const directIds = nonFocusIds.filter((id) => directParentIds.has(id) || directChildIds.has(id))
+		const indirectIds = nonFocusIds.filter((id) => !directParentIds.has(id) && !directChildIds.has(id))
+		const sortedNonFocus = [...directIds, ...indirectIds]
 
-		const enclosureItems = overflowIds
-			.map((id) => nodeMap.get(id))
-			.filter((n): n is EnclosureNode => n?.kind === 'enclosure')
-			.map((n) => ({
-				id: n.id,
-				name: n.name,
-				location: n.location,
-				currentCount: n.currentCount,
-				isInactive: n.isInactive
-			}))
+		const visibleIds = sortedNonFocus.slice(0, COLLAPSE_THRESHOLD - 1)
+		const overflowAll = sortedNonFocus.slice(COLLAPSE_THRESHOLD - 1)
 
-		if (isDirectLayer && enclosureItems.length > 0) {
-			nodeMap.set(overflowId, { kind: 'stack', id: overflowId, items: enclosureItems })
-		} else {
-			const names = overflowIds.map((id) => nodeName(nodeMap.get(id))).filter(Boolean)
-			nodeMap.set(overflowId, { kind: 'group', id: overflowId, count: overflowIds.length, names })
+		const directOverflow = overflowAll.filter((id) => directParentIds.has(id) || directChildIds.has(id))
+		const indirectOverflow = overflowAll.filter((id) => !directParentIds.has(id) && !directChildIds.has(id))
+
+		const layerIds = focusInLayer ? [focusId, ...visibleIds] : [...visibleIds]
+
+		if (directOverflow.length > 0) {
+			const overflowId = `overflow-stack::${layer}`
+			const relation: 'parent' | 'child' = directOverflow.some((id) => directParentIds.has(id)) ? 'parent' : 'child'
+			const enclosureItems = directOverflow
+				.map((id) => nodeMap.get(id))
+				.filter((n): n is EnclosureNode => n?.kind === 'enclosure')
+				.map((n) => ({ id: n.id, name: n.name, location: n.location, currentCount: n.currentCount, isInactive: n.isInactive }))
+			if (enclosureItems.length > 0) {
+				nodeMap.set(overflowId, { kind: 'stack', id: overflowId, relation, items: enclosureItems })
+				for (const id of directOverflow) collapsedToOverflow.set(id, overflowId)
+				layerIds.push(overflowId)
+			}
 		}
 
-		for (const id of overflowIds) collapsedToOverflow.set(id, overflowId)
-		byLayer.set(layer, focusInLayer ? [focusId, ...visibleIds, overflowId] : [...visibleIds, overflowId])
+		if (indirectOverflow.length > 0) {
+			const overflowId = `overflow-group::${layer}`
+			const names = indirectOverflow.map((id) => nodeName(nodeMap.get(id))).filter(Boolean)
+			nodeMap.set(overflowId, { kind: 'group', id: overflowId, count: indirectOverflow.length, names })
+			for (const id of indirectOverflow) collapsedToOverflow.set(id, overflowId)
+			layerIds.push(overflowId)
+		}
+
+		byLayer.set(layer, layerIds)
 	}
 
 	// Compute canvas width for centering
 	let maxLayerWidth = 0
 	for (const [, ids] of byLayer) {
-		const w = ids.length * NODE_W + (ids.length - 1) * H_GAP
+		const w = ids.reduce((sum, id) => {
+			const node = nodeMap.get(id)
+			return sum + (node?.kind === 'stack' ? STACK_NODE_W : NODE_W)
+		}, 0) + (ids.length - 1) * H_GAP
 		if (w > maxLayerWidth) maxLayerWidth = w
 	}
 
 	const positions = new Map<string, { x: number; y: number }>()
 	for (const [layer, ids] of byLayer) {
-		const layerW = ids.length * NODE_W + (ids.length - 1) * H_GAP
+		const layerW = ids.reduce((sum, id) => {
+			const node = nodeMap.get(id)
+			return sum + (node?.kind === 'stack' ? STACK_NODE_W : NODE_W)
+		}, 0) + (ids.length - 1) * H_GAP
 		const offsetX = (maxLayerWidth - layerW) / 2
-		ids.forEach((id, i) => {
-			positions.set(id, {
-				x: offsetX + i * (NODE_W + H_GAP),
-				y: layer * (NODE_H + V_GAP)
-			})
-		})
+		let curX = offsetX
+		for (const id of ids) {
+			const node = nodeMap.get(id)
+			const w = node?.kind === 'stack' ? STACK_NODE_W : NODE_W
+			positions.set(id, { x: curX, y: layer * (NODE_H + V_GAP) })
+			curX += w + H_GAP
+		}
 	}
 
 	const rfNodes: Node[] = []
@@ -286,7 +310,7 @@ function GroupNodeCard({ data }: { data: { label: GroupOverflowNode } }) {
 
 function StackNodeCard({ data }: { data: { label: StackOverflowNode } }) {
 	const [index, setIndex] = useState(0)
-	const { items } = data.label
+	const { items, relation } = data.label
 	const current = items[index]
 
 	const prev = (e: React.MouseEvent) => {
@@ -327,17 +351,20 @@ function StackNodeCard({ data }: { data: { label: StackOverflowNode } }) {
 				style={{ zIndex: 3 }}
 			>
 				<Handle type='target' position={Position.Top} className='bg-border! border-border!' />
+				<span className={`text-xs font-semibold uppercase tracking-wide mb-0.5 ${relation === 'parent' ? 'text-blue-500/80' : 'text-emerald-500/80'}`}>
+					{relation === 'parent' ? 'Parents' : 'Children'}
+				</span>
 				<div className='flex items-center justify-between gap-1'>
-					<span className='font-semibold leading-tight break-words flex-1'>{current.name}</span>
+					<span className='font-semibold leading-tight wrap-break-word flex-1'>{current.name}</span>
 					{items.length > 1 && (
 						<div className='nodrag nopan shrink-0 flex items-center gap-0.5' style={{ pointerEvents: 'all' }}>
-							<button onClick={prev} title='Previous' className={btnClass}>
+							<button onClick={prev} title='Previous' className={btnClass} style={{ pointerEvents: 'all' }}>
 								<ChevronDown className='h-3 w-3 rotate-90' />
 							</button>
 							<span className='text-xs text-muted-foreground tabular-nums'>
 								{index + 1}/{items.length}
 							</span>
-							<button onClick={next} title='Next' className={btnClass}>
+							<button onClick={next} title='Next' className={btnClass} style={{ pointerEvents: 'all' }}>
 								<ChevronDown className='h-3 w-3 -rotate-90' />
 							</button>
 						</div>
