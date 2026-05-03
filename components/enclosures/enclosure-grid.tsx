@@ -39,6 +39,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '
 import { Skeleton } from '../ui/skeleton'
 import { UUID } from 'crypto'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import ManageSpeciesButton from './manage-species-button'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import {
@@ -73,6 +74,17 @@ export default function EnclosureGrid() {
 	const [sortKey, setSortKey] = useState('')
 	const [enclosureStatusFilter, setEnclosureStatusFilter] = useState<EnclosureStatusFilter>('active')
 	const { data: filteredEnclosures } = useOrgEnclosures(orgId as UUID, enclosureStatusFilter)
+	const speciesCountsMap = useMemo(() => {
+		const map = new Map<string, { enclosureCount: number; specimenCount: number }>()
+		for (const enc of filteredEnclosures ?? []) {
+			const existing = map.get(enc.species_id) ?? { enclosureCount: 0, specimenCount: 0 }
+			map.set(enc.species_id, {
+				enclosureCount: existing.enclosureCount + 1,
+				specimenCount: existing.specimenCount + (enc.current_count ?? 0)
+			})
+		}
+		return map
+	}, [filteredEnclosures])
 	const filteredSpeciesSource = useMemo(() => {
 		const speciesIds = new Set((filteredEnclosures ?? []).map((enc) => enc.species_id))
 		return activeOrgSpecies.filter((s) => speciesIds.has(s.id))
@@ -151,6 +163,7 @@ export default function EnclosureGrid() {
 	const { data: orgEnclosures } = useOrgEnclosures(orgId as UUID)
 	const batchActivateMutation = useBatchActivateEnclosures()
 	const isMobile = useIsMobile()
+	const collapseButtons = !useMediaQuery('(min-width: 1024px)')
 
 	const handleSelectChange = useCallback((enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => {
 		setSelectedIds((prev) => {
@@ -340,7 +353,7 @@ export default function EnclosureGrid() {
 		<>
 			<div className='mx-auto items-center w-full'>
 				{!isMobile && <EnclosureCounts />}
-				<div className='mb-2 flex items-center flex-row gap-2 justify-end pt-2'>
+				<div className='mb-2 flex items-center flex-wrap gap-2 justify-end pt-2'>
 					{selectMode && (
 						<div className='flex items-center gap-2 mr-auto'>
 							{selectedIds.size === 0 ? (
@@ -394,7 +407,7 @@ export default function EnclosureGrid() {
 							)}
 						</div>
 					)}
-					{isMobile ? (
+					{collapseButtons ? (
 						<>
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
@@ -450,8 +463,8 @@ export default function EnclosureGrid() {
 				</div>
 
 				{/* Sort and Search */}
-				<div className='w-full py-2 flex flex-row gap-3'>
-					{!isMobile && (
+				<div className='w-full py-2 flex flex-row flex-wrap gap-3'>
+					{!collapseButtons && (
 						<Select
 							onValueChange={(value) => handleFilterChange(value as EnclosureStatusFilter)}
 							value={enclosureStatusFilter}
@@ -546,7 +559,7 @@ export default function EnclosureGrid() {
 				</div>
 
 				{/* Species Virtuoso Table */}
-				{isLoading ? (
+				{!isMounted || orgSpecies === undefined || filteredEnclosures === undefined ? (
 					<div className='rounded-lg border bg-card p-2 space-y-2'>
 						{[...Array(8)].map((_, i) => (
 							<div key={i} className='rounded-lg border bg-card p-4'>
@@ -582,6 +595,7 @@ export default function EnclosureGrid() {
 									selectedIds={selectedIds}
 									onSelectChange={handleSelectChange}
 									onSelectAll={handleSelectAll}
+									preloadedCounts={speciesCountsMap.get(sp.id)}
 								/>
 							))}
 						</div>
@@ -607,6 +621,7 @@ export default function EnclosureGrid() {
 											selectedIds={selectedIds}
 											onSelectChange={handleSelectChange}
 											onSelectAll={handleSelectAll}
+											preloadedCounts={speciesCountsMap.get(sp.id)}
 										/>
 									</div>
 								)}
@@ -700,6 +715,7 @@ export default function EnclosureGrid() {
 				trigger={null}
 				open={deleteConfirmOpen}
 				onOpenChange={setDeleteConfirmOpen}
+				className='sm:max-w-2xl'
 			>
 				<div className='flex flex-col gap-3'>
 					{enclosureStatusFilter === 'inactive' ? (

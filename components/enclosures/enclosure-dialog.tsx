@@ -85,6 +85,7 @@ export function EnclosureDialog({
 				description={species?.custom_common_name}
 				open={open}
 				onOpenChange={onOpenChange}
+				className='sm:max-w-2xl'
 				trigger={<div></div>}
 				footer={
 					<div className='flex flex-col gap-2 w-full'>

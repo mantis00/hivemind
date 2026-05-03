@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { UUID } from 'crypto'
 import { toast } from 'sonner'
-import { Species } from './queries'
+import { Species, Enclosure } from './queries'
 import { PostgrestError } from '@supabase/supabase-js'
 
 export function useCreateOrg() {
@@ -448,6 +448,58 @@ export function useBatchDeleteEnclosures() {
 				.in('enclosure_id', ids)
 			if (scheduleError) throw scheduleError
 		},
+		onMutate: async ({ ids, orgId }) => {
+			const idsSet = new Set(ids)
+
+			await queryClient.cancelQueries({ queryKey: ['orgEnclosures', orgId] })
+			await queryClient.cancelQueries({ queryKey: ['speciesEnclosures', orgId] })
+
+			const previousActive = queryClient.getQueryData<Enclosure[]>(['orgEnclosures', orgId, 'active'])
+			const previousAll = queryClient.getQueryData<Enclosure[]>(['orgEnclosures', orgId, 'all'])
+
+			if (previousActive) {
+				queryClient.setQueryData(
+					['orgEnclosures', orgId, 'active'],
+					previousActive.filter((e) => !idsSet.has(e.id))
+				)
+			}
+			if (previousAll) {
+				queryClient.setQueryData(
+					['orgEnclosures', orgId, 'all'],
+					previousAll.map((e) => (idsSet.has(e.id) ? { ...e, is_active: false } : e))
+				)
+			}
+
+			const speciesQueries = queryClient.getQueriesData<Enclosure[]>({ queryKey: ['speciesEnclosures', orgId] })
+			for (const [key, data] of speciesQueries) {
+				if (!data) continue
+				const statusFilter = (key as unknown[])[3] as string
+				if (statusFilter === 'active') {
+					queryClient.setQueryData(
+						key,
+						data.filter((e) => !idsSet.has(e.id))
+					)
+				} else if (statusFilter === 'all') {
+					queryClient.setQueryData(
+						key,
+						data.map((e) => (idsSet.has(e.id) ? { ...e, is_active: false } : e))
+					)
+				}
+			}
+
+			return { previousActive, previousAll, speciesQueries }
+		},
+		onError: (_err, { orgId }, context) => {
+			if (context?.previousActive !== undefined) {
+				queryClient.setQueryData(['orgEnclosures', orgId, 'active'], context.previousActive)
+			}
+			if (context?.previousAll !== undefined) {
+				queryClient.setQueryData(['orgEnclosures', orgId, 'all'], context.previousAll)
+			}
+			for (const [key, data] of context?.speciesQueries ?? []) {
+				queryClient.setQueryData(key, data)
+			}
+		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })
 			queryClient.invalidateQueries({ queryKey: ['speciesEnclosures', variables.orgId] })
@@ -472,6 +524,73 @@ export function useBatchActivateEnclosures() {
 				.update({ is_active: true })
 				.in('enclosure_id', ids)
 			if (scheduleError) throw scheduleError
+		},
+		onMutate: async ({ ids, orgId }) => {
+			const idsSet = new Set(ids)
+
+			await queryClient.cancelQueries({ queryKey: ['orgEnclosures', orgId] })
+			await queryClient.cancelQueries({ queryKey: ['speciesEnclosures', orgId] })
+
+			const previousInactive = queryClient.getQueryData<Enclosure[]>(['orgEnclosures', orgId, 'inactive'])
+			const previousActive = queryClient.getQueryData<Enclosure[]>(['orgEnclosures', orgId, 'active'])
+			const previousAll = queryClient.getQueryData<Enclosure[]>(['orgEnclosures', orgId, 'all'])
+
+			if (previousInactive) {
+				queryClient.setQueryData(
+					['orgEnclosures', orgId, 'inactive'],
+					previousInactive.filter((e) => !idsSet.has(e.id))
+				)
+			}
+			if (previousActive) {
+				const activating = (previousAll ?? previousInactive ?? []).filter((e) => idsSet.has(e.id))
+				const reactivated = activating.map((e) => ({ ...e, is_active: true }))
+				queryClient.setQueryData(['orgEnclosures', orgId, 'active'], [...previousActive, ...reactivated])
+			}
+			if (previousAll) {
+				queryClient.setQueryData(
+					['orgEnclosures', orgId, 'all'],
+					previousAll.map((e) => (idsSet.has(e.id) ? { ...e, is_active: true } : e))
+				)
+			}
+
+			const speciesQueries = queryClient.getQueriesData<Enclosure[]>({ queryKey: ['speciesEnclosures', orgId] })
+			for (const [key, data] of speciesQueries) {
+				if (!data) continue
+				const statusFilter = (key as unknown[])[3] as string
+				if (statusFilter === 'inactive') {
+					queryClient.setQueryData(
+						key,
+						data.filter((e) => !idsSet.has(e.id))
+					)
+				} else if (statusFilter === 'active') {
+					const allKey = [...(key as unknown[]).slice(0, 3), 'all'] as unknown[]
+					const allData = queryClient.getQueryData<Enclosure[]>(allKey)
+					const activating = (allData ?? data).filter((e) => idsSet.has(e.id))
+					const reactivated = activating.map((e) => ({ ...e, is_active: true }))
+					queryClient.setQueryData(key, [...data.filter((e) => !idsSet.has(e.id)), ...reactivated])
+				} else if (statusFilter === 'all') {
+					queryClient.setQueryData(
+						key,
+						data.map((e) => (idsSet.has(e.id) ? { ...e, is_active: true } : e))
+					)
+				}
+			}
+
+			return { previousInactive, previousActive, previousAll, speciesQueries }
+		},
+		onError: (_err, { orgId }, context) => {
+			if (context?.previousInactive !== undefined) {
+				queryClient.setQueryData(['orgEnclosures', orgId, 'inactive'], context.previousInactive)
+			}
+			if (context?.previousActive !== undefined) {
+				queryClient.setQueryData(['orgEnclosures', orgId, 'active'], context.previousActive)
+			}
+			if (context?.previousAll !== undefined) {
+				queryClient.setQueryData(['orgEnclosures', orgId, 'all'], context.previousAll)
+			}
+			for (const [key, data] of context?.speciesQueries ?? []) {
+				queryClient.setQueryData(key, data)
+			}
 		},
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['orgEnclosures', variables.orgId] })

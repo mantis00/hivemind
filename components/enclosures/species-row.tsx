@@ -2,12 +2,13 @@
 import { type OrgSpecies, type Enclosure, useOrgEnclosuresForSpecies } from '@/lib/react-query/queries'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Card, CardContent } from '../ui/card'
-import { Bug, ChevronRight, EyeIcon } from 'lucide-react'
+import { Bug, ChevronRight, EyeIcon, LoaderCircle } from 'lucide-react'
 import { Badge } from '../ui/badge'
+import { Skeleton } from '../ui/skeleton'
 import { Checkbox } from '../ui/checkbox'
 import { Button } from '../ui/button'
 import { EnclosureCard } from './enclosure-card'
@@ -32,7 +33,8 @@ export default function SpeciesRow({
 	selectMode,
 	selectedIds,
 	onSelectChange,
-	onSelectAll
+	onSelectAll,
+	preloadedCounts
 }: {
 	species: OrgSpecies
 	onDetailsOpenChange: () => void
@@ -42,20 +44,32 @@ export default function SpeciesRow({
 	selectedIds: Set<UUID>
 	onSelectChange: (enclosureId: UUID, checked: boolean, data?: EnclosureExportData) => void
 	onSelectAll?: (enclosures: Enclosure[], select: boolean, species: OrgSpecies) => void
+	preloadedCounts?: { enclosureCount: number; specimenCount: number }
 }) {
 	const params = useParams()
 	const orgId = params?.orgId as UUID | undefined
 
-	const { data: enclosures } = useOrgEnclosuresForSpecies(orgId as UUID, species.id, enclosureStatusFilter)
-
 	const [isOpen, setIsOpen] = useState(false)
+	const [hasOpened, setHasOpened] = useState(false)
+
+	const { data: enclosures, isFetching: enclosuresFetching } = useOrgEnclosuresForSpecies(
+		orgId as UUID,
+		species.id,
+		enclosureStatusFilter,
+		{ enabled: hasOpened }
+	)
+
+	const sortedEnclosures = useMemo(
+		() => (enclosures ? [...enclosures].sort((a, b) => a.name.localeCompare(b.name)) : enclosures),
+		[enclosures]
+	)
 	const [selectedEnclosure, setSelectedEnclosure] = useState<Enclosure | null>(null)
 	const [dialogOpen, setDialogOpen] = useState(false)
 	const [detailsOpen, setDetailsOpen] = useState(false)
 
 	// Derive the latest enclosure data from the passed list so the dialog always shows fresh data
 	const currentEnclosure = selectedEnclosure
-		? (enclosures?.find((e) => e.id === selectedEnclosure.id) ?? selectedEnclosure)
+		? (sortedEnclosures?.find((e) => e.id === selectedEnclosure.id) ?? selectedEnclosure)
 		: null
 
 	const handleEnclosureClick = (enclosure: Enclosure) => {
@@ -65,7 +79,13 @@ export default function SpeciesRow({
 
 	return (
 		<>
-			<Collapsible open={isOpen} onOpenChange={setIsOpen}>
+			<Collapsible
+				open={isOpen}
+				onOpenChange={(open) => {
+					setIsOpen(open)
+					if (open && !hasOpened) setHasOpened(true)
+				}}
+			>
 				<Card className='overflow-hidden py-2'>
 					<CardContent className='p-2 flex items-center gap-3 hover:bg-accent/50 transition-colors'>
 						<CollapsibleTrigger asChild>
@@ -102,12 +122,32 @@ export default function SpeciesRow({
 										<p className='text-xs text-muted-foreground italic truncate'>{species.species?.scientific_name}</p>
 									)}
 									<div className='flex items-center gap-1.5 mt-0.5'>
-										<Badge variant='outline' className='shrink-0 text-xs px-1.5 py-0'>
-											{enclosures?.length} {enclosures?.length === 1 ? 'enclosure' : 'enclosures'}
-										</Badge>
-										<Badge variant='secondary' className='shrink-0 text-xs px-1.5 py-0'>
-											{(enclosures ?? []).reduce((sum, e) => sum + (e.current_count ?? 0), 0)} specimen
-										</Badge>
+										{(() => {
+											const encCount =
+												sortedEnclosures !== undefined ? sortedEnclosures.length : preloadedCounts?.enclosureCount
+											const spCount =
+												sortedEnclosures !== undefined
+													? sortedEnclosures.reduce((sum, e) => sum + (e.current_count ?? 0), 0)
+													: preloadedCounts?.specimenCount
+											if (encCount !== undefined && spCount !== undefined) {
+												return (
+													<>
+														<Badge variant='outline' className='shrink-0 text-xs px-1.5 py-0'>
+															{encCount} {encCount === 1 ? 'enclosure' : 'enclosures'}
+														</Badge>
+														<Badge variant='secondary' className='shrink-0 text-xs px-1.5 py-0'>
+															{spCount} specimen
+														</Badge>
+													</>
+												)
+											}
+											return (
+												<>
+													<Skeleton className='h-5 w-20 rounded-full' />
+													<Skeleton className='h-5 w-16 rounded-full' />
+												</>
+											)
+										})()}
 									</div>
 								</div>
 							</button>
@@ -126,22 +166,26 @@ export default function SpeciesRow({
 
 					<CollapsibleContent>
 						<div className='border-t bg-muted/30 p-2'>
-							{/* Enclosures Virtuoso list */}
-							{enclosures?.length && enclosures?.length > 0 ? (
+							{enclosuresFetching && sortedEnclosures === undefined ? (
+								<div className='flex items-center justify-center py-6 text-muted-foreground gap-2'>
+									<LoaderCircle className='h-4 w-4 animate-spin' />
+									<span className='text-sm'>Loading enclosures…</span>
+								</div>
+							) : sortedEnclosures?.length && sortedEnclosures?.length > 0 ? (
 								<div className='rounded-md border bg-background'>
 									{selectMode &&
 										onSelectAll &&
 										(() => {
-											const allSelected = enclosures.every((e) => selectedIds.has(e.id))
-											const someSelected = enclosures.some((e) => selectedIds.has(e.id))
+											const allSelected = sortedEnclosures.every((e) => selectedIds.has(e.id))
+											const someSelected = sortedEnclosures.some((e) => selectedIds.has(e.id))
 											return (
 												<div
 													className='flex items-center gap-2 px-3 py-2 border-b cursor-pointer select-none'
-													onClick={() => onSelectAll(enclosures, !allSelected, species)}
+													onClick={() => onSelectAll(sortedEnclosures, !allSelected, species)}
 												>
 													<Checkbox
 														checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-														onCheckedChange={(checked) => onSelectAll(enclosures, !!checked, species)}
+														onCheckedChange={(checked) => onSelectAll(sortedEnclosures, !!checked, species)}
 														onClick={(e) => e.stopPropagation()}
 													/>
 													<span className='text-xs text-muted-foreground'>Select all</span>
@@ -150,9 +194,12 @@ export default function SpeciesRow({
 										})()}
 									<Virtuoso
 										style={{
-											height: enclosures?.length && enclosures?.length <= 4 ? `${enclosures?.length * 106}px` : '424px'
+											height:
+												sortedEnclosures?.length && sortedEnclosures?.length <= 4
+													? `${sortedEnclosures?.length * 106}px`
+													: '424px'
 										}}
-										data={enclosures}
+										data={sortedEnclosures}
 										itemContent={(index, enclosure) => (
 											<div className='p-1 pb-1'>
 												<EnclosureCard
@@ -199,6 +246,7 @@ export default function SpeciesRow({
 				open={detailsOpen}
 				onOpenChange={setDetailsOpen}
 				trigger={<span className='hidden' />}
+				className='sm:max-w-2xl'
 			>
 				<div className='flex flex-col gap-4'>
 					{species.species?.picture_url ? (
