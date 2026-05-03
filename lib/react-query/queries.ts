@@ -880,7 +880,8 @@ export function useLiveNotificationsRealtime(recipientId: string | undefined) {
 export function useOrgEnclosuresForSpecies(
 	orgId: UUID,
 	speciesId: UUID,
-	enclosureStatus: 'active' | 'inactive' | 'all' = 'active'
+	enclosureStatus: 'active' | 'inactive' | 'all' = 'active',
+	options?: { enabled?: boolean }
 ) {
 	return useQuery({
 		queryKey: ['speciesEnclosures', orgId, speciesId, enclosureStatus],
@@ -926,7 +927,7 @@ export function useOrgEnclosuresForSpecies(
 
 			return allEnclosures
 		},
-		enabled: !!orgId && !!speciesId
+		enabled: !!orgId && !!speciesId && options?.enabled !== false
 	})
 }
 

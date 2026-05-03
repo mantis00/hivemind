@@ -74,6 +74,17 @@ export default function EnclosureGrid() {
 	const [sortKey, setSortKey] = useState('')
 	const [enclosureStatusFilter, setEnclosureStatusFilter] = useState<EnclosureStatusFilter>('active')
 	const { data: filteredEnclosures } = useOrgEnclosures(orgId as UUID, enclosureStatusFilter)
+	const speciesCountsMap = useMemo(() => {
+		const map = new Map<string, { enclosureCount: number; specimenCount: number }>()
+		for (const enc of filteredEnclosures ?? []) {
+			const existing = map.get(enc.species_id) ?? { enclosureCount: 0, specimenCount: 0 }
+			map.set(enc.species_id, {
+				enclosureCount: existing.enclosureCount + 1,
+				specimenCount: existing.specimenCount + (enc.current_count ?? 0)
+			})
+		}
+		return map
+	}, [filteredEnclosures])
 	const filteredSpeciesSource = useMemo(() => {
 		const speciesIds = new Set((filteredEnclosures ?? []).map((enc) => enc.species_id))
 		return activeOrgSpecies.filter((s) => speciesIds.has(s.id))
@@ -584,6 +595,7 @@ export default function EnclosureGrid() {
 									selectedIds={selectedIds}
 									onSelectChange={handleSelectChange}
 									onSelectAll={handleSelectAll}
+									preloadedCounts={speciesCountsMap.get(sp.id)}
 								/>
 							))}
 						</div>
@@ -609,6 +621,7 @@ export default function EnclosureGrid() {
 											selectedIds={selectedIds}
 											onSelectChange={handleSelectChange}
 											onSelectAll={handleSelectAll}
+											preloadedCounts={speciesCountsMap.get(sp.id)}
 										/>
 									</div>
 								)}
