@@ -10,7 +10,6 @@ import {
 	compareNullableIsoDatesAsc,
 	getCompletionStateLabels,
 	getDashboardTaskEnclosure,
-	getServerDayBounds,
 	getTaskTitle,
 	isHighPriority,
 	isValidDate
@@ -273,6 +272,7 @@ export type UpcomingScheduleItem = {
 	taskTitle: string
 	dueAt: string | null
 	priority: string | null
+	timeWindow: string | null
 }
 
 export type RecentActivityItem = {
@@ -280,7 +280,9 @@ export type RecentActivityItem = {
 	type: 'task_completed' | 'task_created' | 'note_added' | 'enclosure_created' | 'invite_sent'
 	label: string
 	occurredAt: string
+	dueAt: string | null
 	href: string
+	timeWindow: string | null
 }
 
 export type DashboardWarning = {
@@ -290,8 +292,8 @@ export type DashboardWarning = {
 
 export type DashboardData = {
 	generatedAt: string
-	timeZone: string
 	kpis: DashboardKpis
+	completedTodayCount: number
 	atRiskEnclosures: AtRiskEnclosureSummary[]
 	upcomingSchedule: UpcomingScheduleItem[]
 	recentActivity: RecentActivityItem[]
@@ -309,10 +311,28 @@ type DashboardTaskRow = {
 	name: string | null
 	description: string | null
 	due_date: string | null
+	time_window?: string | null
 	priority: string | null
 	status: string | null
 	completed_time: string | null
 	enclosures: { id: UUID; name: string | null } | { id: UUID; name: string | null }[] | null
+}
+
+function getLocalDayStart(reference: Date = new Date(), dayOffset = 0) {
+	return new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() + dayOffset, 0, 0, 0, 0)
+}
+
+function getDashboardStatusOrder(status: string | null) {
+	if (status === 'late') return 0
+	if (status === 'completed') return 2
+	return 1 // pending/null/unknown
+}
+
+function getDashboardTimeWindowOrder(timeWindow: string | null | undefined) {
+	if (timeWindow === 'Morning') return 0
+	if (timeWindow === 'Any') return 1
+	if (timeWindow === 'Afternoon') return 2
+	return 1
 }
 
 export type PushSubscription = {
@@ -1421,13 +1441,14 @@ export function useDashboardAtRiskEnclosures(orgId: UUID | undefined) {
 				.eq('enclosures.org_id', orgId as UUID)
 				.eq('enclosures.is_active', true)
 				.is('completed_time', null)
-				.or('status.is.null,status.eq.pending,status.eq.late')) as {
+				.or('status.is.null,status.eq.pending,status.eq.late,status.eq.in_progress')) as {
 				data: DashboardTaskRow[] | null
 				error: PostgrestError | null
 			}
 			if (error) throw error
 
 			const now = new Date()
+			const todayStart = getLocalDayStart(now, 0)
 			const byEnclosure = new Map<string, AtRiskEnclosureSummary>()
 			const attentionTaskIds = new Set<string>()
 
@@ -1440,7 +1461,7 @@ export function useDashboardAtRiskEnclosures(orgId: UUID | undefined) {
 
 				const hasHighPriority = isHighPriority(task.priority)
 				const hasValidDueDate = isValidDate(task.due_date)
-				const isOverdue = hasValidDueDate ? new Date(task.due_date!).getTime() < now.getTime() : false
+				const isOverdue = hasValidDueDate ? new Date(task.due_date!).getTime() < todayStart.getTime() : false
 
 				if (!isOverdue && !hasHighPriority) {
 					continue
@@ -1495,16 +1516,18 @@ export function useDashboardTasksDueToday(orgId: UUID | undefined) {
 		queryKey: ['dashboard', 'tasksDueToday', orgId],
 		queryFn: async (): Promise<UpcomingScheduleItem[]> => {
 			const supabase = createClient()
-			const { start, end } = getServerDayBounds()
+			const now = new Date()
+			const start = getLocalDayStart(now, 0)
+			const end = getLocalDayStart(now, 1)
 			const { data, error } = (await supabase
 				.from('tasks')
 				.select(
-					'id, enclosure_id, name, description, due_date, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
+					'id, enclosure_id, name, description, due_date, time_window, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
 				)
 				.eq('enclosures.org_id', orgId as UUID)
 				.eq('enclosures.is_active', true)
 				.is('completed_time', null)
-				.or('status.is.null,status.eq.pending,status.eq.late')
+				.or('status.is.null,status.eq.pending,status.eq.late,status.eq.in_progress')
 				.gte('due_date', start.toISOString())
 				.lt('due_date', end.toISOString())
 				.order('due_date', { ascending: true })) as { data: DashboardTaskRow[] | null; error: PostgrestError | null }
@@ -1512,12 +1535,21 @@ export function useDashboardTasksDueToday(orgId: UUID | undefined) {
 
 			return (data ?? [])
 				.sort((a, b) => {
-					const aPrioritySort = isHighPriority(a.priority) ? 0 : 1
-					const bPrioritySort = isHighPriority(b.priority) ? 0 : 1
-					if (aPrioritySort !== bPrioritySort) {
-						return aPrioritySort - bPrioritySort
+					const aStatusSort = getDashboardStatusOrder(a.status)
+					const bStatusSort = getDashboardStatusOrder(b.status)
+					if (aStatusSort !== bStatusSort) {
+						return aStatusSort - bStatusSort
 					}
-					return compareNullableIsoDatesAsc(a.due_date, b.due_date)
+					const dueDateSort = compareNullableIsoDatesAsc(a.due_date, b.due_date)
+					if (dueDateSort !== 0) {
+						return dueDateSort
+					}
+					const aTimeWindowSort = getDashboardTimeWindowOrder(a.time_window)
+					const bTimeWindowSort = getDashboardTimeWindowOrder(b.time_window)
+					if (aTimeWindowSort !== bTimeWindowSort) {
+						return aTimeWindowSort - bTimeWindowSort
+					}
+					return 0
 				})
 				.map((task) => {
 					const enclosure = getDashboardTaskEnclosure(task)
@@ -1528,7 +1560,8 @@ export function useDashboardTasksDueToday(orgId: UUID | undefined) {
 						enclosureName: enclosure?.name ?? enclosureId,
 						taskTitle: getTaskTitle(task),
 						dueAt: task.due_date,
-						priority: typeof task.priority === 'string' ? task.priority : null
+						priority: typeof task.priority === 'string' ? task.priority : null,
+						timeWindow: typeof task.time_window === 'string' ? task.time_window : null
 					}
 				})
 		},
@@ -1541,9 +1574,9 @@ export function useDashboardUpcomingTaskCount(orgId: UUID | undefined) {
 		queryKey: ['dashboard', 'upcomingTaskCount', orgId],
 		queryFn: async () => {
 			const supabase = createClient()
-			const { end: tomorrowStart } = getServerDayBounds()
-			const sevenDaysOut = new Date(tomorrowStart)
-			sevenDaysOut.setUTCDate(sevenDaysOut.getUTCDate() + 7)
+			const now = new Date()
+			const tomorrowStart = getLocalDayStart(now, 1)
+			const sevenDaysOut = getLocalDayStart(now, 8)
 
 			const { count, error } = await supabase
 				.from('tasks')
@@ -1551,9 +1584,33 @@ export function useDashboardUpcomingTaskCount(orgId: UUID | undefined) {
 				.eq('enclosures.org_id', orgId as UUID)
 				.eq('enclosures.is_active', true)
 				.is('completed_time', null)
-				.or('status.is.null,status.eq.pending,status.eq.late')
+				.or('status.is.null,status.eq.pending,status.eq.late,status.eq.in_progress')
 				.gte('due_date', tomorrowStart.toISOString())
 				.lt('due_date', sevenDaysOut.toISOString())
+			if (error) throw error
+			return count ?? 0
+		},
+		enabled: !!orgId
+	})
+}
+
+export function useDashboardCompletedTodayCount(orgId: UUID | undefined) {
+	return useQuery({
+		queryKey: ['dashboard', 'completedTodayCount', orgId],
+		queryFn: async () => {
+			const supabase = createClient()
+			const now = new Date()
+			const start = getLocalDayStart(now, 0)
+			const end = getLocalDayStart(now, 1)
+
+			const { count, error } = await supabase
+				.from('tasks')
+				.select('id, enclosures!inner(org_id, is_active)', { count: 'exact', head: true })
+				.eq('enclosures.org_id', orgId as UUID)
+				.eq('enclosures.is_active', true)
+				.eq('status', 'completed')
+				.gte('completed_time', start.toISOString())
+				.lt('completed_time', end.toISOString())
 			if (error) throw error
 			return count ?? 0
 		},
@@ -1566,11 +1623,13 @@ export function useDashboardRecentActivity(orgId: UUID | undefined) {
 		queryKey: ['dashboard', 'recentActivity', orgId],
 		queryFn: async (): Promise<RecentActivityItem[]> => {
 			const supabase = createClient()
-			const { start, end } = getServerDayBounds()
+			const now = new Date()
+			const start = getLocalDayStart(now, 0)
+			const end = getLocalDayStart(now, 1)
 			const { data, error } = (await supabase
 				.from('tasks')
 				.select(
-					'id, enclosure_id, name, description, due_date, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
+					'id, enclosure_id, name, description, due_date, time_window, priority, status, completed_time, enclosures!inner(id, name, org_id, is_active)'
 				)
 				.eq('enclosures.org_id', orgId as UUID)
 				.eq('enclosures.is_active', true)
@@ -1605,7 +1664,9 @@ export function useDashboardRecentActivity(orgId: UUID | undefined) {
 					type: 'task_completed',
 					label: `${getTaskTitle(task)} completed in ${enclosureName}${completionStateSuffix}`,
 					occurredAt: task.completed_time!,
-					href
+					dueAt: isValidDate(task.due_date) ? task.due_date : null,
+					href,
+					timeWindow: typeof task.time_window === 'string' ? task.time_window : null
 				})
 			}
 

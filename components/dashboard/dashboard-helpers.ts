@@ -1,5 +1,4 @@
-export const DASHBOARD_SERVER_TIME_ZONE = 'UTC'
-export const DASHBOARD_MAX_AT_RISK_ITEMS = 5
+export const DASHBOARD_MAX_AT_RISK_ITEMS = 6
 export const DASHBOARD_MAX_RECENT_ACTIVITY_ITEMS = 10
 
 type DashboardEnclosureRelation =
@@ -22,15 +21,6 @@ type DashboardTaskCompletionLike = {
 	due_date: string | null
 	completed_time: string | null
 	priority: string | null
-}
-
-export function getServerDayBounds(reference: Date = new Date()) {
-	const start = new Date(
-		Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), reference.getUTCDate(), 0, 0, 0, 0)
-	)
-	const end = new Date(start)
-	end.setUTCDate(end.getUTCDate() + 1)
-	return { start, end }
 }
 
 export function getDashboardTaskEnclosure(task: { enclosures: DashboardEnclosureRelation }) {
