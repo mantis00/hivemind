@@ -135,7 +135,7 @@ export function CareInstructionDocs({
 									src={docPreview.src}
 									title={docPreview.name}
 									className='w-full border-0 bg-white rounded-md'
-									style={{ height: 'calc(85vh - 120px)', minHeight: '300px' }}
+									style={{ height: 'calc(75dvh)', minHeight: '280px' }}
 								/>
 							))}
 					</ResponsiveDialogDrawer>
