@@ -134,8 +134,8 @@ export function CareInstructionDocs({
 								<iframe
 									src={docPreview.src}
 									title={docPreview.name}
-									className='flex-1 w-full min-h-0 border-0 bg-white rounded-md'
-									style={{ height: '100%' }}
+									className='w-full border-0 bg-white rounded-md'
+									style={{ height: 'calc(85vh - 120px)', minHeight: '300px' }}
 								/>
 							))}
 					</ResponsiveDialogDrawer>

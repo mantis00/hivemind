@@ -463,7 +463,7 @@ export default function EnclosureGrid() {
 				</div>
 
 				{/* Sort and Search */}
-				<div className='w-full py-2 flex flex-row flex-wrap gap-3'>
+				<div className='w-full py-2 flex flex-row gap-2'>
 					{!collapseButtons && (
 						<Select
 							onValueChange={(value) => handleFilterChange(value as EnclosureStatusFilter)}
@@ -487,7 +487,7 @@ export default function EnclosureGrid() {
 						</Select>
 					)}
 					<Select onValueChange={handleSortChange} value={sortKey} disabled={effectiveLoading}>
-						<SelectTrigger className='w-45'>
+						<SelectTrigger className='w-36'>
 							<SelectValue placeholder='Sort' className='flex-1 min-w-0 truncate' />
 							{isSorted && (
 								<span
@@ -527,7 +527,7 @@ export default function EnclosureGrid() {
 					>
 						{sortUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
 					</Button>
-					<InputGroup className='w-40 sm:w-60 ml-auto'>
+					<InputGroup className='flex-1 min-w-0 max-w-72 ml-auto'>
 						<InputGroupAddon>
 							<Search className='h-4 w-4 text-muted-foreground' />
 						</InputGroupAddon>
