@@ -132,11 +132,7 @@ export function CareInstructionDocs({
 								</div>
 							) : (
 								<div className='w-full overflow-hidden rounded-md' style={{ height: 'calc(65dvh)' }}>
-									<iframe
-										src={docPreview.src}
-										title={docPreview.name}
-										className='w-full h-full border-0 bg-white'
-									/>
+									<iframe src={docPreview.src} title={docPreview.name} className='w-full h-full border-0 bg-white' />
 								</div>
 							))}
 					</ResponsiveDialogDrawer>
