@@ -131,7 +131,10 @@ export function CareInstructionDocs({
 									<Image src={docPreview.src} alt={docPreview.name} fill unoptimized className='object-contain' />
 								</div>
 							) : (
-								<div className='w-full overflow-hidden rounded-md' style={{ height: 'calc(65dvh)' }}>
+								<div
+									className='w-full overflow-hidden rounded-md'
+									style={{ height: 'calc(80dvh - 130px)', minHeight: '200px' }}
+								>
 									<iframe src={docPreview.src} title={docPreview.name} className='w-full h-full border-0 bg-white' />
 								</div>
 							))}
