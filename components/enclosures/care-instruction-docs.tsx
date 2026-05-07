@@ -131,12 +131,13 @@ export function CareInstructionDocs({
 									<Image src={docPreview.src} alt={docPreview.name} fill unoptimized className='object-contain' />
 								</div>
 							) : (
-								<iframe
-									src={docPreview.src}
-									title={docPreview.name}
-									className='w-full border-0 bg-white rounded-md'
-									style={{ height: 'calc(75dvh)', minHeight: '280px' }}
-								/>
+								<div className='w-full overflow-hidden rounded-md' style={{ height: 'calc(65dvh)' }}>
+									<iframe
+										src={docPreview.src}
+										title={docPreview.name}
+										className='w-full h-full border-0 bg-white'
+									/>
+								</div>
 							))}
 					</ResponsiveDialogDrawer>
 				</>
