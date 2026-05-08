@@ -315,12 +315,6 @@ const pageSections: PageHelpSection[] = [
 					'Hivemind recommends Avery as the intended label-printing workflow because it makes it easy to turn enclosure URLs into printable stickers that can be attached directly to enclosures.'
 			},
 			{
-				id: 'avery-not-required',
-				name: 'Avery Is Recommended, Not Required',
-				description:
-					'Users do not need to use Avery. Any tool or service that correctly generates QR codes from enclosure URLs will work with the app.'
-			},
-			{
 				id: 'getting-urls',
 				name: 'Getting Enclosure URLs',
 				description:
@@ -330,13 +324,7 @@ const pageSections: PageHelpSection[] = [
 				id: 'other-workflows',
 				name: 'Other Supported Workflows',
 				description:
-					'Alternative workflows are acceptable as long as the QR code encodes the exported enclosure URL correctly. This can include external QR services or Microsoft Excel for the web with Microsoft 365 and a script-based generation workflow.'
-			},
-			{
-				id: 'excel-script-workflow',
-				name: 'Excel Script Label Workflow',
-				description:
-					'For an Excel workflow, export enclosure data from Hivemind, open the CSV in Excel, and confirm the sheet includes Enclosure Name and URL columns. An Office Script can read those columns, create a separate label sheet, place each enclosure name in a label cell, and insert a QR image beneath it using the exported URL.'
+					'Alternative workflows are acceptable as long as the QR code encodes the exported enclosure URL directly (no dynamic QR codes). This can include external QR services or Microsoft Excel for the web with Microsoft 365 and a script-based generation workflow.'
 			},
 			{
 				id: 'typical-process',
@@ -348,9 +336,7 @@ const pageSections: PageHelpSection[] = [
 		commonActionsTitle: 'Label Workflow Checks',
 		commonActions: [
 			'Use Avery when you want the simplest label-printing path, but choose any other workflow that reliably encodes the exported enclosure URL if it better fits your operation.',
-			'Always start from the Enclosures export so each label is generated from the correct enclosure URL.',
-			'If using Excel, use an approved QR image provider or script workflow, because any external QR service receives the enclosure URL it is asked to encode.',
-			'If a QR workflow produces working enclosure URLs, it is compatible even if it is not Avery.'
+			'Always start from the Enclosures export so each label is generated from the correct enclosure URL.'
 		],
 		relatedPages: ['Enclosures', 'Help']
 	},
