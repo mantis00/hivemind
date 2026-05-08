@@ -63,7 +63,7 @@ export function TasksDataTable({
 	const { data: members = [] } = useOrgMemberProfiles(orgId)
 
 	// Org-mode data — hooks are always called but only used when isOrgMode
-	const { data: fetchedOrgEnclosures = [] } = useOrgEnclosures(orgId)
+	const { data: fetchedOrgEnclosures = [], isLoading: enclosuresLoading } = useOrgEnclosures(orgId)
 	const { data: allOrgEnclosures = [] } = useOrgEnclosures(orgId, 'all')
 	const { data: fetchedOrgSpecies } = useOrgSpecies(orgId)
 
@@ -199,13 +199,23 @@ export function TasksDataTable({
 		return { dueToday, late }
 	}, [dayTasks, isRangeMode, globalSearch])
 
+	const tasksEnabled = enclosureIds.length > 0
+
+	// True when the underlying query returned no tasks (before day/filter logic)
+	const sourceIsEmpty = React.useMemo(() => {
+		const source = isRangeMode ? (rangeTasks ?? []) : globalSearch ? (enclosureTasks ?? []) : (dayTasks ?? [])
+		return source.length === 0
+	}, [isRangeMode, rangeTasks, globalSearch, enclosureTasks, dayTasks])
+
 	const activeLoading =
+		(isOrgMode && enclosuresLoading) ||
 		pendingGlobalSearch ||
-		(isRangeMode
-			? rangeFetching || rangeTasks === undefined
-			: globalSearch
-				? tasksFetching || enclosureTasks === undefined
-				: dayFetching || dayTasks === undefined)
+		(tasksEnabled &&
+			(isRangeMode
+				? rangeFetching || rangeTasks === undefined
+				: globalSearch
+					? tasksFetching || enclosureTasks === undefined
+					: dayFetching || dayTasks === undefined))
 
 	const handleView = React.useCallback(
 		(taskId: UUID) => {
@@ -570,11 +580,15 @@ export function TasksDataTable({
 					</div>
 				) : rows.length === 0 ? (
 					<div className='flex items-center justify-center h-24 text-muted-foreground text-sm'>
-						{isRangeMode
-							? `No tasks between ${formatDate(dateRange!.from!.toISOString(), false)} and ${formatDate(dateRange!.to!.toISOString())}.`
-							: globalSearch
-								? 'No tasks match your search across all dates.'
-								: `No tasks for ${getDayLabel(dayOffset).toLowerCase()}.`}
+						{isOrgMode && fetchedOrgEnclosures.length === 0
+							? 'No enclosures have been added yet, so there are no tasks.'
+							: sourceIsEmpty && !hasActiveFilters
+								? 'No tasks have been created yet.'
+								: isRangeMode
+									? `No tasks between ${formatDate(dateRange!.from!.toISOString(), false)} and ${formatDate(dateRange!.to!.toISOString())}.`
+									: globalSearch
+										? 'No tasks match your search across all dates.'
+										: `No tasks for ${getDayLabel(dayOffset).toLowerCase()}.`}
 					</div>
 				) : rows.length <= TARGET_VISIBLE_ROWS ? (
 					<table
