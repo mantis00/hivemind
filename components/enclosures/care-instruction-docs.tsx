@@ -7,8 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import type { SpeciesCareInstructions } from '@/lib/react-query/queries'
 
-const getViewerSrc = (src: string) =>
-	`https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
+const getViewerSrc = (src: string) => `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
 
 export function CareInstructionDocs({
 	defaultDocs,
@@ -125,7 +124,10 @@ export function CareInstructionDocs({
 						trigger={null}
 						open={!!docPreview}
 						onOpenChange={(open) => {
-							if (!open) { setDocPreview(null); setIframeLoaded(false) }
+							if (!open) {
+								setDocPreview(null)
+								setIframeLoaded(false)
+							}
 						}}
 						className='sm:max-w-4xl h-[85vh]'
 					>
