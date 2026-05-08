@@ -1,11 +1,13 @@
 'use client'
 import { useState } from 'react'
-import { ChevronDown, FileIcon } from 'lucide-react'
+import { ChevronDown, FileIcon, LoaderCircle } from 'lucide-react'
 import Image from 'next/image'
 import { Badge } from '../ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { ResponsiveDialogDrawer } from '../ui/dialog-to-drawer'
 import type { SpeciesCareInstructions } from '@/lib/react-query/queries'
+
+const getViewerSrc = (src: string) => `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
 
 export function CareInstructionDocs({
 	defaultDocs,
@@ -19,6 +21,7 @@ export function CareInstructionDocs({
 	const [defaultDocsOpen, setDefaultDocsOpen] = useState(false)
 	const [orgDocsOpen, setOrgDocsOpen] = useState(false)
 	const [docPreview, setDocPreview] = useState<{ src: string; name: string; isImg: boolean } | null>(null)
+	const [iframeLoaded, setIframeLoaded] = useState(false)
 
 	const visibleDefaultDocs = defaultDocs.filter((d) => !d.is_hidden_by_org)
 	const hasAnything = !!careInstructions || visibleDefaultDocs.length > 0 || orgDocs.length > 0
@@ -121,7 +124,10 @@ export function CareInstructionDocs({
 						trigger={null}
 						open={!!docPreview}
 						onOpenChange={(open) => {
-							if (!open) setDocPreview(null)
+							if (!open) {
+								setDocPreview(null)
+								setIframeLoaded(false)
+							}
 						}}
 						className='sm:max-w-4xl h-[85vh]'
 					>
@@ -131,12 +137,23 @@ export function CareInstructionDocs({
 									<Image src={docPreview.src} alt={docPreview.name} fill unoptimized className='object-contain' />
 								</div>
 							) : (
-								<iframe
-									src={docPreview.src}
-									title={docPreview.name}
-									className='flex-1 w-full min-h-0 border-0 bg-white rounded-md'
-									style={{ height: '100%' }}
-								/>
+								<div
+									className='relative w-full overflow-hidden rounded-md'
+									style={{ height: 'calc(80dvh - 130px)', minHeight: '200px' }}
+								>
+									{!iframeLoaded && (
+										<div className='absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground bg-muted/40 rounded-md'>
+											<LoaderCircle className='h-6 w-6 animate-spin' />
+											<span className='text-sm'>Loading document…</span>
+										</div>
+									)}
+									<iframe
+										src={getViewerSrc(docPreview.src)}
+										title={docPreview.name}
+										className='w-full h-full border-0 bg-white'
+										onLoad={() => setIframeLoaded(true)}
+									/>
+								</div>
 							))}
 					</ResponsiveDialogDrawer>
 				</>
