@@ -14,7 +14,10 @@ const config = [
 			'tests/**',
 			'public/sw.js',
 			'public/sw*.js',
-			'serwist.config.js'
+			'serwist.config.js',
+			'playwright-report/**',
+			'test-results/**',
+			'**/trace/**'
 		]
 	}
 ]
