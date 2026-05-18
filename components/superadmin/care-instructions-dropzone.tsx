@@ -2,13 +2,15 @@
 
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { FileIcon, X, ExternalLinkIcon, FileUpIcon, PlusIcon } from 'lucide-react'
+import { FileIcon, X, ExternalLinkIcon, FileUpIcon, PlusIcon, LoaderCircle } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ResponsiveDialogDrawer } from '@/components/ui/dialog-to-drawer'
 import Image from 'next/image'
+
+const getViewerSrc = (src: string) => `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
 
 function isImage(name: string) {
 	return /\.(png|jpe?g|gif|webp)$/i.test(name)
@@ -47,6 +49,7 @@ export function CareInstructionsDropzone({
 	const [preview, setPreview] = useState<{ src: string; name: string; isObjectUrl: boolean; isImg: boolean } | null>(
 		null
 	)
+	const [iframeLoaded, setIframeLoaded] = useState(false)
 	const [adding, setAdding] = useState(false)
 	const [stagedFile, setStagedFile] = useState<File | null>(null)
 	const [docLabel, setDocLabel] = useState('')
@@ -63,6 +66,7 @@ export function CareInstructionsDropzone({
 	const closePreview = useCallback(() => {
 		if (preview?.isObjectUrl) URL.revokeObjectURL(preview.src)
 		setPreview(null)
+		setIframeLoaded(false)
 	}, [preview])
 
 	const resetAdding = () => {
@@ -259,12 +263,23 @@ export function CareInstructionsDropzone({
 							<Image src={preview.src} alt={preview.name} fill unoptimized className='object-contain' />
 						</div>
 					) : (
-						<iframe
-							src={preview.src}
-							title={preview.name}
-							className='flex-1 w-full min-h-0 border-0 bg-white rounded-md'
-							style={{ height: '100%' }}
-						/>
+						<div
+							className='relative w-full overflow-hidden rounded-md'
+							style={{ height: 'calc(80dvh - 130px)', minHeight: '200px' }}
+						>
+							{!iframeLoaded && (
+								<div className='absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground bg-muted/40 rounded-md'>
+									<LoaderCircle className='h-6 w-6 animate-spin' />
+									<span className='text-sm'>Loading document…</span>
+								</div>
+							)}
+							<iframe
+								src={preview.isObjectUrl ? preview.src : getViewerSrc(preview.src)}
+								title={preview.name}
+								className='w-full h-full border-0 bg-white'
+								onLoad={() => setIframeLoaded(true)}
+							/>
+						</div>
 					))}
 			</ResponsiveDialogDrawer>
 		</>
